@@ -1,7 +1,17 @@
 # pyotb: a pythonic extension of OTB
 
 ## Installation
+Requirements:
+- python >= 3.6
+- OrfeoToolBox python API installed
+
+First step:
 ```bash
+git clone http://.......
+```
+Then for installing the library:
+```bash
+cd pyotb
 python setup.py install
 ```
 
