@@ -350,9 +350,6 @@ class App(otbObject):
             output = Output(self.app, output_param_key)
             setattr(self, output_param_key, output)
 
-        # Writing outputs to disk if needed
-        if any([output_param_key in kwargs for output_param_key in self.output_parameters_keys]):
-            self.app.ExecuteAndWriteOutput()
 
     def set_parameters(self, *args, **kwargs):
         """
@@ -407,6 +404,11 @@ class App(otbObject):
                         other_types.append(input)
                 if len(other_types) > 0:
                     self.app.SetParameterValue(k, other_types)
+
+        # Writing outputs to disk if needed
+        if any([output_param_key in kwargs for output_param_key in self.output_parameters_keys]):
+            self.app.ExecuteAndWriteOutput()
+
 
     def get_output_parameters_keys(self):
         """
