@@ -7,7 +7,7 @@ Requirements:
 
 First step:
 ```bash
-git clone http://.......
+git clone https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb.git
 ```
 Then for installing the library:
 ```bash
