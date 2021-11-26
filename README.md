@@ -240,21 +240,32 @@ You need a working installation of OTBTF >=3.0 for this and then the code is lik
 ```python
 import pyotb
 
-# The decorator enables the use of pyotb objects as inputs/output of the function
-@pyotb.run_tf_function
 def scalar_product(x1, x2):
     """This is a function composed of tensorflow operations."""
     import tensorflow as tf
     return tf.reduce_sum(tf.multiply(x1, x2), axis=-1)
 
 # Compute the scalar product
-res = scalar_product('image1.tif', 'image2.tif')  # magic: this is a pyotb object
+res = pyotb.run_tf_function(scalar_product)('image1.tif', 'image2.tif')  # magic: this is a pyotb object
 res.write('scalar_product.tif')
+```
+
+For some easy syntax, one can use `pyotb.run_tf_function` as a function decorator, such as:
+```python
+import pyotb
+
+@pyotb.run_tf_function  # The decorator enables the use of pyotb objects as inputs/output of the function
+def scalar_product(x1, x2):
+    import tensorflow as tf
+    return tf.reduce_sum(tf.multiply(x1, x2), axis=-1)
+
+res = scalar_product('image1.tif', 'image2.tif')  # magic: this is a pyotb object
 ```
 
 Advantages :
 - The process supports streaming, hence the whole image is **not** loaded into memory
 - Can be integrated in OTB pipelines
+
 
 Limitations :
 - It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues between Tensorflow and OTBTF
