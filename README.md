@@ -15,7 +15,9 @@ cd pyotb
 python setup.py install
 ```
 
-## Running an OTB app as a onliner
+In case of permission denied error, try `python setup.py install --user` instead.
+
+## Quickstart: running an OTB app as a onliner
 pyotb has been written so that it is more convenient to run an application in Python.
 
 For example, let's consider one wants to undersample a raster. Using OTB, the code would be like :
@@ -172,7 +174,7 @@ In pyotb, a function has been created for even more convenience for the user.
 
 Let's consider the case where we have 3 images with different resolutions and different footprints :
 
-![Images](illustrations/pyotb_define_processing_area_initial.jpg)
+![Images](doc/illustrations/pyotb_define_processing_area_initial.jpg)
 
 ```python
 import pyotb
@@ -187,10 +189,10 @@ print(labels.shape)  # (1528, 1360, 1)
 Our goal is to obtain all images at the same footprint, same resolution and same shape. 
 Let's consider we want the intersection of all footprints and the same resolution as `labels` image.
 
-![Goal](illustrations/pyotb_define_processing_area_process.jpg)
+![Goal](doc/illustrations/pyotb_define_processing_area_process.jpg)
 
 Here is the final result :
-![Result](illustrations/pyotb_define_processing_area_result.jpg)
+![Result](doc/illustrations/pyotb_define_processing_area_result.jpg)
 
 The piece of code to achieve this : 
 ```python
@@ -230,7 +232,10 @@ Limitations :
 
 ## Interaction with Tensorflow
 
-We saw that numpy operations had some limitations. To bypass those limitations, it is possible to use some Tensorflow operations on pyotb objects. You can do it like this :
+We saw that numpy operations had some limitations. To bypass those limitations, it is possible to use some Tensorflow operations on pyotb objects.
+
+
+You need a working installation of OTBTF >=3.0 for this and then the code is like this:
 
 ```python
 import pyotb
@@ -249,8 +254,8 @@ res.write('scalar_product.tif')
 
 Advantages :
 - The process supports streaming, hence the whole image is **not** loaded into memory
-- Can be integrated in an OTB pipeline
+- Can be integrated in OTB pipelines
 
-Limitations : 
+Limitations :
 - It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues between Tensorflow and OTBTF
 - It is currently not possible to chain several `@pyotb.run_tf_function` functions
