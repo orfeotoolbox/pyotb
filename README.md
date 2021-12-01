@@ -94,7 +94,7 @@ import pyotb
 resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear', 
                                           'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
 
-calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa') 
+calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa'}) 
 
 pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilatation', 
                                     'structype': 'ball', 'xradius': 3, 'yradius': 3})
@@ -104,7 +104,7 @@ pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filt
 ```
 
 ## Writing the result of an app
-Any pyotb object can be written to disk using the `write` method, e.g.
+Any pyotb object can be written to disk using the `write` method, e.g. :
 
 ```python
 import pyotb
