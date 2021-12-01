@@ -99,7 +99,7 @@ calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa'})
 pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilatation', 
                                     'structype': 'ball', 'xradius': 3, 'yradius': 3})
 # equivalent to
-# pyotb.BinaryMorphologicalOperation(resampled, out='output.tif', filter='dilatation', structype='ball',
+# pyotb.BinaryMorphologicalOperation(calibrated, out='output.tif', filter='dilatation', structype='ball',
 #                                    xradius=3, yradius=3)
 ```
 
