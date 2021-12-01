@@ -53,7 +53,9 @@ is equivalent to:
 pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif', 'out': 'output.tif'})
 ```
 
-Limitations : for this notation, python doesn't accept the parameter `in` or any parameter that contains a `.`. E.g., it is not possible to use `pyotb.RigidTransformResample(in=input_path...)` 
+Limitations : for this notation, python doesn't accept the parameter `in` or any parameter that contains a `.`. E.g., it is not possible to use `pyotb.RigidTransformResample(in=input_path...)` or `pyotb.VectorDataExtractROI(io.vd=vector_path...)`.
+
+
 
 
 ## In-memory connections
