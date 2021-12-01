@@ -262,6 +262,11 @@ Advantages :
 - The process supports streaming, hence the whole image is **not** loaded into memory
 - Can be integrated in OTB pipelines
 
+Limitations :
+- It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues between Tensorflow and OTBTF
+- It is currently not possible to chain several `@pyotb.run_tf_function` functions
+
+
 ## Miscellaneous: Work with images with differents footprints / resolutions
 OrfeoToolBox provides a handy `Superimpose` application that enables the projection of an image into the geometry of another one.
 
@@ -302,6 +307,4 @@ print(labels.shape)  # (657, 520, 1)
 ```
 
 
-Limitations :
-- It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues between Tensorflow and OTBTF
-- It is currently not possible to chain several `@pyotb.run_tf_function` functions
+
