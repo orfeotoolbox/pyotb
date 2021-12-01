@@ -17,7 +17,7 @@ python setup.py install
 
 In case of permission denied error, try `python setup.py install --user` instead.
 
-## Quickstart: running an OTB app as a onliner
+## Quickstart: running an OTB app as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.
 
 For example, let's consider one wants to undersample a raster. Using OTB, the code would be like :
@@ -34,7 +34,7 @@ resampled.SetParameterString('out', 'output.tif')
 resampled.ExecuteAndWriteOutput()
 ```
 
-Instead, using pyotb : 
+Instead, using pyotb, you can pass the parameters as a dictionary : 
 ```python
 import pyotb
 
@@ -43,25 +43,42 @@ pyotb.RigidTransformResample({'in': input_path, 'interpolator': 'linear', 'out':
                               'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
 ```
 
+## Using Python keyword arguments
+It is also possible to use the Python keyword arguments notation for passing the parameters:
+```python
+pyotb.SuperImpose(inr='reference_image.tif', inm='image.tif', out='output.tif')
+```
+is equivalent to:
+```python
+pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif', 'out': 'output.tif'})
+```
+
+Limitations : for this notation, python doesn't accept the parameter `in` or any parameter that contains a `.`. E.g., it is not possible to use `pyotb.RigidTransformResample(in=input_path...)` 
+
+
 ## In-memory connections
 The big asset of pyotb is the ease of in-memory connections between apps.
 
-Let's start from our previous example. Consider the case where one wants to apply binary morphological dilatation 
+Let's start from our previous example. Consider the case where one wants to apply optical calibration and binary morphological dilatation 
 following the undersampling. Using OTB : 
 
 ```python
 import otbApplication
 
-input_path = 'my_image.tif'
 resampled = otbApplication.Registry.CreateApplication('RigidTransformResample')
-resampled.SetParameterString('in', input_path)
+resampled.SetParameterString('in', 'my_image.tif')
 resampled.SetParameterString('interpolator', 'linear')
 resampled.SetParameterFloat('transform.type.id.scalex', 0.5)
 resampled.SetParameterFloat('transform.type.id.scaley', 0.5)
 resampled.Execute()
 
+calibrated = otbApplication.Registry.CreateApplication('OpticalCalibration')
+calibrated.ConnectImage('in', resampled, 'out')
+calibrated.SetParameterString('level', 'toa')
+calibrated.Execute()
+
 dilated = otbApplication.Registry.CreateApplication('BinaryMorphologicalOperation')
-dilated.ConnectImage('in', resampled, 'out')
+dilated.ConnectImage('in', calibrated, 'out')
 dilated.SetParameterString("filter", 'dilatation')
 dilated.SetParameterString("structype", 'ball')
 dilated.SetParameterInt("xradius", 3)
@@ -70,17 +87,34 @@ dilated.SetParameterString('out', 'output.tif')
 dilated.ExecuteAndWriteOutput()
 ```
 
-Using pyotb : 
+Using pyotb, you can pass the output of an app as input of another app : 
 ```python
 import pyotb
 
-input_path = 'my_image.tif'
-resampled = pyotb.RigidTransformResample({'in': input_path, 'interpolator': 'linear',
+resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear', 
                                           'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
 
-pyotb.BinaryMorphologicalOperation(resampled, out='output.tif', filter='dilatation', 
-                                   structype='ball', xradius=3, yradius=3)
+calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa') 
+
+pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilatation', 
+                                    'structype': 'ball', 'xradius': 3, 'yradius': 3})
+# equivalent to
+# pyotb.BinaryMorphologicalOperation(resampled, out='output.tif', filter='dilatation', structype='ball',
+#                                    xradius=3, yradius=3)
 ```
+
+## Writing the result of an app
+Any pyotb object can be written to disk using the `write` method, e.g.
+
+```python
+import pyotb
+
+resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear',
+                                          'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
+
+resampled.write('output.tif', pixel_type='uint16')
+```
+
 
 ## Arithmetic operations
 Every pyotb object supports arithmetic operations, such as addition, subtraction, comparison...
@@ -167,44 +201,6 @@ res = pyotb.where(labels == 1, image1,
 
 ```
 
-## Work with images with differents footprints / resolutions
-OrfeoToolBox provides a handy `Superimpose` application that enables the projection of an image into the geometry of another one.
-
-In pyotb, a function has been created for even more convenience for the user.
-
-Let's consider the case where we have 3 images with different resolutions and different footprints :
-
-![Images](doc/illustrations/pyotb_define_processing_area_initial.jpg)
-
-```python
-import pyotb
-
-# transforming filepaths to pyotb objects
-s2_image, vhr_image, labels = pyotb.Input('image_10m.tif'), pyotb.Input('image_60cm.tif'), pyotb.Input('land_cover_2m.tif')
-
-print(s2_image.shape)  # (286, 195, 4)
-print(vhr_image.shape)  # (2048, 2048, 3)
-print(labels.shape)  # (1528, 1360, 1)
-```
-Our goal is to obtain all images at the same footprint, same resolution and same shape. 
-Let's consider we want the intersection of all footprints and the same resolution as `labels` image.
-
-![Goal](doc/illustrations/pyotb_define_processing_area_process.jpg)
-
-Here is the final result :
-![Result](doc/illustrations/pyotb_define_processing_area_result.jpg)
-
-The piece of code to achieve this : 
-```python
-s2_image, vhr_image, labels = pyotb.define_processing_area(s2_image, vhr_image, labels, window_rule='intersection',
-                                                           pixel_size_rule='same_as_input', 
-                                                           reference_pixel_size_input=labels, interpolator='bco')
-
-print(s2_image.shape)  # (657, 520, 4)
-print(vhr_image.shape)  # (657, 520, 3)
-print(labels.shape)  # (657, 520, 1)
-# Then we can do whichever computations with s2_image, vhr_image, labels
-```
 
 
 ## Interaction with Numpy
@@ -265,6 +261,45 @@ res = scalar_product('image1.tif', 'image2.tif')  # magic: this is a pyotb objec
 Advantages :
 - The process supports streaming, hence the whole image is **not** loaded into memory
 - Can be integrated in OTB pipelines
+
+## Miscellaneous: Work with images with differents footprints / resolutions
+OrfeoToolBox provides a handy `Superimpose` application that enables the projection of an image into the geometry of another one.
+
+In pyotb, a function has been created to handle more than 2 images.
+
+Let's consider the case where we have 3 images with different resolutions and different footprints :
+
+![Images](doc/illustrations/pyotb_define_processing_area_initial.jpg)
+
+```python
+import pyotb
+
+# transforming filepaths to pyotb objects
+s2_image, vhr_image, labels = pyotb.Input('image_10m.tif'), pyotb.Input('image_60cm.tif'), pyotb.Input('land_cover_2m.tif')
+
+print(s2_image.shape)  # (286, 195, 4)
+print(vhr_image.shape)  # (2048, 2048, 3)
+print(labels.shape)  # (1528, 1360, 1)
+```
+Our goal is to obtain all images at the same footprint, same resolution and same shape. 
+Let's consider we want the intersection of all footprints and the same resolution as `labels` image.
+
+![Goal](doc/illustrations/pyotb_define_processing_area_process.jpg)
+
+Here is the final result :
+![Result](doc/illustrations/pyotb_define_processing_area_result.jpg)
+
+The piece of code to achieve this : 
+```python
+s2_image, vhr_image, labels = pyotb.define_processing_area(s2_image, vhr_image, labels, window_rule='intersection',
+                                                           pixel_size_rule='same_as_input', 
+                                                           reference_pixel_size_input=labels, interpolator='bco')
+
+print(s2_image.shape)  # (657, 520, 4)
+print(vhr_image.shape)  # (657, 520, 3)
+print(labels.shape)  # (657, 520, 1)
+# Then we can do whichever computations with s2_image, vhr_image, labels
+```
 
 
 Limitations :
