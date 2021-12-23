@@ -373,6 +373,11 @@ class App(otbObject):
 
         # Going through all arguments
         for k, v in kwargs.items():
+            # When the parameter expects a list, if needed, change the value to list
+            if self.is_key_list(k) and not isinstance(v, list):
+                v = [v]
+
+            # Single-parameter cases
             if isinstance(v, App):
                 self.app.ConnectImage(k, v.app, v.output_parameters_keys[0])
             elif isinstance(v, (Output, Input, Operation)):
@@ -384,26 +389,29 @@ class App(otbObject):
             elif k == 'ram':  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
                 self.app.SetParameterInt('ram', int(v))
             elif not isinstance(v, list):  # any other parameters (str, int...)
-                self.app.SetParameterValue(k, v)  # we use SetParameterValue
-            elif isinstance(v, list):
-                other_types = []  # any other parameters (str, int...) whose key is not "il"
-                # To enable in-memory connections, we go through the list and set the parameters of the list one by one.
-                for input in v:
-                    if isinstance(input, App):
-                        self.app.ConnectImage(k, input.app, input.output_parameters_keys[0])
-                    elif isinstance(input, (Output, Input, Operation)):
-                        self.app.ConnectImage(k, input.app, input.output_parameter_key)
-                    elif isinstance(input, otbApplication.Application):
-                        outparamkey = [param for param in input.GetParametersKeys()
-                                       if input.GetParameterType(param) == otbApplication.ParameterType_OutputImage][0]
-                        self.app.ConnectImage(k, input, outparamkey)
-                    elif k == 'il':  # specific case so that we do not overwrite any previously set element of 'il'
-                        # TODO: this is ugly, to be fixed
-                        self.app.AddParameterStringList(k, input)
-                    else:
-                        other_types.append(input)
-                if len(other_types) > 0:
-                    self.app.SetParameterValue(k, other_types)
+                self.app.SetParameterValue(k, v)
+
+            # Parameter list cases
+            else:
+                # Images list
+                if self.is_key_images_list(k):
+                    # To enable possible in-memory connections, we go through the list and set the parameters one by one
+                    for input in v:
+                        if isinstance(input, App):
+                            self.app.ConnectImage(k, input.app, input.output_parameters_keys[0])
+                        elif isinstance(input, (Output, Input, Operation)):
+                            self.app.ConnectImage(k, input.app, input.output_parameter_key)
+                        elif isinstance(input, otbApplication.Application):
+                            outparamkey = [param for param in input.GetParametersKeys()
+                                           if input.GetParameterType(param) == otbApplication.ParameterType_OutputImage][0]
+                            self.app.ConnectImage(k, input, outparamkey)
+                        else:  # here `input` should be an image filepath
+                            # Append `input` to the list, do not overwrite any previously set element of the image list
+                            self.app.AddParameterStringList(k, input)
+
+                # List of any other types (str, int...)
+                else:
+                    self.app.SetParameterValue(k, v)
 
         # Writing outputs to disk if needed
         if any([output_param_key in kwargs for output_param_key in self.output_parameters_keys]):
@@ -417,6 +425,19 @@ class App(otbObject):
         output_param_keys = [param for param in self.app.GetParametersKeys()
                              if self.app.GetParameterType(param) == otbApplication.ParameterType_OutputImage]
         return output_param_keys
+
+
+    def is_key_list(self, key):
+        return ((self.app.GetParameterType(key) == otbApplication.ParameterType_InputImageList) or
+                (self.app.GetParameterType(key) == otbApplication.ParameterType_StringList) or
+                (self.app.GetParameterType(key) == otbApplication.ParameterType_InputFilenameList) or
+                (self.app.GetParameterType(key) == otbApplication.ParameterType_InputVectorDataList) or
+                (self.app.GetParameterType(key) == otbApplication.ParameterType_ListView))
+
+
+    def is_key_images_list(self, key):
+        return ((self.app.GetParameterType(key) == otbApplication.ParameterType_InputImageList) or
+                (self.app.GetParameterType(key) == otbApplication.ParameterType_InputFilenameList))
 
     def __str__(self):
         return '<pyotb.App {} object id {}>'.format(self.appname, id(self))
