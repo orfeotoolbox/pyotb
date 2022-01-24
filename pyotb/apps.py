@@ -1,17 +1,29 @@
-import multiprocessing
-from pyotb.core import App
+import sys
+import subprocess
+from pyotb.core import App, logger
 
-def get_available_applications(q):
+"""
+This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App('AppName', ...)`
+"""
+
+AVAILABLE_APPLICATIONS = None
+# Currently there is an incompatibility between OTBTF and Tensorflow that causes segfault when OTB is used in a script
+# where tensorflow has been imported.
+# Thus, we run this piece of code in a clean independent `subprocess` that doesn't interact with Tensorflow
+if sys.executable:
+    try:
+        p = subprocess.run([sys.executable, '-c', 'import otbApplication; '
+                                                  'print(otbApplication.Registry.GetAvailableApplications())'],
+                           capture_output=True)
+        AVAILABLE_APPLICATIONS = eval(p.stdout.decode().strip())
+    except Exception as e:
+        logger.warning('Failed to get the list of applications in an independent process. Trying to get it inside'
+                       'the script scope')
+
+# In case the previous has failed, we try the "normal" way to get the list of applications
+if not AVAILABLE_APPLICATIONS:
     import otbApplication
-    q.put(otbApplication.Registry.GetAvailableApplications())
-
-# We run this piece of code inside a independent `multiprocessing.Process` because of a current (2021-11) bug that
-# prevents the use of OTBTF and tensorflow inside the same script
-q = multiprocessing.Queue()
-p = multiprocessing.Process(target=get_available_applications, args=(q,))
-p.start()
-p.join()
-AVAILABLE_APPLICATIONS = q.get(block=False)
+    AVAILABLE_APPLICATIONS = otbApplication.Registry.GetAvailableApplications()
 
 # This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App('AppName', ...)`
 if AVAILABLE_APPLICATIONS:
