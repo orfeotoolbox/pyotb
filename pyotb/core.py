@@ -350,7 +350,6 @@ class App(otbObject):
             output = Output(self.app, output_param_key)
             setattr(self, output_param_key, output)
 
-
     def set_parameters(self, *args, **kwargs):
         """
         Set some parameters of the app. When useful, e.g. for images list, this function appends the parameters instead
@@ -374,7 +373,7 @@ class App(otbObject):
         # Going through all arguments
         for k, v in kwargs.items():
             # When the parameter expects a list, if needed, change the value to list
-            if self.is_key_list(k) and not isinstance(v, list):
+            if self.is_key_list(k) and not isinstance(v, (list, tuple)):
                 v = [v]
 
             # Single-parameter cases
@@ -417,7 +416,6 @@ class App(otbObject):
         if any([output_param_key in kwargs for output_param_key in self.output_parameters_keys]):
             self.app.ExecuteAndWriteOutput()
 
-
     def get_output_parameters_keys(self):
         """
         :return: list of output parameters keys, e.g ['out']
@@ -426,14 +424,12 @@ class App(otbObject):
                              if self.app.GetParameterType(param) == otbApplication.ParameterType_OutputImage]
         return output_param_keys
 
-
     def is_key_list(self, key):
         return ((self.app.GetParameterType(key) == otbApplication.ParameterType_InputImageList) or
                 (self.app.GetParameterType(key) == otbApplication.ParameterType_StringList) or
                 (self.app.GetParameterType(key) == otbApplication.ParameterType_InputFilenameList) or
                 (self.app.GetParameterType(key) == otbApplication.ParameterType_InputVectorDataList) or
                 (self.app.GetParameterType(key) == otbApplication.ParameterType_ListView))
-
 
     def is_key_images_list(self, key):
         return ((self.app.GetParameterType(key) == otbApplication.ParameterType_InputImageList) or
@@ -511,7 +507,6 @@ class Operation(otbObject):
                 nb_channels[input2] = get_nbchannels(input2)
                 inputs.append(input2)
                 fake_exp2 = str(input2)
-
 
             # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
             # the false expression stores the expression 2 * str(input1) + str(input2)
