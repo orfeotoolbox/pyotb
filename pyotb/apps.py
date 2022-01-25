@@ -14,14 +14,14 @@ if sys.executable:
     try:
         p = subprocess.run([sys.executable, '-c', 'import otbApplication; '
                                                   'print(otbApplication.Registry.GetAvailableApplications())'],
-                           capture_output=True)
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         AVAILABLE_APPLICATIONS = eval(p.stdout.decode().strip())
     except Exception as e:
         logger.warning('Failed to get the list of applications in an independent process. Trying to get it inside'
                        'the script scope')
 
 # In case the previous has failed, we try the "normal" way to get the list of applications
-if not AVAILABLE_APPLICATIONS:
+if not AVAILABLE_APPLICATIONS or not isinstance(AVAILABLE_APPLICATIONS, (list, tuple)):
     import otbApplication
     AVAILABLE_APPLICATIONS = otbApplication.Registry.GetAvailableApplications()
 
