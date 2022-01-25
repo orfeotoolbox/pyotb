@@ -94,6 +94,74 @@ def clip(a, a_min, a_max):
     return res
 
 
+def all(*inputs):
+    """
+    For only one image, this function checks that all bands of the image are True (i.e. !=0) and outputs
+    a singleband boolean raster
+    For several images, this function checks that all images are True (i.e. !=0) and outputs
+    a boolean raster, with as many bands as the inputs
+    :param inputs:
+    :return:
+    """
+    # Transforming potential filepaths to pyotb objects
+    inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
+
+    # Checking that all bands of the single image are True
+    if len(inputs) == 1:
+        input = inputs[0]
+        res = None
+        for band in range(input.shape[-1]):
+            if not res:  # first pass
+                res = (input[:, :, band] != 0)
+            else:
+                res = res & (input[:, :, band] != 0)
+
+    # Checking that all images are True
+    else:
+        res = None
+        for input in inputs:
+            if not res:  # first pass
+                res = (input != 0)
+            else:
+                res = res & (input != 0)
+
+    return res
+
+
+def any(*inputs):
+    """
+    For only one image, this function checks that at least one band of the image is True (i.e. !=0) and outputs
+    a singleband boolean raster
+    For several images, this function checks that at least one of the images is True (i.e. !=0) and outputs
+    a boolean raster, with as many bands as the inputs
+    :param inputs:
+    :return:
+    """
+    # Transforming potential filepaths to pyotb objects
+    inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
+
+    # Checking that at least one band of the image is True
+    if len(inputs) == 1:
+        input = inputs[0]
+        res = None
+        for band in range(input.shape[-1]):
+            if not res:  # first pass
+                res = (input[:, :, band] != 0)
+            else:
+                res = res | (input[:, :, band] != 0)
+
+    # Checking that all images are True
+    else:
+        res = None
+        for input in inputs:
+            if not res:  # first pass
+                res = (input != 0)
+            else:
+                res = res | (input != 0)
+
+    return res
+
+
 def define_processing_area(*args, window_rule='intersection', pixel_size_rule='minimal', interpolator='nn',
                            reference_window_input=None, reference_pixel_size_input=None):
     """
