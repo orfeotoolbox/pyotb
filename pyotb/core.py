@@ -85,7 +85,7 @@ class otbObject(ABC):
         image_size = self.GetImageSize(output_parameter_key)
         image_bands = self.GetImageNbBands(output_parameter_key)
         # TODO: it currently returns (width, height, bands), should we use numpy convention (height, width, bands) ?
-        return *image_size, image_bands
+        return (*image_size, image_bands)
 
     def __getattr__(self, name):
         """This method is called when the default attribute access fails. We choose to try to access the attribute of
