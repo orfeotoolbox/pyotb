@@ -183,7 +183,7 @@ extracted.Execute()
 ```
 
 ## Numpy-inspired functions
-Some functions have been written, entirely based on OTB, to mimic the bahavior of some well-known numpy functions. 
+Some functions have been written, entirely based on OTB, to mimic the behavior of some well-known numpy functions. 
 ### pyotb.where
 Equivalent of `numpy.where`.
 It is the equivalent of the muparser syntax `condition ? x : y` that can be used in OTB's BandMath.
