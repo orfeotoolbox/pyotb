@@ -12,10 +12,10 @@ git clone https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb.git
 Then for installing the library:
 ```bash
 cd pyotb
-python setup.py install
+pip install .
 ```
 
-In case of permission denied error, try `python setup.py install --user` instead.
+In case you don't have pip, you can use `python setup.py install` instead.
 
 ## Quickstart: running an OTB app as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.
@@ -182,8 +182,10 @@ extracted.SetParameterFloat('mode.extent.lry', 999)
 extracted.Execute()
 ```
 
-## pyotb.where function
-The `pyotb.where` function has been written to mimic the behavior of `numpy.where`.
+## Numpy-inspired functions
+Some functions have been written, entirely based on OTB, to mimic the bahavior of some well-known numpy functions. 
+### pyotb.where
+Equivalent of `numpy.where`.
 It is the equivalent of the muparser syntax `condition ? x : y` that can be used in OTB's BandMath.
 
 ```python
@@ -203,6 +205,31 @@ res = pyotb.where(labels == 1, image1,
 
 ```
 
+### pyotb.clip
+Equivalent of `numpy.clip`. Clip (limit) the values in a raster to a range.
+
+```python
+import pyotb
+
+pyotb.clip('my_image.tif', 0, 255)  # clips the values between 0 and 255
+```
+
+### pyotb.all
+Equivalent of `numpy.all`. 
+
+For only one image, this function checks that all bands of the image are True (i.e. !=0) and outputs
+a singleband boolean raster.
+For several images, this function checks that all images are True (i.e. !=0) and outputs
+a boolean raster, with as many bands as the inputs.
+
+
+### pyotb.any
+Equivalent of `numpy.any`. 
+
+For only one image, this function checks that at least one band of the image is True (i.e. !=0) and outputs
+a singleband boolean raster.
+For several images, this function checks that at least one of the images is True (i.e. !=0) and outputs
+a boolean raster, with as many bands as the inputs.
 
 
 ## Interaction with Numpy
