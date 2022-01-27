@@ -109,12 +109,11 @@ def all(*inputs):
     # Checking that all bands of the single image are True
     if len(inputs) == 1:
         input = inputs[0]
-        res = None
-        for band in range(input.shape[-1]):
-            if not res:  # first pass
-                res = (input[:, :, band] != 0)
-            else:
-                res = res & (input[:, :, band] != 0)
+        exp = '(im1b1 != 0 ? 1 : 0)'
+        for band in range(1, input.shape[-1]):
+            exp += ' && (im1b{} != 0 ? 1 : 0)'.format(band + 1)
+
+        res = App('BandMath', il=inputs, exp=exp)
 
     # Checking that all images are True
     else:
@@ -143,12 +142,11 @@ def any(*inputs):
     # Checking that at least one band of the image is True
     if len(inputs) == 1:
         input = inputs[0]
-        res = None
-        for band in range(input.shape[-1]):
-            if not res:  # first pass
-                res = (input[:, :, band] != 0)
-            else:
-                res = res | (input[:, :, band] != 0)
+        exp = '(im1b1 != 0 ? 1 : 0)'
+        for band in range(1, input.shape[-1]):
+            exp += ' | (im1b{} != 0 ? 1 : 0)'.format(band + 1)
+
+        res = App('BandMath', il=inputs, exp=exp)
 
     # Checking that all images are True
     else:
