@@ -184,45 +184,49 @@ class otbObject(ABC):
         return Operation('-', other, self)
 
     def __rmul__(self, other):
-        """Overrides the default subtraction and flavours it with BandMathX"""
+        """Overrides the default multiplication and flavours it with BandMathX"""
         return Operation('*', other, self)
 
     def __rtruediv__(self, other):
-        """Overrides the default subtraction and flavours it with BandMathX"""
+        """Overrides the default division and flavours it with BandMathX"""
         return Operation('/', other, self)
+
+    def __abs__(self):
+        """Overrides the default abs operator and flavours it with BandMathX"""
+        return Operation('abs', self)
 
     def __ge__(self, other):
         """Overrides the default greater or equal and flavours it with BandMathX"""
-        return Operation('>=', self, other)
+        return comparisonOperation('>=', self, other)
 
     def __le__(self, other):
-        """Overrides the default greater or equal and flavours it with BandMathX"""
-        return Operation('<=', self, other)
+        """Overrides the default less or equal and flavours it with BandMathX"""
+        return comparisonOperation('<=', self, other)
 
     def __gt__(self, other):
         """Overrides the default greater operator and flavours it with BandMathX"""
-        return Operation('>', self, other)
+        return comparisonOperation('>', self, other)
 
     def __lt__(self, other):
         """Overrides the default less operator and flavours it with BandMathX"""
-        return Operation('<', self, other)
+        return comparisonOperation('<', self, other)
 
     def __eq__(self, other):
         """Overrides the default eq operator and flavours it with BandMathX"""
-        return Operation('==', self, other)
+        return comparisonOperation('==', self, other)
 
     def __ne__(self, other):
         """Overrides the default different operator and flavours it with BandMathX"""
-        return Operation('!=', self, other)
+        return comparisonOperation('!=', self, other)
 
     def __or__(self, other):
-        return Operation('|', self, other)
+        """Overrides the default or operator and flavours it with BandMathX"""
+        return logicalOperation('|', self, other)
 
     def __and__(self, other):
-        return Operation('&', self, other)
+        """Overrides the default and operator and flavours it with BandMathX"""
+        return logicalOperation('&', self, other)
 
-    def __abs__(self):
-        return Operation('abs', self)
 
     # TODO: other operations ?
     #  e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
@@ -465,69 +469,28 @@ class Operation(otbObject):
         Given an operation involving 1 or 2 inputs, this function handles the naming of inputs (such as im1, im2).
 
         :param operator: one of +, -, *, /, >, <, >=, <=, &, |, abs.
-        :param input1: first input. Can be App, Output, Input, Operation, str (filepath), int or float
-        :param input2: second input. Optional. Can be App, Output, Input, Operation, str (filepath), int or float
+        :param input1: first input. Can be App, Output, Input, Operation, filepath, int or float
+        :param input2: second input. Optional for `abs`. Can be App, Output, Input, Operation, filepath, int or float
         """
         self.operator = operator
         self.input1 = input1
         self.input2 = input2
 
-        # We first create a 'fake' expression. E.g for the operation +, we create a fake expression that is like
-        # str(input1) + str(input2)
-
-        inputs = []
-        nb_channels = {}
-        # We begin with potential Operation objects and save their attributes
-        if isinstance(input1, Operation):
-            fake_exp1 = input1.fake_exp
-            inputs.extend(input1.inputs)
-            nb_channels.update(input1.nb_channels)
-        # For int or float input, we just need to save their value
-        elif isinstance(input1, (int, float)):
-            fake_exp1 = str(input1)
-        # We go on with "regular input", i.e. pyotb objects, filepaths...
-        else:
-            nb_channels[input1] = get_nbchannels(input1)
-            inputs.append(input1)
-            fake_exp1 = str(input1)
-
-        if input2 is None:
-            fake_exp = f'({operator}({fake_exp1}))'
-        else:
-            # We begin with potential Operation objects and save their attributes
-            if isinstance(input2, Operation):
-                fake_exp2 = input2.fake_exp
-                inputs.extend(input2.inputs)
-                nb_channels.update(input2.nb_channels)
-            # For int or float input, we just need to save their value
-            elif isinstance(input2, (int, float)):
-                fake_exp2 = str(input2)
-            # We go on with "regular input", i.e. pyotb objects, filepaths...
-            else:
-                nb_channels[input2] = get_nbchannels(input2)
-                inputs.append(input2)
-                fake_exp2 = str(input2)
-
-            # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
-            # the false expression stores the expression 2 * str(input1) + str(input2)
-            if operator in ['>', '<', '>=', '<=', '==', '!=']:
-                fake_exp = f'({fake_exp1} {operator} {fake_exp2} ? 1 : 0)'
-            else:
-                fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
-
-        self.fake_exp, self.inputs, self.nb_channels = fake_exp, inputs, nb_channels
+        # We first create a 'fake' expression. E.g for the operation input1 + input2 , we create a fake expression
+        # that is like str(input1) + str(input2)
+        self.create_fake_exp(operator, input1, input2)
 
         # creating a dictionary that is like {str(input1): 'im1', '/tmp/image.tif': 'im2', ...}.
         # NB: the keys of the dictionary are strings-only, instead of 'complex' objects, to enable easy serialization
         self.im_dic = {}
-        im_count = 1
+        self.im_count = 1
         mapping_str_to_input = {}  # to be able to retrieve the real python object from its string representation
         for input in self.inputs:
             if not isinstance(input, (int, float)):
                 if str(input) not in self.im_dic:
-                    self.im_dic[str(input)] = 'im{}'.format(im_count)
+                    self.im_dic[str(input)] = 'im{}'.format(self.im_count)
                     mapping_str_to_input[str(input)] = input
-                    im_count += 1
+                    self.im_count += 1
 
         print(self.im_dic, self.nb_channels, self.inputs)  # TODO: just for debug, to be removed
 
@@ -536,28 +499,74 @@ class Operation(otbObject):
         self.output_parameter_key = 'out'
 
         # Computing the bmx app
-        bmx = App('BandMathX', il=self.unique_inputs, exp=self.get_real_exp())
+        self.exp_bands, self.exp = self.get_real_exp(self.fake_exp)
+        bmx = App('BandMathX', il=self.unique_inputs, exp=self.exp)
         self.app = bmx.app
 
-    def get_real_exp(self):
+    def create_fake_exp(self, operator, input1, input2):
+        """
+        # We first create a 'fake' expression. E.g for the operation input1 + input2 , we create a fake expression
+        # that is like str(input1) + str(input2)
+        :return:
+        """
+        self.inputs = []
+        self.nb_channels = {}
+        # We begin with potential Operation objects and save their attributes
+        if isinstance(input1, Operation):
+            fake_exp1 = input1.fake_exp
+            self.inputs.extend(input1.inputs)
+            self.nb_channels.update(input1.nb_channels)
+        # For int or float input, we just need to save their value
+        elif isinstance(input1, (int, float)):
+            fake_exp1 = str(input1)
+        # We go on with "regular input", i.e. pyotb objects, filepaths...
+        else:
+            self.nb_channels[input1] = get_nbchannels(input1)
+            self.inputs.append(input1)
+            fake_exp1 = str(input1)
+
+        if input2 is None:
+            self.fake_exp = f'({operator}({fake_exp1}))'
+        else:
+            # We begin with potential Operation objects and save their attributes
+            if isinstance(input2, Operation):
+                fake_exp2 = input2.fake_exp
+                self.inputs.extend(input2.inputs)
+                self.nb_channels.update(input2.nb_channels)
+            # For int or float input, we just need to save their value
+            elif isinstance(input2, (int, float)):
+                fake_exp2 = str(input2)
+            # We go on with "regular input", i.e. pyotb objects, filepaths...
+            else:
+                self.nb_channels[input2] = get_nbchannels(input2)
+                self.inputs.append(input2)
+                fake_exp2 = str(input2)
+
+            # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
+            # the false expression stores the expression 2 * str(input1) + str(input2)
+            self.fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
+
+
+    def get_real_exp(self, fake_exp):
         """Generates the BandMathX expression"""
         # Checking that all images have the same number of channels
         if any([value != next(iter(self.nb_channels.values())) for value in self.nb_channels.values()]):
             raise Exception('All images do not have the same number of bands')
 
-        exp = ''
+        # Create a list of expression, each item corresponding to one band (e.g. ['im1b1 + 1', 'im1b2 + 1'])
+        exp_bands = []
         for band in range(1, next(iter(self.nb_channels.values())) + 1):
-            one_band_exp = self.fake_exp
+            one_band_exp = fake_exp
             # Computing the expression
             for input in self.inputs:
                 # replace the name of in-memory object (e.g. '<pyotb.App object, id 139912042337952>' by 'im1b1')
                 one_band_exp = one_band_exp.replace(str(input), self.im_dic[str(input)] + f'b{band}')
+            exp_bands.append(one_band_exp)
 
-            exp += one_band_exp
-            # concatenate bands
-            if band < next(iter(self.nb_channels.values())) and next(iter(self.nb_channels.values())) > 1:
-                exp += ';'
-        return exp
+        # Form the final expression (e.g. 'im1b1 + 1; im1b2 + 1')
+        exp = ';'.join(exp_bands)
+
+        return exp_bands, exp
 
     def __str__(self):
         if self.input2 is not None:
@@ -565,6 +574,136 @@ class Operation(otbObject):
                                                                       id(self))
         else:
             return '<pyotb.Operation object, {} {}, id {}>'.format(self.operator, str(self.input1), id(self))
+
+
+class logicalOperation(Operation):
+    """
+    This is for boolean logical operations i.e. `&` and `|`
+    """
+    def __init__(self, operator, input1, input2=None):
+        super().__init__(operator, input1, input2)
+
+        self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp)
+
+    def create_fake_exp(self, operator, input1, input2):
+        self.inputs = []
+        self.nb_channels = {}
+        # We begin with potential Operation objects and save their attributes
+        # For booleanOperation, we save almost the same attributes as an Operation
+        if isinstance(input1, logicalOperation):
+            fake_exp1 = input1.logical_fake_exp
+            self.inputs.extend(input1.inputs)
+            self.nb_channels.update(input1.nb_channels)
+        elif isinstance(input1, Operation):
+            fake_exp1 = input1.fake_exp
+            self.inputs.extend(input1.inputs)
+            self.nb_channels.update(input1.nb_channels)
+        # For int or float input, we just need to save their value
+        elif isinstance(input1, (int, float)):
+            fake_exp1 = str(input1)
+        # We go on with "regular input", i.e. pyotb objects, filepaths...
+        else:
+            self.nb_channels[input1] = get_nbchannels(input1)
+            self.inputs.append(input1)
+            fake_exp1 = str(input1)
+
+        if input2 is None:
+            self.fake_exp = f'({operator}({fake_exp1}))'
+        else:
+            # For booleanOperation, we save almost the same attributes as an Operation
+            if isinstance(input2, logicalOperation):
+                fake_exp2 = input2.logical_fake_exp
+                self.inputs.extend(input2.inputs)
+                self.nb_channels.update(input2.nb_channels)
+            # We begin with potential Operation objects and save their attributes
+            elif isinstance(input2, Operation):
+                fake_exp2 = input2.fake_exp
+                self.inputs.extend(input2.inputs)
+                self.nb_channels.update(input2.nb_channels)
+            # For int or float input, we just need to save their value
+            elif isinstance(input2, (int, float)):
+                fake_exp2 = str(input2)
+            # We go on with "regular input", i.e. pyotb objects, filepaths...
+            else:
+                self.nb_channels[input2] = get_nbchannels(input2)
+                self.inputs.append(input2)
+                fake_exp2 = str(input2)
+
+            # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
+            # the false expression stores the expression 2 * str(input1) + str(input2)
+            self.fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
+
+
+
+        # We keep the logical expression, e.g. 'im1b1 == 5; im1b2 == 5'
+        self.logical_fake_exp = self.fake_exp
+        # We create a valid BandMath expression, e.g. 'im1b1 == 5 ? 1 : 0; im1b2 == 5 ? 1 : 0'
+        self.fake_exp = f'({self.fake_exp} ? 1 : 0)'
+
+
+class comparisonOperation(Operation):
+    """
+    This is for boolean comparison operations i.e. such as >, <, >=, <=
+    """
+    def __init__(self, operator, input1, input2=None):
+        super().__init__(operator, input1, input2)
+
+        self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp)
+
+    def create_fake_exp(self, operator, input1, input2):
+        self.inputs = []
+        self.nb_channels = {}
+        # We begin with potential Operation objects and save their attributes
+        if isinstance(input1, Operation):
+            fake_exp1 = input1.fake_exp
+            self.inputs.extend(input1.inputs)
+            self.nb_channels.update(input1.nb_channels)
+        # For booleanOperation, we save almost the same attributes as an Operation
+        elif isinstance(input1, booleanOperation):
+            fake_exp1 = input1.logical_fake_exp
+            self.inputs.extend(input1.inputs)
+            self.nb_channels.update(input1.nb_channels)
+        # For int or float input, we just need to save their value
+        elif isinstance(input1, (int, float)):
+            fake_exp1 = str(input1)
+        # We go on with "regular input", i.e. pyotb objects, filepaths...
+        else:
+            self.nb_channels[input1] = get_nbchannels(input1)
+            self.inputs.append(input1)
+            fake_exp1 = str(input1)
+
+        if input2 is None:
+            self.fake_exp = f'({operator}({fake_exp1}))'
+        else:
+            # We begin with potential Operation objects and save their attributes
+            if isinstance(input2, Operation):
+                fake_exp2 = input2.fake_exp
+                self.inputs.extend(input2.inputs)
+                self.nb_channels.update(input2.nb_channels)
+            # For booleanOperation, we save almost the same attributes as an Operation
+            elif isinstance(input2, booleanOperation):
+                fake_exp2 = input2.logical_fake_exp
+                self.inputs.extend(input2.inputs)
+                self.nb_channels.update(input2.nb_channels)
+            # For int or float input, we just need to save their value
+            elif isinstance(input2, (int, float)):
+                fake_exp2 = str(input2)
+            # We go on with "regular input", i.e. pyotb objects, filepaths...
+            else:
+                self.nb_channels[input2] = get_nbchannels(input2)
+                self.inputs.append(input2)
+                fake_exp2 = str(input2)
+
+            # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
+            # the false expression stores the expression 2 * str(input1) + str(input2)
+            self.fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
+
+
+
+        # We keep the logical expression, e.g. 'im1b1 == 5; im1b2 == 5'
+        self.logical_fake_exp = self.fake_exp
+        # We create a valid BandMath expression, e.g. 'im1b1 == 5 ? 1 : 0; im1b2 == 5 ? 1 : 0'
+        self.fake_exp = f'({self.fake_exp} ? 1 : 0)'
 
 
 def get_nbchannels(inp):

@@ -3,9 +3,7 @@ import uuid
 import multiprocessing
 from collections import Counter
 
-from pyotb.core import (App, Input,
-                        get_nbchannels,
-                        logger)
+from pyotb.core import (App, Input, booleanOperation, get_nbchannels, logger)
 
 """
 Contains several useful functions base on pyotb
@@ -13,7 +11,7 @@ Contains several useful functions base on pyotb
 
 def where(cond, x, y):
     """
-    Functionally similar to numpy.where. Where cond is True (=1), returns x. Else returns y
+    Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y
 
     :param cond: condition, must be a raster (filepath, App, Operation...). If cond is monoband whereas x or y are
                  multiband, cond channels are expanded to match x & y ones.
@@ -28,11 +26,6 @@ def where(cond, x, y):
     if not isinstance(y, (int, float)):
         y_nb_channels = get_nbchannels(y)
 
-    if x_nb_channels is not None and y_nb_channels is not None:
-        if x_nb_channels != y_nb_channels:
-            raise Exception('X and Y images do not have the same number of bands. '
-                            'X has {} bands whereas Y has {} bands'.format(x_nb_channels, y_nb_channels))
-
     if x_nb_channels is not None:
         x_or_y_nb_channels = x_nb_channels
     elif y_nb_channels is not None:
@@ -40,23 +33,39 @@ def where(cond, x, y):
     else:
         x_or_y_nb_channels = None
 
-    # Computing the BandMathX expression of the condition
+    # Some checks on number of bands
+    if x_nb_channels is not None and y_nb_channels is not None:
+        if x_nb_channels != y_nb_channels:
+            raise Exception('X and Y images do not have the same number of bands. '
+                            'X has {} bands whereas Y has {} bands'.format(x_nb_channels, y_nb_channels))
     cond_nb_channels = get_nbchannels(cond)
+    if cond_nb_channels != 1 and x_or_y_nb_channels is not None and cond_nb_channels != x_or_y_nb_channels:
+        raise Exception('Condition and X&Y do not have the same number of bands. Condition has '
+                        '{} bands whereas X&Y have {} bands'.format(cond_nb_channels, x_or_y_nb_channels))
+
+    # Computing the BandMathX expression of the condition
+    # If the condition already is a boolean operation then we get the BandMathx expression of this condition before
+    # integrating it in the final expression. For example, if we pass a condition as a python formulation `raster == 1`,
+    # then the final expression will be `im1 == 1 ? im2 : im3` with `im2` being `x` and `im3` being `y`
+    if isinstance(cond, booleanOperation):
+        cond_exp = cond.logical_exp_bands
+        im_count = cond.im_count  # the count im# will resume from the expression of the condition
+        inputs = cond.inputs
+    # if the condition simply is a raster, we need to compute the BandMathX expression `im1 != 0`
+    else:
+        cond_exp = [f'im1b{b} != 0' for b in range(1, 1 + cond_nb_channels)]
+        im_count = 2
+        inputs = [cond]
+
     # if needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
     if cond_nb_channels == 1 and x_or_y_nb_channels is not None and x_or_y_nb_channels != 1:
         logger.info('The condition has one channel whereas X/Y has/have {} channels. Expanding number of channels '
                     'of condition to match the number of channels or X/Y'.format(x_or_y_nb_channels))
-        cond_exp = ['im1b1'] * x_or_y_nb_channels
+        cond_exp = cond_exp * x_or_y_nb_channels
         cond_nb_channels = x_or_y_nb_channels
-    elif cond_nb_channels != 1 and x_or_y_nb_channels is not None and cond_nb_channels != x_or_y_nb_channels:
-        raise Exception('Condition and X&Y do not have the same number of bands. Condition has '
-                        '{} bands whereas X&Y have {} bands'.format(cond_nb_channels, x_or_y_nb_channels))
-    else:
-        cond_exp = [f'im1b{b}' for b in range(1, 1 + cond_nb_channels)]
 
     # Computing the BandMathX expression of the  inputs
-    im_count = 2
-    inputs = [cond]
+
     if isinstance(x, (float, int)):
         x_exp = [x] * cond_nb_channels
     else:
@@ -71,7 +80,7 @@ def where(cond, x, y):
         inputs.append(y)
 
     # Writing the multiband expression (each band separated by a `;`)
-    exp = ';'.join([f'({condition} == 1 ? {x} : {y})' for condition, x, y in zip(cond_exp, x_exp, y_exp)])
+    exp = ';'.join([f'({condition} ? {x} : {y})' for condition, x, y in zip(cond_exp, x_exp, y_exp)])
     app = App("BandMathX", il=inputs, exp=exp)
 
     return app
