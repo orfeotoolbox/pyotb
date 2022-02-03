@@ -33,43 +33,7 @@ class otbObject(ABC):
             key = key + (slice(None, None, None),)
         (rows, cols, channels) = key
 
-        # Initialize the app that will be used for slicing
-        app = App('ExtractROI', {"in": self, 'mode': 'extent'})
-
-        # Channel slicing
-        nb_channels = get_nbchannels(self)
-        if channels != slice(None, None, None):
-            # if needed, converting int to list
-            if isinstance(channels, int):
-                channels = [channels]
-            # if needed, converting slice to list
-            elif isinstance(channels, slice):
-                channels_start = channels.start if channels.start is not None else 0
-                channels_end = channels.stop if channels.stop is not None else nb_channels
-                channels_step = channels.step if channels.step is not None else 1
-                channels = range(channels_start, channels_end, channels_step)
-            elif not isinstance(channels, list):
-                raise ValueError(
-                    'Invalid type for channels, should be int, slice or list of bands. : {}'.format(channels))
-
-            # Change the potential negative index values to reverse index
-            channels = [c if c >= 0 else nb_channels + c for c in channels]
-
-            app.set_parameters(cl=[f'Channel{i+1}' for i in channels])
-
-        # Spatial slicing
-        # TODO: handle PixelValue app so that accessing value is possible, e.g. obj[120, 200, 0]
-        # TODO TBD: handle the step value in the slice so that nn undersampling is possible ? e.g. obj[::2, ::2]
-        if rows.start is not None:
-            app.set_parameters({'mode.extent.uly': rows.start})
-        if rows.stop is not None and rows.stop != -1:
-            app.set_parameters({'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
-        if cols.start is not None:
-            app.set_parameters({'mode.extent.ulx': cols.start})
-        if cols.stop is not None and cols.stop != -1:
-            app.set_parameters({'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
-
-        return app
+        return Slicer(self, rows, cols, channels)
 
     @property
     def shape(self):
@@ -197,35 +161,35 @@ class otbObject(ABC):
 
     def __ge__(self, other):
         """Overrides the default greater or equal and flavours it with BandMathX"""
-        return comparisonOperation('>=', self, other)
+        return logicalOperation('>=', self, other)
 
     def __le__(self, other):
         """Overrides the default less or equal and flavours it with BandMathX"""
-        return comparisonOperation('<=', self, other)
+        return logicalOperation('<=', self, other)
 
     def __gt__(self, other):
         """Overrides the default greater operator and flavours it with BandMathX"""
-        return comparisonOperation('>', self, other)
+        return logicalOperation('>', self, other)
 
     def __lt__(self, other):
         """Overrides the default less operator and flavours it with BandMathX"""
-        return comparisonOperation('<', self, other)
+        return logicalOperation('<', self, other)
 
     def __eq__(self, other):
         """Overrides the default eq operator and flavours it with BandMathX"""
-        return comparisonOperation('==', self, other)
+        return logicalOperation('==', self, other)
 
     def __ne__(self, other):
         """Overrides the default different operator and flavours it with BandMathX"""
-        return comparisonOperation('!=', self, other)
+        return logicalOperation('!=', self, other)
 
     def __or__(self, other):
         """Overrides the default or operator and flavours it with BandMathX"""
-        return logicalOperation('|', self, other)
+        return logicalOperation('||', self, other)
 
     def __and__(self, other):
         """Overrides the default and operator and flavours it with BandMathX"""
-        return logicalOperation('&', self, other)
+        return logicalOperation('&&', self, other)
 
 
     # TODO: other operations ?
@@ -291,6 +255,62 @@ class otbObject(ABC):
 
         else:
             return NotImplemented
+
+
+class Slicer(otbObject):
+    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
+    def __init__(self, input, rows, cols, channels):
+        """
+        Create a slicer object, that can be used directly for writing or inside a BandMath
+        :param input:
+        :param rows:
+        :param cols:
+        :param channels:
+        """
+        # Channel slicing
+        nb_channels = get_nbchannels(input)
+        if channels != slice(None, None, None):
+            # if needed, converting int to list
+            if isinstance(channels, int):
+                channels = [channels]
+            # if needed, converting slice to list
+            elif isinstance(channels, slice):
+                channels_start = channels.start if channels.start is not None else 0
+                channels_end = channels.stop if channels.stop is not None else nb_channels
+                channels_step = channels.step if channels.step is not None else 1
+                channels = range(channels_start, channels_end, channels_step)
+            elif not isinstance(channels, list):
+                raise ValueError(
+                    'Invalid type for channels, should be int, slice or list of bands. : {}'.format(channels))
+
+            # Change the potential negative index values to reverse index
+            channels = [c if c >= 0 else nb_channels + c for c in channels]
+
+            # Initialize the app that will be used for writing the slicer
+            self.app = App('ExtractROI', {"in": input, 'mode': 'extent'})
+            self.app.set_parameters(cl=[f'Channel{i+1}' for i in channels])
+
+        # Spatial slicing
+        spatial_slicing = False
+        # TODO: handle PixelValue app so that accessing value is possible, e.g. obj[120, 200, 0]
+        # TODO TBD: handle the step value in the slice so that nn undersampling is possible ? e.g. obj[::2, ::2]
+        if rows.start is not None:
+            self.app.set_parameters({'mode.extent.uly': rows.start})
+            spatial_slicing = True
+        if rows.stop is not None and rows.stop != -1:
+            self.app.set_parameters({'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
+            spatial_slicing = True
+        if cols.start is not None:
+            self.app.set_parameters({'mode.extent.ulx': cols.start})
+            spatial_slicing = True
+        if cols.stop is not None and cols.stop != -1:
+            self.app.set_parameters({'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
+            spatial_slicing = True
+
+        # This is an app when the user wants to extract one band to be used in an Operation
+        if not spatial_slicing and :
+            # Initialize the app that will be used in other Operations i.e. im1b1
+            self.operation = Operation(input1=input)
 
 
 class Input(otbObject):
@@ -578,7 +598,7 @@ class Operation(otbObject):
 
 class logicalOperation(Operation):
     """
-    This is for boolean logical operations i.e. `&` and `|`
+    This is for boolean logical operations i.e. >, <, >=, <=, ==, !=, `&` and `|`
     """
     def __init__(self, operator, input1, input2=None):
         super().__init__(operator, input1, input2)
@@ -588,12 +608,12 @@ class logicalOperation(Operation):
     def create_fake_exp(self, operator, input1, input2):
         self.inputs = []
         self.nb_channels = {}
-        # We begin with potential Operation objects and save their attributes
         # For booleanOperation, we save almost the same attributes as an Operation
         if isinstance(input1, logicalOperation):
             fake_exp1 = input1.logical_fake_exp
             self.inputs.extend(input1.inputs)
             self.nb_channels.update(input1.nb_channels)
+        # We begin with potential Operation objects and save their attributes
         elif isinstance(input1, Operation):
             fake_exp1 = input1.fake_exp
             self.inputs.extend(input1.inputs)
@@ -633,78 +653,15 @@ class logicalOperation(Operation):
             # the false expression stores the expression 2 * str(input1) + str(input2)
             self.fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
 
-
-
-        # We keep the logical expression, e.g. 'im1b1 == 5; im1b2 == 5'
+        # We keep the logical expression, e.g. 'str(input1) == 5', useful if later combined with other logical operations
         self.logical_fake_exp = self.fake_exp
-        # We create a valid BandMath expression, e.g. 'im1b1 == 5 ? 1 : 0; im1b2 == 5 ? 1 : 0'
+        # We create a valid BandMath expression, e.g. 'str(input1) == 5 ? 1 : 0'
         self.fake_exp = f'({self.fake_exp} ? 1 : 0)'
 
-
-class comparisonOperation(Operation):
-    """
-    This is for boolean comparison operations i.e. such as >, <, >=, <=
-    """
-    def __init__(self, operator, input1, input2=None):
-        super().__init__(operator, input1, input2)
-
-        self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp)
-
-    def create_fake_exp(self, operator, input1, input2):
-        self.inputs = []
-        self.nb_channels = {}
-        # We begin with potential Operation objects and save their attributes
-        if isinstance(input1, Operation):
-            fake_exp1 = input1.fake_exp
-            self.inputs.extend(input1.inputs)
-            self.nb_channels.update(input1.nb_channels)
-        # For booleanOperation, we save almost the same attributes as an Operation
-        elif isinstance(input1, booleanOperation):
-            fake_exp1 = input1.logical_fake_exp
-            self.inputs.extend(input1.inputs)
-            self.nb_channels.update(input1.nb_channels)
-        # For int or float input, we just need to save their value
-        elif isinstance(input1, (int, float)):
-            fake_exp1 = str(input1)
-        # We go on with "regular input", i.e. pyotb objects, filepaths...
-        else:
-            self.nb_channels[input1] = get_nbchannels(input1)
-            self.inputs.append(input1)
-            fake_exp1 = str(input1)
-
-        if input2 is None:
-            self.fake_exp = f'({operator}({fake_exp1}))'
-        else:
-            # We begin with potential Operation objects and save their attributes
-            if isinstance(input2, Operation):
-                fake_exp2 = input2.fake_exp
-                self.inputs.extend(input2.inputs)
-                self.nb_channels.update(input2.nb_channels)
-            # For booleanOperation, we save almost the same attributes as an Operation
-            elif isinstance(input2, booleanOperation):
-                fake_exp2 = input2.logical_fake_exp
-                self.inputs.extend(input2.inputs)
-                self.nb_channels.update(input2.nb_channels)
-            # For int or float input, we just need to save their value
-            elif isinstance(input2, (int, float)):
-                fake_exp2 = str(input2)
-            # We go on with "regular input", i.e. pyotb objects, filepaths...
-            else:
-                self.nb_channels[input2] = get_nbchannels(input2)
-                self.inputs.append(input2)
-                fake_exp2 = str(input2)
-
-            # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
-            # the false expression stores the expression 2 * str(input1) + str(input2)
-            self.fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
-
-
-
-        # We keep the logical expression, e.g. 'im1b1 == 5; im1b2 == 5'
-        self.logical_fake_exp = self.fake_exp
-        # We create a valid BandMath expression, e.g. 'im1b1 == 5 ? 1 : 0; im1b2 == 5 ? 1 : 0'
-        self.fake_exp = f'({self.fake_exp} ? 1 : 0)'
-
+        print('DEBUG')
+        print('logical fake_exp', self.logical_fake_exp)
+        print('fake_exp', self.fake_exp)
+        print('\n')
 
 def get_nbchannels(inp):
     """

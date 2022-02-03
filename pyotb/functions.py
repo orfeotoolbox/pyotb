@@ -3,7 +3,7 @@ import uuid
 import multiprocessing
 from collections import Counter
 
-from pyotb.core import (App, Input, booleanOperation, get_nbchannels, logger)
+from pyotb.core import (App, Input, logicalOperation, get_nbchannels, logger)
 
 """
 Contains several useful functions base on pyotb
@@ -47,7 +47,7 @@ def where(cond, x, y):
     # If the condition already is a boolean operation then we get the BandMathx expression of this condition before
     # integrating it in the final expression. For example, if we pass a condition as a python formulation `raster == 1`,
     # then the final expression will be `im1 == 1 ? im2 : im3` with `im2` being `x` and `im3` being `y`
-    if isinstance(cond, booleanOperation):
+    if isinstance(cond, logicalOperation):
         cond_exp = cond.logical_exp_bands
         im_count = cond.im_count  # the count im# will resume from the expression of the condition
         inputs = cond.inputs
