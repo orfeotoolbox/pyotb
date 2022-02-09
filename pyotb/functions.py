@@ -38,7 +38,9 @@ def where(cond, x, y):
         if x_nb_channels != y_nb_channels:
             raise Exception('X and Y images do not have the same number of bands. '
                             'X has {} bands whereas Y has {} bands'.format(x_nb_channels, y_nb_channels))
+    print('before')
     cond_nb_channels = get_nbchannels(cond)
+    print('after')
     if cond_nb_channels != 1 and x_or_y_nb_channels is not None and cond_nb_channels != x_or_y_nb_channels:
         raise Exception('Condition and X&Y do not have the same number of bands. Condition has '
                         '{} bands whereas X&Y have {} bands'.format(cond_nb_channels, x_or_y_nb_channels))
@@ -81,6 +83,7 @@ def where(cond, x, y):
 
     # Writing the multiband expression (each band separated by a `;`)
     exp = ';'.join([f'({condition} ? {x} : {y})' for condition, x, y in zip(cond_exp, x_exp, y_exp)])
+    print(inputs, exp)
     app = App("BandMathX", il=inputs, exp=exp)
 
     return app
