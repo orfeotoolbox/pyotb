@@ -263,7 +263,9 @@ class Slicer(otbObject):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
     def __init__(self, input, rows, cols, channels):
         """
-        Create a slicer object, that can be used directly for writing or inside a BandMath
+        Create a slicer object, that can be used directly for writing or inside a BandMath :
+        - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
+        - in case the user only wants to extract one band, an expression such as "im1b#"
         :param input:
         :param rows:
         :param cols:
@@ -490,21 +492,20 @@ class Operation(otbObject):
                   Operation3, with expression (im2 + 2 * im1) > 0 ? 1 : 0
 
     """
-    def __init__(self, operator, input1, input2=None):
+    def __init__(self, operator, *inputs):
         """
         Given an operation involving 1 or 2 inputs, this function handles the naming of inputs (such as im1, im2).
+        TODO : comment
 
         :param operator: one of +, -, *, /, >, <, >=, <=, &, |, abs.
         :param input1: first input. Can be App, Output, Input, Operation, filepath, int or float
         :param input2: second input. Optional for `abs`. Can be App, Output, Input, Operation, filepath, int or float
         """
         self.operator = operator
-        self.input1 = input1
-        self.input2 = input2
 
         # We first create a 'fake' expression. E.g for the operation input1 + input2 , we create a fake expression
         # that is like str(input1) + str(input2)
-        self.create_fake_exp(operator, input1, input2)
+        self.create_fake_exp(operator, inputs)
 
         # creating a dictionary that is like {str(input1): 'im1', '/tmp/image.tif': 'im2', ...}.
         # NB: the keys of the dictionary are strings-only, instead of 'complex' objects, to enable easy serialization
@@ -528,10 +529,12 @@ class Operation(otbObject):
 
         # Computing the bmx app
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
-        bmx = App('BandMathX', il=self.unique_inputs, exp=self.exp)
-        self.app = bmx.app
+        if len(self.exp_bands) == 1:
+            self.app = App('BandMath', il=self.unique_inputs, exp=self.exp)
+        else:
+            self.app = App('BandMathX', il=self.unique_inputs, exp=self.exp)
 
-    def create_fake_exp(self, operator, input1, input2):
+    def create_fake_exp(self, operator, inputs):
         """
         We first create a 'fake' expression. E.g for the operation input1 + input2 , we create a fake expression
         that is like str(input1) + str(input2)
@@ -540,13 +543,13 @@ class Operation(otbObject):
         self.inputs = []
         self.nb_channels = {}
 
-        if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in [input1, input2]]):
+        if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
             nb_bands = 1
         else:
-            nb_bands1 = get_nbchannels(input1)
+            nb_bands1 = get_nbchannels(inputs[0])
             print('nbbands_1', nb_bands1)
-            if input2:
-                nb_bands2 = get_nbchannels(input2)
+            if inputs[1] and not isinstance(inputs[1], (int, float)):
+                nb_bands2 = get_nbchannels(inputs[1])
                 if nb_bands1 != nb_bands2:
                     raise Exception('All images do not have the same number of bands')
             nb_bands = nb_bands1
@@ -555,75 +558,47 @@ class Operation(otbObject):
         # Create a list of fake exp, each item of the list corresponding to one band
         self.fake_exp_bands = []
         for i, band in enumerate(range(1, nb_bands + 1)):
-            if isinstance(input1, Slicer) and hasattr(input1, 'one_band_sliced'):
-                if isinstance(input1.input, Operation):
-                    fake_exp1 = input1.input.fake_exp_bands[input1.one_band_sliced - 1]
-                    if i == 0:
-                        self.inputs.extend(input1.input.inputs)
-                        self.nb_channels.update(input1.input.nb_channels)
-                else:
-                    # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                    fake_exp1 = str(input1.input) + f'b{input1.one_band_sliced}'
-                    if i == 0:
-                        self.inputs.append(input1.input)
-                        self.nb_channels[input1.input] = 1
-            elif isinstance(input1, Operation):
-                fake_exp1 = input1.fake_exp_bands[i]
-                if i == 0:
-                    self.inputs.extend(input1.inputs)
-                    self.nb_channels.update(input1.nb_channels)
-            # For int or float input, we just need to save their value
-            elif isinstance(input1, (int, float)):
-                fake_exp1 = str(input1)
-            # We go on with other inputs, i.e. pyotb objects, filepaths...
-            else:
-                if i == 0:
-                    self.nb_channels[input1] = get_nbchannels(input1)
-                    self.inputs.append(input1)
-                fake_exp1 = str(input1) + f'b{band}'
-
-            if input2 is None:
-                fake_exp = f'({operator}({fake_exp1}))'
-            else:
-                if isinstance(input2, Slicer) and hasattr(input2, 'one_band_sliced'):
-                    if isinstance(input2.input, Operation):
-                        fake_exp2 = input2.input.fake_exp_bands[input2.one_band_sliced - 1]
+            fake_exps = []
+            for input in inputs:
+                if isinstance(input, Slicer) and hasattr(input, 'one_band_sliced'):
+                    if isinstance(input.input, Operation):
+                        fake_exps.append(input.input.fake_exp_bands[input.one_band_sliced - 1])
                         if i == 0:
-                            self.inputs.extend(input2.input.inputs)
-                            self.nb_channels.update(input2.input.nb_channels)
+                            self.inputs.extend(input.input.inputs)
+                            self.nb_channels.update(input.input.nb_channels)
                     else:
                         # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                        fake_exp2 = str(input2.input) + f'b{input2.one_band_sliced}'
+                        fake_exps.append(str(input.input) + f'b{input.one_band_sliced}')
                         if i == 0:
-                            self.inputs.append(input2.input)
-                            self.nb_channels[input2.input] = 1
-                # We begin with potential Operation objects and save their attributes
-                elif isinstance(input2, Operation):
-                    fake_exp2 = input2.fake_exp_bands[i]
+                            self.inputs.append(input.input)
+                            self.nb_channels[input.input] = 1
+                elif isinstance(input, Operation):
+                    fake_exps.append(input.fake_exp_bands[i])
                     if i == 0:
-                        self.inputs.extend(input2.inputs)
-                        self.nb_channels.update(input2.nb_channels)
+                        self.inputs.extend(input.inputs)
+                        self.nb_channels.update(input.nb_channels)
                 # For int or float input, we just need to save their value
-                elif isinstance(input2, (int, float)):
-                    fake_exp2 = str(input2)
+                elif isinstance(input, (int, float)):
+                    fake_exps.append(str(input))
                 # We go on with other inputs, i.e. pyotb objects, filepaths...
                 else:
                     if i == 0:
-                        self.nb_channels[input2] = get_nbchannels(input2)
-                        self.inputs.append(input2)
-                    fake_exp2 = str(input2) + f'b{band}'
+                        self.nb_channels[input] = get_nbchannels(input)
+                        self.inputs.append(input)
+                    fake_exps.append(str(input) + f'b{band}')
 
+            if len(inputs) == 1:  # this is only for 'abs'
+                fake_exp = f'({operator}({fake_exps[0]}))'
+            elif len(inputs) == 2:
                 # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
                 # the false expression stores the expression 2 * str(input1) + str(input2)
-                fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
+                fake_exp = f'({fake_exps[0]} {operator} {fake_exps[1]})'
+            elif len(inputs) == 3 and operator == '?':  # this is only for ternary expression
+                fake_exp = f'({fake_exps[0]} ? {fake_exps[1]} : {fake_exps[2]})'
 
             self.fake_exp_bands.append(fake_exp)
 
             print(self.nb_channels, self.inputs)
-
-
-
-
 
 
     def get_real_exp(self, fake_exp_bands):
@@ -654,23 +629,23 @@ class logicalOperation(Operation):
     """
     This is for boolean logical operations i.e. >, <, >=, <=, ==, !=, `&` and `|`
     """
-    def __init__(self, operator, input1, input2=None):
-        super().__init__(operator, input1, input2)
+    def __init__(self, operator, *inputs):
+        super().__init__(operator, *inputs)
 
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
 
-    def create_fake_exp(self, operator, input1, input2):
+    def create_fake_exp(self, operator, inputs):
         self.inputs = []
         self.nb_channels = {}
 
-        if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in [input1, input2]]):
+        if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
             nb_bands = 1
         else:
-            nb_bands1 = get_nbchannels(input1)
+            nb_bands1 = get_nbchannels(inputs[0])
             print('nbbands_1', nb_bands1)
-            if input2:
-                nb_bands2 = get_nbchannels(input2)
+            if inputs[1] and not isinstance(inputs[1], (int, float)):
+                nb_bands2 = get_nbchannels(inputs[1])
                 if nb_bands1 != nb_bands2:
                     raise Exception('All images do not have the same number of bands')
             nb_bands = nb_bands1
@@ -679,83 +654,48 @@ class logicalOperation(Operation):
         self.fake_exp_bands = []
         self.logical_fake_exp_bands = []
         for i, band in enumerate(range(1, nb_bands + 1)):
-            if isinstance(input1, Slicer) and hasattr(input1, 'one_band_sliced'):
-                if isinstance(input1.input, logicalOperation):
-                    pass
-                    # TODO
-                if isinstance(input1.input, Operation):
-                    fake_exp1 = input1.input.fake_exp_bands[input1.one_band_sliced - 1]
-                    if i == 0:
-                        self.inputs.extend(input1.input.inputs)
-                        self.nb_channels.update(input1.input.nb_channels)
-                else:
-                    # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                    fake_exp1 = str(input1.input) + f'b{input1.one_band_sliced}'
-                    if i == 0:
-                        self.inputs.append(input1.input)
-                        self.nb_channels[input1.input] = 1
-            # For booleanOperation, we save almost the same attributes as an Operation
-            elif isinstance(input1, logicalOperation):
-                fake_exp1 = input1.logical_fake_exp_bands[i]
-                if i == 0:
-                    self.inputs.extend(input1.inputs)
-                    self.nb_channels.update(input1.nb_channels)
-            elif isinstance(input1, Operation):
-                fake_exp1 = input1.fake_exp_bands[i]
-                if i == 0:
-                    self.inputs.extend(input1.inputs)
-                    self.nb_channels.update(input1.nb_channels)
-            # For int or float input, we just need to save their value
-            elif isinstance(input1, (int, float)):
-                fake_exp1 = str(input1)
-            # We go on with other inputs, i.e. pyotb objects, filepaths...
-            else:
-                if i == 0:
-                    self.nb_channels[input1] = get_nbchannels(input1)
-                    self.inputs.append(input1)
-                fake_exp1 = str(input1) + f'b{band}'
-
-            if input2 is None:
-                fake_exp = f'({operator}({fake_exp1}))'
-            else:
-                if isinstance(input2, Slicer) and hasattr(input2, 'one_band_sliced'):
-                    if isinstance(input2.input, Operation):
-                        fake_exp2 = input2.input.fake_exp_bands[input2.one_band_sliced - 1]
+            fake_exps = []
+            for input in inputs:
+                if isinstance(input, Slicer) and hasattr(input, 'one_band_sliced'):
+                    if isinstance(input.input, logicalOperation):
+                        pass
+                        # TODO
+                    if isinstance(input.input, Operation):
+                        fake_exps.append(input.input.fake_exp_bands[input.one_band_sliced - 1])
                         if i == 0:
-                            self.inputs.extend(input2.input.inputs)
-                            self.nb_channels.update(input2.input.nb_channels)
+                            self.inputs.extend(input.input.inputs)
+                            self.nb_channels.update(input.input.nb_channels)
                     else:
                         # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                        fake_exp2 = str(input2.input) + f'b{input2.one_band_sliced}'
+                        fake_exps.append(str(input.input) + f'b{input.one_band_sliced}')
                         if i == 0:
-                            self.inputs.append(input2.input)
-                            self.nb_channels[input2.input] = 1
+                            self.inputs.append(input.input)
+                            self.nb_channels[input.input] = 1
                 # For booleanOperation, we save almost the same attributes as an Operation
-                elif isinstance(input2, logicalOperation):
-                    fake_exp2 = input2.logical_fake_exp_bands[i]
+                elif isinstance(input, logicalOperation):
+                    fake_exps.append(input.logical_fake_exp_bands[i])
                     if i == 0:
-                        self.inputs.extend(input2.inputs)
-                        self.nb_channels.update(input2.nb_channels)
-
-                # We begin with potential Operation objects and save their attributes
-                elif isinstance(input2, Operation):
-                    fake_exp2 = input2.fake_exp_bands[i]
+                        self.inputs.extend(input.inputs)
+                        self.nb_channels.update(input.nb_channels)
+                elif isinstance(input, Operation):
+                    fake_exps.append(input.fake_exp_bands[i])
                     if i == 0:
-                        self.inputs.extend(input2.inputs)
-                        self.nb_channels.update(input2.nb_channels)
+                        self.inputs.extend(input.inputs)
+                        self.nb_channels.update(input.nb_channels)
                 # For int or float input, we just need to save their value
-                elif isinstance(input2, (int, float)):
-                    fake_exp2 = str(input2)
+                elif isinstance(input, (int, float)):
+                    fake_exps.append(str(input))
                 # We go on with other inputs, i.e. pyotb objects, filepaths...
                 else:
                     if i == 0:
-                        self.nb_channels[input2] = get_nbchannels(input2)
-                        self.inputs.append(input2)
-                    fake_exp2 = str(input2) + f'b{band}'
+                        self.nb_channels[input] = get_nbchannels(input)
+                        self.inputs.append(input)
+                    fake_exps.append(str(input) + f'b{band}')
 
-                # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
-                # the false expression stores the expression 2 * str(input1) + str(input2)
-                fake_exp = f'({fake_exp1} {operator} {fake_exp2})'
+            # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
+            # the false expression stores the expression 2 * str(input1) + str(input2)
+            # TODO adapter comment
+            fake_exp = f'({fake_exps[0]} {operator} {fake_exps[1]})'
 
             # We keep the logical expression, e.g. 'str(input1) == 5', useful if later combined with other logical operations
             self.logical_fake_exp_bands.append(fake_exp)
