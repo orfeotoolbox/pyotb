@@ -5,17 +5,12 @@ Requirements:
 - python >= 3.6
 - OrfeoToolBox python API installed
 
-First step:
 ```bash
-git clone https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb.git
-```
-Then for installing the library:
-```bash
-cd pyotb
-pip install .
+pip install pyotb
 ```
 
-In case you don't have pip, you can use `python setup.py install` instead.
+
+In case you don't have pip, you can also clone the repository and use `python setup.py install` instead.
 
 ## Quickstart: running an OTB app as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.
