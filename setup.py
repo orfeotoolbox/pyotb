@@ -11,7 +11,7 @@ setuptools.setup(
     description="Library to enable easy use of the Orfeo Tool Box (OTB) in Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/TBD",
+    url="https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/",
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
