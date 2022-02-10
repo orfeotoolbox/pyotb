@@ -9,6 +9,7 @@ from pyotb.core import (App, Input, Operation, logicalOperation, get_nbchannels,
 Contains several useful functions base on pyotb
 """
 
+
 def where(cond, x, y):
     """
     Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y
@@ -27,29 +28,31 @@ def where(cond, x, y):
         x_nb_channels = get_nbchannels(x)
     if not isinstance(y, (int, float)):
         y_nb_channels = get_nbchannels(y)
-    x_or_y_nb_channels = x_nb_channels if x_nb_channels else y_nb_channels
 
-    cond_nb_channels = get_nbchannels(cond)
-
-    # Get the number of bands of the result
-    if x_nb_channels is not None and y_nb_channels is not None:
-        nb_channels = x_or_y_nb_channels
+    if x_nb_channels and y_nb_channels:
         if x_nb_channels != y_nb_channels:
             raise Exception('X and Y images do not have the same number of bands. '
                             'X has {} bands whereas Y has {} bands'.format(x_nb_channels, y_nb_channels))
-    else:
-        nb_channels = cond_nb_channels
 
-    if cond_nb_channels != 1 and x_or_y_nb_channels is not None and cond_nb_channels != x_or_y_nb_channels:
+    x_or_y_nb_channels = x_nb_channels if x_nb_channels else y_nb_channels
+    cond_nb_channels = get_nbchannels(cond)
+
+    # Get the number of bands of the result
+    if x_or_y_nb_channels:  # if X or Y is a raster
+        out_nb_channels = x_or_y_nb_channels
+    else:  # if only cond is a raster
+        out_nb_channels = cond_nb_channels
+
+    if cond_nb_channels != 1 and x_or_y_nb_channels and cond_nb_channels != x_or_y_nb_channels:
         raise Exception('Condition and X&Y do not have the same number of bands. Condition has '
                         '{} bands whereas X&Y have {} bands'.format(cond_nb_channels, x_or_y_nb_channels))
 
     # If needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
-    if cond_nb_channels == 1 and x_or_y_nb_channels is not None and x_or_y_nb_channels != 1:
+    if cond_nb_channels == 1 and x_or_y_nb_channels and x_or_y_nb_channels != 1:
         logger.info('The condition has one channel whereas X/Y has/have {} channels. Expanding number of channels '
                     'of condition to match the number of channels or X/Y'.format(x_or_y_nb_channels))
 
-    operation = Operation('?', cond, x, y, nb_bands=nb_channels)
+    operation = Operation('?', cond, x, y, nb_bands=out_nb_channels)
 
     return operation
 
@@ -108,7 +111,6 @@ def all(*inputs):
                 res = res & input
             else:
                 res = res & (input != 0)
-
 
     return res
 

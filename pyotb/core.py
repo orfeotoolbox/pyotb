@@ -5,8 +5,6 @@ import os
 from abc import ABC
 import numpy as np
 
-import pyotb
-
 logger = logging
 logger.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                    level=logging.INFO,
@@ -645,7 +643,7 @@ class Operation(otbObject):
         input and one band.
         :param input:
         :param band: which band to consider (bands start at 1)
-        :param logical: whether to keep the logical expressions "as is" in case the input is logical. For example:
+        :param keep_logical: whether to keep the logical expressions "as is" in case the input is logical. For example:
                         if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
                         if False, for `input1 > input2`, returned fake expression is "str(input1) > str(input2) ? 1 : 0"
         """
@@ -712,7 +710,9 @@ class Operation(otbObject):
 
 class logicalOperation(Operation):
     """
-    This is a specialization of Operation class for boolean logical operations i.e. >, <, >=, <=, ==, !=, `&` and `|`
+    This is a specialization of Operation class for boolean logical operations i.e. >, <, >=, <=, ==, !=, `&` and `|`.
+    The only difference is that not only the BandMath expression is saved (e.g. "im1b1 > 0 ? 1 : 0"), but also the
+    logical expression (e.g. "im1b1 > 0")
     """
 
     def __init__(self, operator, *inputs, nb_bands=None):
@@ -751,7 +751,6 @@ class logicalOperation(Operation):
 
             # We create here the "fake" expression. For example, for a BandMathX expression such as 'im1 > im2',
             # the logical fake expression stores the expression "str(input1) > str(input2)"
-            # TODO adapter comment
             logical_fake_exp = f'({fake_exps[0]} {operator} {fake_exps[1]})'
 
             # We keep the logical expression, useful if later combined with other logical operations
