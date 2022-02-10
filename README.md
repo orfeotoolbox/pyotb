@@ -246,7 +246,8 @@ input = pyotb.Input('image.tif')  # this is a pyotb object
 white_noise = np.random.normal(0, 50, size=input.shape)  # this is a numpy object
 
 # Adding the noise to the image
-noisy_image = np.add(input, white_noise)  # magic: this is a pyotb object that has the same georeference as input
+noisy_image = input + white_noise  # magic: this is a pyotb object that has the same georeference as input. 
+                                   # `np.add(input, white_noise)` would have worked the same
 noisy_image.write('image_plus_noise.tif')
 ```
 Limitations : 
