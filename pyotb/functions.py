@@ -3,7 +3,7 @@ import uuid
 import multiprocessing
 from collections import Counter
 
-from pyotb.core import (App, Input, logicalOperation, get_nbchannels, logger)
+from pyotb.core import (App, Input, Operation, logicalOperation, get_nbchannels, logger)
 
 """
 Contains several useful functions base on pyotb
@@ -19,74 +19,39 @@ def where(cond, x, y):
     :param y: value if cond is False. Can be float, int, App, filepath, Operation...
     :return:
     """
-    # Getting number of channels of rasters
+    # Checking the number of bands of rasters. Several cases :
+    # - if cond is monoband, x and y can be multibands. Then cond will adapt to match x and y nb of bands
+    # - if cond is multiband, x and y must have the same nb of bands if they are rasters.
     x_nb_channels, y_nb_channels = None, None
     if not isinstance(x, (int, float)):
         x_nb_channels = get_nbchannels(x)
     if not isinstance(y, (int, float)):
         y_nb_channels = get_nbchannels(y)
+    x_or_y_nb_channels = x_nb_channels if x_nb_channels else y_nb_channels
 
-    if x_nb_channels is not None:
-        x_or_y_nb_channels = x_nb_channels
-    elif y_nb_channels is not None:
-        x_or_y_nb_channels = y_nb_channels
-    else:
-        x_or_y_nb_channels = None
+    cond_nb_channels = get_nbchannels(cond)
 
-    # Some checks on number of bands
+    # Get the number of bands of the result
     if x_nb_channels is not None and y_nb_channels is not None:
+        nb_channels = x_or_y_nb_channels
         if x_nb_channels != y_nb_channels:
             raise Exception('X and Y images do not have the same number of bands. '
                             'X has {} bands whereas Y has {} bands'.format(x_nb_channels, y_nb_channels))
-    print('before')
-    cond_nb_channels = get_nbchannels(cond)
-    print('after')
+    else:
+        nb_channels = cond_nb_channels
+
     if cond_nb_channels != 1 and x_or_y_nb_channels is not None and cond_nb_channels != x_or_y_nb_channels:
         raise Exception('Condition and X&Y do not have the same number of bands. Condition has '
                         '{} bands whereas X&Y have {} bands'.format(cond_nb_channels, x_or_y_nb_channels))
 
-    # Computing the BandMathX expression of the condition
-    # If the condition already is a boolean operation then we get the BandMathx expression of this condition before
-    # integrating it in the final expression. For example, if we pass a condition as a python formulation `raster == 1`,
-    # then the final expression will be `im1 == 1 ? im2 : im3` with `im2` being `x` and `im3` being `y`
-    if isinstance(cond, logicalOperation):
-        cond_exp = cond.logical_exp_bands
-        im_count = cond.im_count  # the count im# will resume from the expression of the condition
-        inputs = cond.inputs
-    # if the condition simply is a raster, we need to compute the BandMathX expression `im1 != 0`
-    else:
-        cond_exp = [f'im1b{b} != 0' for b in range(1, 1 + cond_nb_channels)]
-        im_count = 2
-        inputs = [cond]
-
-    # if needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
+    # If needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
     if cond_nb_channels == 1 and x_or_y_nb_channels is not None and x_or_y_nb_channels != 1:
         logger.info('The condition has one channel whereas X/Y has/have {} channels. Expanding number of channels '
                     'of condition to match the number of channels or X/Y'.format(x_or_y_nb_channels))
-        cond_exp = cond_exp * x_or_y_nb_channels
-        cond_nb_channels = x_or_y_nb_channels
 
-    # Computing the BandMathX expression of the  inputs
+    operation = Operation('?', cond, x, y, nb_bands=nb_channels)
 
-    if isinstance(x, (float, int)):
-        x_exp = [x] * cond_nb_channels
-    else:
-        x_exp = [f'im{im_count}b{b}' for b in range(1, 1 + x_nb_channels)]
-        im_count += 1
-        inputs.append(x)
-    if isinstance(y, (float, int)):
-        y_exp = [y] * cond_nb_channels
-    else:
-        y_exp = [f'im{im_count}b{b}' for b in range(1, 1 + y_nb_channels)]
-        im_count += 1
-        inputs.append(y)
-
-    # Writing the multiband expression (each band separated by a `;`)
-    exp = ';'.join([f'({condition} ? {x} : {y})' for condition, x, y in zip(cond_exp, x_exp, y_exp)])
-    print(inputs, exp)
-    app = App("BandMathX", il=inputs, exp=exp)
-
-    return app
+    return operation
 
 
 def clip(a, a_min, a_max):
@@ -121,20 +86,29 @@ def all(*inputs):
     # Checking that all bands of the single image are True
     if len(inputs) == 1:
         input = inputs[0]
-        exp = '(im1b1 != 0 ? 1 : 0)'
-        for band in range(1, input.shape[-1]):
-            exp += ' && (im1b{} != 0 ? 1 : 0)'.format(band + 1)
+        if isinstance(input, logicalOperation):
+            res = input[:, :, 0]
+        else:
+            res = (input[:, :, 0] != 0)
 
-        res = App('BandMath', il=inputs, exp=exp)
+        for band in range(1, input.shape[-1]):
+            if isinstance(input, logicalOperation):
+                res = res & input[:, :, band]
+            else:
+                res = res & (input[:, :, band] != 0)
 
     # Checking that all images are True
     else:
-        res = None
-        for input in inputs:
-            if not res:  # first pass
-                res = (input != 0)
+        if isinstance(inputs[0], logicalOperation):
+            res = inputs[0]
+        else:
+            res = (inputs[0] != 0)
+        for input in inputs[1:]:
+            if isinstance(input, logicalOperation):
+                res = res & input
             else:
                 res = res & (input != 0)
+
 
     return res
 
@@ -154,18 +128,26 @@ def any(*inputs):
     # Checking that at least one band of the image is True
     if len(inputs) == 1:
         input = inputs[0]
-        exp = '(im1b1 != 0 ? 1 : 0)'
+        if isinstance(input, logicalOperation):
+            res = input[:, :, 0]
+        else:
+            res = (input[:, :, 0] != 0)
+
         for band in range(1, input.shape[-1]):
-            exp += ' | (im1b{} != 0 ? 1 : 0)'.format(band + 1)
+            if isinstance(input, logicalOperation):
+                res = res | input[:, :, band]
+            else:
+                res = res | (input[:, :, band] != 0)
 
-        res = App('BandMath', il=inputs, exp=exp)
-
-    # Checking that all images are True
+    # Checking that at least one image is True
     else:
-        res = None
-        for input in inputs:
-            if not res:  # first pass
-                res = (input != 0)
+        if isinstance(inputs[0], logicalOperation):
+            res = inputs[0]
+        else:
+            res = (inputs[0] != 0)
+        for input in inputs[1:]:
+            if isinstance(input, logicalOperation):
+                res = res | input
             else:
                 res = res | (input != 0)
 
