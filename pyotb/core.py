@@ -125,6 +125,7 @@ class otbObject(ABC):
                     self.app.SetParameterOutputImagePixelType(output_parameter_key, pixel_types[output_parameter_key])
 
             self.app.ExecuteAndWriteOutput()
+            self.app.Execute()  # this is just to be able to use the object in in-memory pipelines without problems
 
     def __add__(self, other):
         """Overrides the default addition and flavours it with BandMathX"""
@@ -487,6 +488,7 @@ class App(otbObject):
         # Writing outputs to disk if needed
         if any([output_param_key in kwargs for output_param_key in self.output_parameters_keys]):
             self.app.ExecuteAndWriteOutput()
+            self.app.Execute()  # this is just to be able to use the object in in-memory pipelines without problems
 
     def get_output_parameters_keys(self):
         """
