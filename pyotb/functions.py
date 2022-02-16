@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
 import os
 import uuid
+import logging
 import multiprocessing
 from collections import Counter
 
-from pyotb.core import (App, Input, Operation, logicalOperation, get_nbchannels, logger)
-
+from .core import (App, Input, Operation, logicalOperation, get_nbchannels)
+logger = logging.getLogger()
 """
 Contains several useful functions base on pyotb
 """
@@ -31,8 +33,8 @@ def where(cond, x, y):
 
     if x_nb_channels and y_nb_channels:
         if x_nb_channels != y_nb_channels:
-            raise Exception('X and Y images do not have the same number of bands. '
-                            'X has {} bands whereas Y has {} bands'.format(x_nb_channels, y_nb_channels))
+            raise Exception('X and Y images do not have the same number of bands. ' +
+                            f'X has {x_nb_channels} bands whereas Y has {y_nb_channels} bands')
 
     x_or_y_nb_channels = x_nb_channels if x_nb_channels else y_nb_channels
     cond_nb_channels = get_nbchannels(cond)
@@ -44,13 +46,13 @@ def where(cond, x, y):
         out_nb_channels = cond_nb_channels
 
     if cond_nb_channels != 1 and x_or_y_nb_channels and cond_nb_channels != x_or_y_nb_channels:
-        raise Exception('Condition and X&Y do not have the same number of bands. Condition has '
-                        '{} bands whereas X&Y have {} bands'.format(cond_nb_channels, x_or_y_nb_channels))
+        raise Exception(f'Condition and X&Y do not have the same number of bands. Condition has '
+                        '{cond_nb_channels} bands whereas X&Y have {x_or_y_nb_channels} bands')
 
     # If needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
     if cond_nb_channels == 1 and x_or_y_nb_channels and x_or_y_nb_channels != 1:
-        logger.info('The condition has one channel whereas X/Y has/have {} channels. Expanding number of channels '
-                    'of condition to match the number of channels or X/Y'.format(x_or_y_nb_channels))
+        logger.info(f'The condition has one channel whereas X/Y has/have {x_or_y_nb_channels} channels. Expanding number of channels '
+                    'of condition to match the number of channels or X/Y')
 
     operation = Operation('?', cond, x, y, nb_bands=out_nb_channels)
 
@@ -233,8 +235,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
             # TODO : it is when the user wants the final bounding box to be the union of all bounding box
             #  It should replace any 'outside' pixel by some NoData -> add `fillvalue` argument in the function
 
-        logger.info(
-            'Cropping all images to extent Upper Left ({}, {}), Lower Right ({}, {}) '.format(ULX, ULY, LRX, LRY))
+        logger.info(f'Cropping all images to extent Upper Left ({ULX}, {ULY}), Lower Right ({LRX}, {LRY})')
 
         # Applying this bounding box to all inputs
         new_inputs = []
@@ -251,7 +252,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
                     reference_pixel_size_input = new_input
             except Exception as e:
                 logger.error(e)
-                logger.error('Images may not intersect : {}'.format(input))
+                logger.error(f'Images may not intersect : {input}')
                 # TODO: what should we do then? return an empty raster ? fail ? return None ?
         inputs = new_inputs
 
@@ -277,13 +278,13 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         elif pixel_size_rule == 'specify':
             pass
             # TODO : when the user explicitely specify the pixel size -> add argument inside the function
-
-        logger.info('Resampling all inputs to resolution : {}'.format(metadatas[reference_input]['GeoTransform'][1]))
+        pixel_size = metadatas[reference_input]['GeoTransform'][1]
+        logger.info(f'Resampling all inputs to resolution : {pixel_size}')
 
         # Perform resampling on inputs that do not comply with the target pixel size
         new_inputs = []
         for input in inputs:
-            if metadatas[input]['GeoTransform'][1] != metadatas[reference_input]['GeoTransform'][1]:
+            if metadatas[input]['GeoTransform'][1] != pixel_size:
                 superimposed = App('Superimpose', inr=reference_input, inm=input, interpolator=interpolator)
                 new_inputs.append(superimposed)
             else:
@@ -378,7 +379,7 @@ def run_tf_function(func):
 
         # Create and save the model. This is executed **inside an independent process** because (as of 2021-11),
         # tensorflow python library and OTBTF are incompatible
-        out_savedmodel = os.path.join(tmp_dir, 'tmp_otbtf_model_{}'.format(uuid.uuid4()))
+        out_savedmodel = os.path.join(tmp_dir, f'tmp_otbtf_model_{uuid.uuid4()}')
         p = multiprocessing.Process(target=create_and_save_tf_model, args=(out_savedmodel, *inputs,))
         p.start()
         p.join()
@@ -394,7 +395,7 @@ def run_tf_function(func):
                            'optim.disabletiling': 'on', 'model.fullyconv': 'on'}, execute=False)
 
         for i, input in enumerate(raster_inputs):
-            model_serve.set_parameters({'source{}.il'.format(i + 1): [input]})
+            model_serve.set_parameters({f'source{i + 1}.il': [input]})
 
         model_serve.Execute()
         # TODO: handle the deletion of the temporary model ?
