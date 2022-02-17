@@ -682,18 +682,20 @@ class Operation(otbObject):
         self.nb_channels = {}
 
         logger.debug(f"{operator}, {inputs}")
-        if operator == '?' and nb_bands:  # this is when we use the ternary operator with `pyotb.where` function
+        # this is when we use the ternary operator with `pyotb.where` function. The output nb of bands is already known
+        if operator == '?' and nb_bands:
             nb_bands = nb_bands
+        # For any other operations, the output number of bands is the same as inputs
         else:
             if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
                 nb_bands = 1
             else:
-                nb_bands1 = get_nbchannels(inputs[0])
-                if len(inputs) > 1 and inputs[1] and not isinstance(inputs[1], (int, float)):
-                    nb_bands2 = get_nbchannels(inputs[1])
-                    if nb_bands1 != nb_bands2:
+                nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
+                # check that all inputs have the same nb of bands
+                if len(nb_bands_list) > 1:
+                    if not all(x == nb_bands_list[0] for x in nb_bands_list):
                         raise Exception('All images do not have the same number of bands')
-                nb_bands = nb_bands1
+                nb_bands = nb_bands_list[0]
 
         # Create a list of fake expressions, each item of the list corresponding to one band
         self.fake_exp_bands = []
@@ -797,9 +799,7 @@ class Operation(otbObject):
         return exp_bands, exp
 
     def __str__(self):
-        if self.input2 is not None:
-            return f'<pyotb.Operation object, {self.input1} {self.operator} {self.input2}, id {id(self)}>'
-        return f'<pyotb.Operation object, {self.operator} {self.input1}, id {id(self)}>'
+        return f'<pyotb.Operation `{self.operator}` object, id {id(self)}>'
 
 
 class logicalOperation(Operation):
@@ -818,15 +818,16 @@ class logicalOperation(Operation):
         self.inputs = []
         self.nb_channels = {}
 
+        # For any other operations, the output number of bands is the same as inputs
         if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
             nb_bands = 1
         else:
-            nb_bands1 = get_nbchannels(inputs[0])
-            if inputs[1] and not isinstance(inputs[1], (int, float)):
-                nb_bands2 = get_nbchannels(inputs[1])
-                if nb_bands1 != nb_bands2:
+            nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
+            # check that all inputs have the same nb of bands
+            if len(nb_bands_list) > 1:
+                if not all(x == nb_bands_list[0] for x in nb_bands_list):
                     raise Exception('All images do not have the same number of bands')
-            nb_bands = nb_bands1
+            nb_bands = nb_bands_list[0]
 
         # Create a list of fake exp, each item of the list corresponding to one band
         self.fake_exp_bands = []
