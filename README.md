@@ -2,7 +2,7 @@
 
 ## Installation
 Requirements:
-- python >= 3.6
+- python >= 3.5
 - OrfeoToolBox python API installed
 
 ```bash
