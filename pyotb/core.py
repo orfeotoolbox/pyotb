@@ -54,7 +54,7 @@ class otbObject(ABC):
             elif isinstance(arg, str) and kwargs:
                 logger.warning(f'{self.name}: Keyword arguments specified, ignoring argument "{arg}"')
             elif isinstance(arg, str):
-                if hasattr(self, 'output_parameter_key'):  # this is for Output, Operation
+                if hasattr(self, 'output_parameter_key'):  # this is for Output, Operation...
                     output_parameter_key = self.output_parameter_key
                 else:  # this is for App
                     output_parameter_key = self.output_parameters_keys[0]
@@ -86,7 +86,7 @@ class otbObject(ABC):
                         out_fn += "?"
                     out_fn += filename_extension
                     logger.info(f'{self.name}: Using extended filename for output.')
-                logger.debug(f'{self.name}: write output file "{output_parameter_key}" to {out_fn}')
+                logger.info(f'{self.name}: write output file "{output_parameter_key}" to {out_fn}')
                 self.app.SetParameterString(output_parameter_key, out_fn)
 
                 if output_parameter_key in pixel_types:
@@ -305,6 +305,7 @@ class Slicer(otbObject):
         # Initialize the app that will be used for writing the slicer
         app = App('ExtractROI', {"in": input, 'mode': 'extent'})
         self.output_parameter_key = 'out'
+        self.name = 'Slicer'
 
         # Channel slicing
         nb_channels = get_nbchannels(input)
@@ -365,6 +366,7 @@ class Input(otbObject):
         self.app = App('ExtractROI', filepath).app
         self.output_parameter_key = 'out'
         self.filepath = filepath
+        self.name = f'Input from {filepath}'
 
     def __str__(self):
         return '<pyotb.Input object from {}>'.format(self.filepath)
@@ -377,6 +379,7 @@ class Output(otbObject):
     def __init__(self, app, output_parameter_key):
         self.app = app  # keeping a reference of the OTB app
         self.output_parameter_key = output_parameter_key
+        self.name = f'Output {output_parameter_key} from {self.app.GetName()}'
 
     def __str__(self):
         return '<pyotb.Output {} object, id {}>'.format(self.app.GetName(), id(self))
@@ -669,6 +672,8 @@ class Operation(otbObject):
             self.app = App('BandMath', il=self.unique_inputs, exp=self.exp).app
         else:
             self.app = App('BandMathX', il=self.unique_inputs, exp=self.exp).app
+
+        self.name = f'Operation exp="{self.exp}"'
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """
