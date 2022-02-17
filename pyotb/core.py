@@ -13,7 +13,6 @@ class otbObject(ABC):
     """
     Abstract class that gathers common operations for any OTB in-memory raster.
     All child of this class must have an `app` attribute that is an OTB application.
-
     """
     @property
     def shape(self):
@@ -304,7 +303,7 @@ class Slicer(otbObject):
         :param channels:
         """
         # Initialize the app that will be used for writing the slicer
-        self.app = App('ExtractROI', {"in": input, 'mode': 'extent'})
+        app = App('ExtractROI', {"in": input, 'mode': 'extent'})
         self.output_parameter_key = 'out'
 
         # Channel slicing
@@ -327,27 +326,29 @@ class Slicer(otbObject):
             # Change the potential negative index values to reverse index
             channels = [c if c >= 0 else nb_channels + c for c in channels]
 
-            self.app.set_parameters(cl=[f'Channel{i + 1}' for i in channels])
+            app.set_parameters(cl=[f'Channel{i + 1}' for i in channels])
 
         # Spatial slicing
         spatial_slicing = False
         # TODO: handle PixelValue app so that accessing value is possible, e.g. raster[120, 200, 0]
         # TODO TBD: handle the step value in the slice so that NN undersampling is possible ? e.g. obj[::2, ::2]
         if rows.start is not None:
-            self.app.set_parameters({'mode.extent.uly': rows.start})
+            app.set_parameters({'mode.extent.uly': rows.start})
             spatial_slicing = True
         if rows.stop is not None and rows.stop != -1:
-            self.app.set_parameters(
+            app.set_parameters(
                 {'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
             spatial_slicing = True
         if cols.start is not None:
-            self.app.set_parameters({'mode.extent.ulx': cols.start})
+            app.set_parameters({'mode.extent.ulx': cols.start})
             spatial_slicing = True
         if cols.stop is not None and cols.stop != -1:
-            self.app.set_parameters(
+            app.set_parameters(
                 {'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
             spatial_slicing = True
 
+        # keeping the OTB app, not the pyotb app
+        self.app = app.app
         self.app.Execute()
 
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
@@ -374,7 +375,7 @@ class Output(otbObject):
     Class for output of an app
     """
     def __init__(self, app, output_parameter_key):
-        self.app = app  # keeping a reference of the app
+        self.app = app  # keeping a reference of the OTB app
         self.output_parameter_key = output_parameter_key
 
     def __str__(self):
@@ -665,9 +666,9 @@ class Operation(otbObject):
         # Computing the BandMath or BandMathX app
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         if len(self.exp_bands) == 1:
-            self.app = App('BandMath', il=self.unique_inputs, exp=self.exp)
+            self.app = App('BandMath', il=self.unique_inputs, exp=self.exp).app
         else:
-            self.app = App('BandMathX', il=self.unique_inputs, exp=self.exp)
+            self.app = App('BandMathX', il=self.unique_inputs, exp=self.exp).app
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """
@@ -741,10 +742,11 @@ class Operation(otbObject):
         input and one band.
         :param input:
         :param band: which band to consider (bands start at 1)
-        :param keep_logical: whether to keep the logical expressions "as is" in case the input is logical. For example:
-                        if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
+        :param keep_logical: whether to keep the logical expressions "as is" in case the input is a logical operation.
+                    ex: if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
                         if False, for `input1 > input2`, returned fake expression is "str(input1) > str(input2) ? 1 : 0"
         """
+        # Special case for one-band slicer
         if isinstance(input, Slicer) and hasattr(input, 'one_band_sliced'):
             if keep_logical and isinstance(input.input, logicalOperation):
                 fake_exp = input.input.logical_fake_exp_bands[input.one_band_sliced - 1]
@@ -778,6 +780,7 @@ class Operation(otbObject):
         else:
             nb_channels = {input: get_nbchannels(input)}
             inputs = [input]
+            # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
             fake_exp = str(input) + f'b{band}'
 
         return fake_exp, inputs, nb_channels
