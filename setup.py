@@ -22,7 +22,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
-    python_requires="==3.5",
+    python_requires="==3.5.*",
     keywords="remote sensing, otb, orfeotoolbox, orfeo toolbox",
 )
 #package_dir={"": "src"},
