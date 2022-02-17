@@ -13,7 +13,6 @@ class otbObject(ABC):
     """
     Abstract class that gathers common operations for any OTB in-memory raster.
     All child of this class must have an `app` attribute that is an OTB application.
-
     """
     @property
     def shape(self):
@@ -55,7 +54,7 @@ class otbObject(ABC):
             elif isinstance(arg, str) and kwargs:
                 logger.warning(f'{self.name}: Keyword arguments specified, ignoring argument "{arg}"')
             elif isinstance(arg, str):
-                if hasattr(self, 'output_parameter_key'):  # this is for Output, Operation
+                if hasattr(self, 'output_parameter_key'):  # this is for Output, Operation...
                     output_parameter_key = self.output_parameter_key
                 else:  # this is for App
                     output_parameter_key = self.output_parameters_keys[0]
@@ -87,7 +86,7 @@ class otbObject(ABC):
                         out_fn += "?"
                     out_fn += filename_extension
                     logger.info(f'{self.name}: Using extended filename for output.')
-                logger.debug(f'{self.name}: write output file "{output_parameter_key}" to {out_fn}')
+                logger.info(f'{self.name}: write output file "{output_parameter_key}" to {out_fn}')
                 self.app.SetParameterString(output_parameter_key, out_fn)
 
                 if output_parameter_key in pixel_types:
@@ -304,8 +303,9 @@ class Slicer(otbObject):
         :param channels:
         """
         # Initialize the app that will be used for writing the slicer
-        self.app = App('ExtractROI', {"in": input, 'mode': 'extent'})
+        app = App('ExtractROI', {"in": input, 'mode': 'extent'})
         self.output_parameter_key = 'out'
+        self.name = 'Slicer'
 
         # Channel slicing
         nb_channels = get_nbchannels(input)
@@ -327,27 +327,29 @@ class Slicer(otbObject):
             # Change the potential negative index values to reverse index
             channels = [c if c >= 0 else nb_channels + c for c in channels]
 
-            self.app.set_parameters(cl=[f'Channel{i + 1}' for i in channels])
+            app.set_parameters(cl=[f'Channel{i + 1}' for i in channels])
 
         # Spatial slicing
         spatial_slicing = False
         # TODO: handle PixelValue app so that accessing value is possible, e.g. raster[120, 200, 0]
         # TODO TBD: handle the step value in the slice so that NN undersampling is possible ? e.g. obj[::2, ::2]
         if rows.start is not None:
-            self.app.set_parameters({'mode.extent.uly': rows.start})
+            app.set_parameters({'mode.extent.uly': rows.start})
             spatial_slicing = True
         if rows.stop is not None and rows.stop != -1:
-            self.app.set_parameters(
+            app.set_parameters(
                 {'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
             spatial_slicing = True
         if cols.start is not None:
-            self.app.set_parameters({'mode.extent.ulx': cols.start})
+            app.set_parameters({'mode.extent.ulx': cols.start})
             spatial_slicing = True
         if cols.stop is not None and cols.stop != -1:
-            self.app.set_parameters(
+            app.set_parameters(
                 {'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
             spatial_slicing = True
 
+        # keeping the OTB app, not the pyotb app
+        self.app = app.app
         self.app.Execute()
 
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
@@ -364,6 +366,7 @@ class Input(otbObject):
         self.app = App('ExtractROI', filepath).app
         self.output_parameter_key = 'out'
         self.filepath = filepath
+        self.name = f'Input from {filepath}'
 
     def __str__(self):
         return '<pyotb.Input object from {}>'.format(self.filepath)
@@ -374,8 +377,9 @@ class Output(otbObject):
     Class for output of an app
     """
     def __init__(self, app, output_parameter_key):
-        self.app = app  # keeping a reference of the app
+        self.app = app  # keeping a reference of the OTB app
         self.output_parameter_key = output_parameter_key
+        self.name = f'Output {output_parameter_key} from {self.app.GetName()}'
 
     def __str__(self):
         return '<pyotb.Output {} object, id {}>'.format(self.app.GetName(), id(self))
@@ -665,9 +669,11 @@ class Operation(otbObject):
         # Computing the BandMath or BandMathX app
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         if len(self.exp_bands) == 1:
-            self.app = App('BandMath', il=self.unique_inputs, exp=self.exp)
+            self.app = App('BandMath', il=self.unique_inputs, exp=self.exp).app
         else:
-            self.app = App('BandMathX', il=self.unique_inputs, exp=self.exp)
+            self.app = App('BandMathX', il=self.unique_inputs, exp=self.exp).app
+
+        self.name = f'Operation exp="{self.exp}"'
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """
@@ -682,18 +688,20 @@ class Operation(otbObject):
         self.nb_channels = {}
 
         logger.debug(f"{operator}, {inputs}")
-        if operator == '?' and nb_bands:  # this is when we use the ternary operator with `pyotb.where` function
+        # this is when we use the ternary operator with `pyotb.where` function. The output nb of bands is already known
+        if operator == '?' and nb_bands:
             nb_bands = nb_bands
+        # For any other operations, the output number of bands is the same as inputs
         else:
             if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
                 nb_bands = 1
             else:
-                nb_bands1 = get_nbchannels(inputs[0])
-                if len(inputs) > 1 and inputs[1] and not isinstance(inputs[1], (int, float)):
-                    nb_bands2 = get_nbchannels(inputs[1])
-                    if nb_bands1 != nb_bands2:
+                nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
+                # check that all inputs have the same nb of bands
+                if len(nb_bands_list) > 1:
+                    if not all(x == nb_bands_list[0] for x in nb_bands_list):
                         raise Exception('All images do not have the same number of bands')
-                nb_bands = nb_bands1
+                nb_bands = nb_bands_list[0]
 
         # Create a list of fake expressions, each item of the list corresponding to one band
         self.fake_exp_bands = []
@@ -739,10 +747,11 @@ class Operation(otbObject):
         input and one band.
         :param input:
         :param band: which band to consider (bands start at 1)
-        :param keep_logical: whether to keep the logical expressions "as is" in case the input is logical. For example:
-                        if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
+        :param keep_logical: whether to keep the logical expressions "as is" in case the input is a logical operation.
+                    ex: if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
                         if False, for `input1 > input2`, returned fake expression is "str(input1) > str(input2) ? 1 : 0"
         """
+        # Special case for one-band slicer
         if isinstance(input, Slicer) and hasattr(input, 'one_band_sliced'):
             if keep_logical and isinstance(input.input, logicalOperation):
                 fake_exp = input.input.logical_fake_exp_bands[input.one_band_sliced - 1]
@@ -776,6 +785,7 @@ class Operation(otbObject):
         else:
             nb_channels = {input: get_nbchannels(input)}
             inputs = [input]
+            # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
             fake_exp = str(input) + f'b{band}'
 
         return fake_exp, inputs, nb_channels
@@ -797,9 +807,7 @@ class Operation(otbObject):
         return exp_bands, exp
 
     def __str__(self):
-        if self.input2 is not None:
-            return f'<pyotb.Operation object, {self.input1} {self.operator} {self.input2}, id {id(self)}>'
-        return f'<pyotb.Operation object, {self.operator} {self.input1}, id {id(self)}>'
+        return f'<pyotb.Operation `{self.operator}` object, id {id(self)}>'
 
 
 class logicalOperation(Operation):
@@ -818,15 +826,16 @@ class logicalOperation(Operation):
         self.inputs = []
         self.nb_channels = {}
 
+        # For any other operations, the output number of bands is the same as inputs
         if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
             nb_bands = 1
         else:
-            nb_bands1 = get_nbchannels(inputs[0])
-            if inputs[1] and not isinstance(inputs[1], (int, float)):
-                nb_bands2 = get_nbchannels(inputs[1])
-                if nb_bands1 != nb_bands2:
+            nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
+            # check that all inputs have the same nb of bands
+            if len(nb_bands_list) > 1:
+                if not all(x == nb_bands_list[0] for x in nb_bands_list):
                     raise Exception('All images do not have the same number of bands')
-            nb_bands = nb_bands1
+            nb_bands = nb_bands_list[0]
 
         # Create a list of fake exp, each item of the list corresponding to one band
         self.fake_exp_bands = []
