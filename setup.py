@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="pyotb",
-    version="1.2.1",
+    version="1.2.2",
     author="Nicolas Narçon",
     author_email="nicolas.narcon@gmail.com",
     description="Library to enable easy use of the Orfeo Tool Box (OTB) in Python",
