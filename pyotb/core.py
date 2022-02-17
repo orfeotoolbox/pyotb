@@ -517,16 +517,16 @@ class App(otbObject):
         :param kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
         :return: boolean flag that indicate if app was correctly set using given parameters
         """
-        self.parameters.update(self.__parse_args(args))
-        self.parameters.update(kwargs)
+        parameters = kwargs
+        parameters.update(self.__parse_args(args))
         # Going through all arguments
-        for param, obj in self.parameters.items():
+        for param, obj in parameters.items():
             if param not in self.app.GetParametersKeys():
                 raise Exception(f"{self.name}: parameter '{param}' was not recognized. "
                                 f"Available keys are {self.app.GetParametersKeys()}")
             # When the parameter expects a list, if needed, change the value to list
             if self.__is_key_list(param) and not isinstance(obj, (list, tuple)):
-                self.parameters[param] = [obj]
+                parameters[param] = [obj]
                 obj = [obj]
             try:
                 # This is when we actually call self.app.SetParameter*
@@ -534,6 +534,9 @@ class App(otbObject):
             except (RuntimeError, TypeError, ValueError) as e:
                 raise Exception(f"{self.name}: something went wrong before execution "
                                 f"(while setting parameter {param} to '{obj}')") from e
+
+        # update the attribute
+        self.parameters.update(parameters)
 
     # Private functions
     @staticmethod
