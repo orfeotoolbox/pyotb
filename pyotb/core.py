@@ -897,19 +897,17 @@ def get_pixel_type(inp):
         # Executing the app, without printing its log
         info = App("ReadImageInfo", inp, otb_stdout=False)
         datatype = info.GetParameterInt("datatype")  # which is such as short, float...
-        dataype_to_pixeltype = {
-            'unsigned_char': 'uint8', 'short': 'int16', 'unsigned_short': 'uint16', 
-            'int': 'int32', 'unsigned_int': 'uint32', 'long': 'int32', 'ulong': 'uint32', 
-            'float': 'float','double': 'double'
-        }
+        dataype_to_pixeltype = {'unsigned_char': 'uint8', 'short': 'int16', 'unsigned_short': 'uint16',
+                                'int': 'int32', 'unsigned_int': 'uint32', 'long': 'int32', 'ulong': 'uint32',
+                                'float': 'float', 'double': 'double'}
         pixel_type = dataype_to_pixeltype[datatype]
         pixel_type = getattr(otb, f'ImagePixelType_{pixel_type}')
-    elif isinstance(inp, (Input, Output, Operation)):
-        pixel_type = inp.GetImageBasePixelType(inp.output_parameter_key)
+    elif isinstance(inp, (Input, Output, Operation, Slicer)):
+        pixel_type = inp.GetParameterOutputImagePixelType(inp.output_parameter_key)
     elif isinstance(inp, App):
-        if len(inp.output_parameters_keys) > 1:
-            pixel_type = inp.GetImageBasePixelType(inp.output_parameters_keys[0])
+        if len(inp.output_parameters_keys) == 1:
+            pixel_type = inp.GetParameterOutputImagePixelType(inp.output_parameters_keys[0])
         else:
-            pixel_type = {key: inp.GetImageBasePixelType(key) for key in inp.output_parameters_keys}
+            pixel_type = {key: inp.GetParameterOutputImagePixelType(key) for key in inp.output_parameters_keys}
 
     return pixel_type
