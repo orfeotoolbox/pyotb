@@ -114,7 +114,7 @@ class otbObject(ABC):
         elif isinstance(key, tuple) and len(key) == 2:
             # adding a 3rd dimension
             key = key + (slice(None, None, None),)
-        (rows, cols, channels) = key
+        (cols, rows, channels) = key
         return Slicer(self, rows, cols, channels)
 
     def __getattr__(self, name):
