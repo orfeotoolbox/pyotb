@@ -9,7 +9,7 @@ Requirements:
 pip install pyotb
 ```
 
-For Python>=3.6, latest version available is pyotb 1.2.3. For Python 3.5, latest version available is pyotb 1.2.2
+For Python>=3.6, latest version available is pyotb 1.3. For Python 3.5, latest version available is pyotb 1.2.2
 
 ## Quickstart: running an OTB app as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.

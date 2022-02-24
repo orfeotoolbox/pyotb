@@ -114,7 +114,7 @@ class otbObject(ABC):
         elif isinstance(key, tuple) and len(key) == 2:
             # adding a 3rd dimension
             key = key + (slice(None, None, None),)
-        (rows, cols, channels) = key
+        (cols, rows, channels) = key
         return Slicer(self, rows, cols, channels)
 
     def __getattr__(self, name):
@@ -231,16 +231,32 @@ class otbObject(ABC):
     def __hash__(self):
         return id(self)
 
-    def __array__(self):
+    def to_numpy(self, propagate_pixel_type=False):
         """
-        This is called when running np.asarray(pyotb_object)
+        Export a pyotb object to numpy array
         :return: a numpy array
         """
         if hasattr(self, 'output_parameter_key'):  # this is for Input, Output, Operation, Slicer
             output_parameter_key = self.output_parameter_key
         else:  # this is for App
             output_parameter_key = self.output_parameters_keys[0]
-        return self.app.ExportImage(output_parameter_key)['array']
+        # we make a copy to avoid some segfault if the reference to app is lost
+        array = self.app.ExportImage(output_parameter_key)['array'].copy()
+        if propagate_pixel_type:
+            otb_pixeltype = get_pixel_type(self)
+            otb_pixeltype_to_np_pixeltype = {0: np.uint8, 1: np.int16, 2: np.uint16, 3: np.int32, 4: np.uint32,
+                                             5: np.float32, 6: np.float64}
+            np_pixeltype = otb_pixeltype_to_np_pixeltype[otb_pixeltype]
+            array = array.astype(np_pixeltype)
+        return array
+
+    def __array__(self):
+        """
+        This is called when running np.asarray(pyotb_object)
+        :return: a numpy array
+        """
+
+        return self.to_numpy()
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """
@@ -303,7 +319,7 @@ class Slicer(otbObject):
         :param channels:
         """
         # Initialize the app that will be used for writing the slicer
-        app = App('ExtractROI', {"in": input, 'mode': 'extent'})
+        app = App('ExtractROI', {"in": input, 'mode': 'extent'}, propagate_pixel_type=True)
         self.output_parameter_key = 'out'
         self.name = 'Slicer'
 
@@ -363,7 +379,7 @@ class Input(otbObject):
     Class for transforming a filepath to pyOTB object
     """
     def __init__(self, filepath):
-        self.app = App('ExtractROI', filepath).app
+        self.app = App('ExtractROI', filepath, propagate_pixel_type=True).app
         self.output_parameter_key = 'out'
         self.filepath = filepath
         self.name = f'Input from {filepath}'
@@ -412,7 +428,7 @@ class App(otbObject):
         # This will only store if app has been excuted, then find_output() is called when accessing the property
         self._finished = val
 
-    def __init__(self, appname, *args, execute=True, image_dic=None, otb_stdout=True, **kwargs):
+    def __init__(self, appname, *args, execute=True, image_dic=None, otb_stdout=True, propagate_pixel_type=False, **kwargs):
         """
         Enables to run an otb app as a oneliner. Handles in-memory connection between apps
         :param appname: name of the app, e.g. 'Smoothing'
@@ -426,6 +442,9 @@ class App(otbObject):
                           the result of app.ExportImage(). Use it when the app takes a numpy array as input.
                           See this related issue for why it is necessary to keep reference of object:
                           https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
+        :param otb_stdout: whether to print logs of the app
+        :param propagate_pixel_type: Propagate the pixel type from inputs to output. If several inputs, the type of an
+                                     arbitrary input is considered. If several outputs, all will have the same type.
         :param kwargs: keyword arguments e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
         """
         self.appname = appname
@@ -446,6 +465,8 @@ class App(otbObject):
         # Run app, write output if needed, update `finished` property
         if execute:
             self.execute()
+        if propagate_pixel_type:
+            self.__propagate_pixel_type()
         # 'Saving' outputs as attributes, i.e. so that they can be accessed like that: App.out
         # Also, thanks to __getitem__ method, the outputs can be accessed as App["out"]. This is useful when the key
         # contains reserved characters such as a point eg "io.out"
@@ -587,6 +608,21 @@ class App(otbObject):
         else:
             self.app.SetParameterValue(param, obj)
 
+    def __propagate_pixel_type(self):
+        """Propagate the pixel type from inputs to output. If several inputs, the type of an arbitrary input
+           is considered. If several outputs, all outputs will have the same type."""
+        pixel_type = None
+        for param in self.parameters.values():
+            try:
+                pixel_type = get_pixel_type(param)
+            except TypeError:
+                pass
+        if not pixel_type:
+            logger.warning(f"{self.name}: Could not propagate pixel type from inputs to output, " +
+                           f"no valid input found")
+        else:
+            for out_key in self.output_parameters_keys:
+                self.app.SetParameterOutputImagePixelType(out_key, pixel_type)
 
     def __with_output(self):
         """Check if App has any output parameter key"""
@@ -890,26 +926,27 @@ def get_pixel_type(inp):
     """
     Get the encoding of input image pixels
     :param inp: a filepath, or any pyotb object
-    :return pixel_type: either a dict of pixel types (in case of an App where there are several outputs)
-                        format is like `otbApplication.ImagePixelType_uint8'
+    :return pixel_type: format is like `otbApplication.ImagePixelType_uint8'. For an App with several outputs, only the
+                        pixel type of the first output is returned
+
     """
     if isinstance(inp, str):
         # Executing the app, without printing its log
-        info = App("ReadImageInfo", inp, otb_stdout=False)
-        datatype = info.GetParameterInt("datatype")  # which is such as short, float...
-        dataype_to_pixeltype = {
-            'unsigned_char': 'uint8', 'short': 'int16', 'unsigned_short': 'uint16', 
-            'int': 'int32', 'unsigned_int': 'uint32', 'long': 'int32', 'ulong': 'uint32', 
-            'float': 'float','double': 'double'
-        }
+        try:
+            info = App("ReadImageInfo", inp, otb_stdout=False)
+        except Exception:  # this happens when we pass a str that is not a filepath
+            raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath')
+        datatype = info.GetParameterString("datatype")  # which is such as short, float...
+        dataype_to_pixeltype = {'unsigned_char': 'uint8', 'short': 'int16', 'unsigned_short': 'uint16',
+                                'int': 'int32', 'unsigned_int': 'uint32', 'long': 'int32', 'ulong': 'uint32',
+                                'float': 'float', 'double': 'double'}
         pixel_type = dataype_to_pixeltype[datatype]
         pixel_type = getattr(otb, f'ImagePixelType_{pixel_type}')
-    elif isinstance(inp, (Input, Output, Operation)):
-        pixel_type = inp.GetImageBasePixelType(inp.output_parameter_key)
+    elif isinstance(inp, (Input, Output, Operation, Slicer)):
+        pixel_type = inp.GetParameterOutputImagePixelType(inp.output_parameter_key)
     elif isinstance(inp, App):
-        if len(inp.output_parameters_keys) > 1:
-            pixel_type = inp.GetImageBasePixelType(inp.output_parameters_keys[0])
-        else:
-            pixel_type = {key: inp.GetImageBasePixelType(key) for key in inp.output_parameters_keys}
+        pixel_type = inp.GetParameterOutputImagePixelType(inp.output_parameters_keys[0])
+    else:
+        raise TypeError(f'Could not get the pixel type. Not supported type: {inp}')
 
     return pixel_type
