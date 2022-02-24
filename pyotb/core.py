@@ -240,15 +240,15 @@ class otbObject(ABC):
             output_parameter_key = self.output_parameter_key
         else:  # this is for App
             output_parameter_key = self.output_parameters_keys[0]
-
-        array = self.app.ExportImage(output_parameter_key)['array']
+        # we make a copy to avoid some segfault if the reference to app is lost
+        array = self.app.ExportImage(output_parameter_key)['array'].copy()
         if propagate_pixel_type:
             otb_pixeltype = get_pixel_type(self)
             otb_pixeltype_to_np_pixeltype = {0: np.uint8, 1: np.int16, 2: np.uint16, 3: np.int32, 4: np.uint32,
                                              5: np.float32, 6: np.float64}
             np_pixeltype = otb_pixeltype_to_np_pixeltype[otb_pixeltype]
             array = array.astype(np_pixeltype)
-        return array.copy()
+        return array
 
     def __array__(self):
         """
