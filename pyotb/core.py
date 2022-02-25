@@ -617,7 +617,7 @@ class App(otbObject):
                 pixel_type = get_pixel_type(param)
             except TypeError:
                 pass
-        if pixel_type is not None:  # we use this syntax because pixel_type can be equal to 0
+        if pixel_type is None:  # we use this syntax because pixel_type can be equal to 0
             logger.warning(f"{self.name}: Could not propagate pixel type from inputs to output, " +
                            f"no valid input found")
         else:
