@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
+import inspect
 import os
+import sys
+import textwrap
 import uuid
 import logging
-import multiprocessing
 from collections import Counter
 
 from .core import (App, Input, Operation, logicalOperation, get_nbchannels)
+from .apps import TensorflowModelServe
 logger = logging.getLogger()
 """
 Contains several useful functions base on pyotb
@@ -336,70 +339,102 @@ def run_tf_function(func):
     :return wrapper: a function that returns a pyotb object
     """
 
-    def create_and_save_tf_model(output_dir, *inputs):
+    def get_tf_pycmd(output_dir, channels, scalar_inputs):
         """
-        Simply creates the TF model and save it to temporary location.
-        //!\\ Currently incompatible with OTBTF, to be run inside a multiprocessing.Process
-        //!\\ Does not work if OTBTF has been used previously in the script
+        Create a string containing all python instructions necessary to create and save the Keras model
 
         :param output_dir: directory under which to save the model
-        :param inputs: a list of pyotb objects or int/float
+        :param channels: list of raster channels (int). Contain `None` entries for non-raster inputs
+        :param scalar_inputs: list of scalars (int/float). Contain `None` entries for non-scalar inputs
         """
-        import tensorflow as tf
-        # Change the raster inputs to TF inputs
-        model_inputs = []  # model inputs corresponding to rasters
-        tf_inputs = []  # inputs for the TF function corresponding to all inputs (rasters, int...)
-        for input in inputs:
-            if not isinstance(input, (int, float)):
-                nb_bands = input.shape[-1]
-                input = tf.keras.Input((None, None, nb_bands))
-                model_inputs.append(input)
-            tf_inputs.append(input)
+        # Getting the string definition of the tf function (e.g. "def multiply(x1, x2):...")
+        # TODO: Not entirely foolproof (interactive sessions don't work), maybe we should use dill instead?
+        func_def_str = inspect.getsource(func)
+        func_name = func.__name__
 
-        # call the TF operations on theses inputs
-        output = func(*tf_inputs)
+        create_and_save_model_str = func_def_str
+        create_and_save_model_str += textwrap.dedent(f"""
+            import tensorflow as tf
 
-        # Create and save the .pb model
-        model = tf.keras.Model(inputs=model_inputs, outputs=output)
-        model.save(output_dir)
+            model_inputs = []
+            tf_inputs = []
+            for channel, scalar_input in zip({channels}, {scalar_inputs}):
+                if channel:
+                    input = tf.keras.Input((None, None, channel))
+                    tf_inputs.append(input)
+                    model_inputs.append(input)
+                else:
+                    if isinstance(scalar_input, int):  # TF doesn't like mixing float and int
+                        scalar_input = float(scalar_input)
+                    tf_inputs.append(scalar_input)
+
+            output = {func_name}(*tf_inputs)
+            
+            # Create and save the .pb model
+            model = tf.keras.Model(inputs=model_inputs, outputs=output)
+            model.save("{output_dir}")
+            """)
+
+        return create_and_save_model_str
+
 
     def wrapper(*inputs, tmp_dir='/tmp'):
         """
-        For the user point of view, this function simply applies some TF operations to some rasters.
-        Underlyingly, it saveq a .pb model that describe the TF operations, then creates an OTB ModelServe application
+        For the user point of view, this function simply applies some TensorFlow operations to some rasters.
+        Underlyingly, it saves a .pb model that describe the TF operations, then creates an OTB ModelServe application
         that applies this .pb model to the actual inputs.
 
         :param inputs: a list of pyotb objects, filepaths or int/float numbers
         :param tmp_dir: directory where temporary models can be written
         :return: a pyotb object, output of TensorFlowModelServe
         """
-        # Change potential string filepaths to pyotb objects
-        inputs = [Input(input) if isinstance(input, str) and not isinstance(input, (int, float)) else input for input in
-                  inputs]
+        # Get infos about the inputs
+        channels = []
+        scalar_inputs = []
+        raster_inputs = []
+        for input in inputs:
+            try:
+                channel = get_nbchannels(input)
+                channels.append(channel)
+                scalar_inputs.append(None)
+                raster_inputs.append(input)
+            except Exception:
+                channels.append(None)
+                scalar_inputs.append(input)
 
-        # Create and save the model. This is executed **inside an independent process** because (as of 2021-11),
+        # Create and save the model. This is executed **inside an independent process** because (as of 2022-03),
         # tensorflow python library and OTBTF are incompatible
         out_savedmodel = os.path.join(tmp_dir, f'tmp_otbtf_model_{uuid.uuid4()}')
-        p = multiprocessing.Process(target=create_and_save_tf_model, args=(out_savedmodel, *inputs,))
-        p.start()
-        p.join()
+        pycmd = get_tf_pycmd(out_savedmodel, channels, scalar_inputs)
+        cmd_args = [sys.executable, "-c", pycmd]
+        env = os.environ.copy()
+        try:
+            import subprocess
+            p = subprocess.run(cmd_args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            print('stderr', p.stderr.decode())
+            print('stdout', p.stdout.decode())
+        except subprocess.SubprocessError:
+            logger.debug("Failed to call subprocess")
+        if not os.path.isdir(out_savedmodel):
+            logger.info("Failed to save the model")
 
-        # Getting the nb of inputs and setting it for OTBTF
-        raster_inputs = [input for input in inputs if not isinstance(input, (int, float))]
-        nb_model_inputs = len(raster_inputs)
-        os.environ['OTB_TF_NSOURCES'] = str(nb_model_inputs)
-
-        # Run the OTBTF model serving application
-        model_serve = App('TensorflowModelServe',
-                          {'model.dir': out_savedmodel,
-                           'optim.disabletiling': 'on', 'model.fullyconv': 'on'}, execute=False)
-
+        # Initialize the OTBTF model serving application
+        model_serve = TensorflowModelServe({'model.dir': out_savedmodel, 'optim.disabletiling': 'on',
+                                            'model.fullyconv': 'on'}, n_sources=len(raster_inputs), execute=False)
+        # Set parameters and execute
         for i, input in enumerate(raster_inputs):
             model_serve.set_parameters({f'source{i + 1}.il': [input]})
-
         model_serve.Execute()
         # TODO: handle the deletion of the temporary model ?
 
         return model_serve
 
     return wrapper
+
+
+if __name__ == '__main__':
+    def f(x1, x2):
+        import tensorflow as tf
+        return tf.multiply(x1, x2)
+
+    run_tf_function(f)(2, '/home/nicolas/data/DEM/T31TCJ.tif')
