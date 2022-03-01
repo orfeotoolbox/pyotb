@@ -83,6 +83,26 @@ class {name}(App):
     def __init__(self, *args, **kwargs):
         super().__init__('{name}', *args, **kwargs)
 """
-# Here we could customize the template and overwrite special methods depending on application
 for _app in AVAILABLE_APPLICATIONS:
+    # Default behavior for any OTB application
     exec(_code_template.format(name=_app))
+
+    # Customize the behavior for TensorflowModelServe application. The user doesn't need to set the env variable
+    # `OTB_TF_NSOURCES`, it is handled in pyotb
+    if _app == 'TensorflowModelServe':
+        class TensorflowModelServe(App):
+            def set_nb_sources(self, *args, n_sources=None):
+                """
+                Set the number of sources of TensorflowModelServe. Can be either user-defined or deduced from the args
+                """
+                if n_sources:
+                    os.environ['OTB_TF_NSOURCES'] = str(int(n_sources))
+                else:
+                    # Retrieving the number of `source#.il` parameters
+                    params_dic = {k: v for arg in args if isinstance(arg, dict) for k, v in arg.items()}
+                    n_sources = len([k for k in params_dic if k.startswith('source') and k.endswith('.il')])
+                    os.environ['OTB_TF_NSOURCES'] = str(n_sources)
+
+            def __init__(self, *args, n_sources=None, **kwargs):
+                self.set_nb_sources(*args, n_sources=n_sources)
+                super().__init__('TensorflowModelServe', *args, **kwargs)
