@@ -291,6 +291,33 @@ Limitations :
 - It is currently not possible to chain several `@pyotb.run_tf_function` functions
 
 
+## Some examples
+### Compute the mean of several rasters, taking into account NoData
+Let's consider we have at disposal 73 NDVI rasters and their 73 binary cloud masks (where cloud is 1 and clear pixel is 0), corresponding to 73 dates of a year.
+
+Goal: compute the temporal mean of the NDVIs, excluding cloudy pixels. Piece of code to achieve that:
+
+```python
+import pyotb
+
+masks = [pyotb.Input(path) for path in mask_paths]
+
+# For each pixel location, summing all valid NDVI values 
+summed = sum([pyotb.where(mask != 1, ndvi, 0) for mask, ndvi in zip(masks, ndvi_paths)])
+
+# Checking the generated BandMath expression
+summed.exp  # returns a very long exp: ((0 + ((im1b1 != 1) ? im2b1 : 0)) + ((im3b1 != 1) ? im4b1 : 0)) + ... + ((im145b1 != 1) ? im146b1 : 0))
+
+# For each pixel location, getting the count of valid pixels
+count = sum([pyotb.where(mask == 1, 0, 1) for mask in masks])
+
+mean = summed / count 
+mean.write('ndvi_annual_mean.tif')
+
+
+```
+
+
 
 
 
