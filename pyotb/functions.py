@@ -340,7 +340,7 @@ def run_tf_function(func):
     try:
         from .apps import TensorflowModelServe
     except ImportError:
-        raise Exception('Could not run Tensorflow function, failed to import TensorflowModelServe. Check that you '
+        raise Exception('Could not run Tensorflow function: failed to import TensorflowModelServe. Check that you '
                         'have OTBTF configured (https://github.com/remicres/otbtf#how-to-install)')
 
     def get_tf_pycmd(output_dir, channels, scalar_inputs):
@@ -417,9 +417,7 @@ def run_tf_function(func):
         cmd_args = [sys.executable, "-c", pycmd]
         try:
             import subprocess
-            p = subprocess.run(cmd_args, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            print('stderr', p.stderr.decode())
-            print('stdout', p.stdout.decode())
+            subprocess.run(cmd_args, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.SubprocessError:
             logger.debug("Failed to call subprocess")
         if not os.path.isdir(out_savedmodel):
