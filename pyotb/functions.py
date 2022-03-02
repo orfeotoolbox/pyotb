@@ -8,7 +8,6 @@ import logging
 from collections import Counter
 
 from .core import (App, Input, Operation, logicalOperation, get_nbchannels)
-from .apps import TensorflowModelServe
 logger = logging.getLogger()
 """
 Contains several useful functions base on pyotb
@@ -324,7 +323,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
 
 def run_tf_function(func):
     """
-    This decorator enables using a function that calls some TF operations, with pyotb object as inputs.
+    This function enables using a function that calls some TF operations, with pyotb object as inputs.
 
     For example, you can write a function that uses TF operations like this :
         @run_tf_function
@@ -338,6 +337,11 @@ def run_tf_function(func):
     :param func: function taking one or several inputs and returning *one* output
     :return wrapper: a function that returns a pyotb object
     """
+    try:
+        from .apps import TensorflowModelServe
+    except ImportError:
+        raise Exception('Could not run Tensorflow function, failed to import TensorflowModelServe. Check that you '
+                        'have OTBTF configured (https://github.com/remicres/otbtf#how-to-install)')
 
     def get_tf_pycmd(output_dir, channels, scalar_inputs):
         """
