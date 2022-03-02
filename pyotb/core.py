@@ -617,7 +617,7 @@ class App(otbObject):
                 pixel_type = get_pixel_type(param)
             except TypeError:
                 pass
-        if not pixel_type:
+        if pixel_type is None:  # we use this syntax because pixel_type can be equal to 0
             logger.warning(f"{self.name}: Could not propagate pixel type from inputs to output, " +
                            f"no valid input found")
         else:
@@ -926,8 +926,8 @@ def get_pixel_type(inp):
     """
     Get the encoding of input image pixels
     :param inp: a filepath, or any pyotb object
-    :return pixel_type: format is like `otbApplication.ImagePixelType_uint8'. For an App with several outputs, only the
-                        pixel type of the first output is returned
+    :return pixel_type: format is like `otbApplication.ImagePixelType_uint8', which actually is an int. For an App
+                        with several outputs, only the pixel type of the first output is returned
 
     """
     if isinstance(inp, str):
