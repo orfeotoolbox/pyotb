@@ -287,8 +287,8 @@ Advantages :
 - Can be integrated in OTB pipelines
 
 Limitations :
-- It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues between Tensorflow and OTBTF
-- It is currently not possible to chain several `@pyotb.run_tf_function` functions
+- It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues 
+between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script where pyotb has been imported
 
 
 ## Some examples
@@ -305,17 +305,17 @@ masks = [pyotb.Input(path) for path in mask_paths]
 # For each pixel location, summing all valid NDVI values 
 summed = sum([pyotb.where(mask != 1, ndvi, 0) for mask, ndvi in zip(masks, ndvi_paths)])
 
-# Checking the generated BandMath expression
-summed.exp  # returns a very long exp: ((0 + ((im1b1 != 1) ? im2b1 : 0)) + ((im3b1 != 1) ? im4b1 : 0)) + ... + ((im145b1 != 1) ? im146b1 : 0))
+# Printing the generated BandMath expression
+print(summed.exp)  # this returns a very long exp: (0 + ((im1b1 != 1) ? im2b1 : 0)) + ((im3b1 != 1) ? im4b1 : 0)) + ... + ((im145b1 != 1) ? im146b1 : 0)))
 
 # For each pixel location, getting the count of valid pixels
 count = sum([pyotb.where(mask == 1, 0, 1) for mask in masks])
 
-mean = summed / count 
+mean = summed / count  # BandMath exp of this is very long: (0 + ((im1b1 != 1) ? im2b1 : 0)) + ... + ((im145b1 != 1) ? im146b1 : 0))) / (0 + ((im1b1 == 1) ? 0 : 1)) + ((im3b1 == 1) ? 0 : 1)) + ... + ((im145b1 == 1) ? 0 : 1)))
 mean.write('ndvi_annual_mean.tif')
-
-
 ```
+
+Note that no actual computation is executed before the last line where the result is written to disk.
 
 
 
