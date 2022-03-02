@@ -295,7 +295,7 @@ between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script 
 ### Compute the mean of several rasters, taking into account NoData
 Let's consider we have at disposal 73 NDVI rasters and their 73 binary cloud masks (where cloud is 1 and clear pixel is 0), corresponding to 73 dates of a year.
 
-Goal: compute the temporal mean of the NDVIs, excluding cloudy pixels. Piece of code to achieve that:
+Goal: compute the temporal mean (keeping the spatial dimension) of the NDVIs, excluding cloudy pixels. Piece of code to achieve that:
 
 ```python
 import pyotb
