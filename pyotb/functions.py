@@ -351,12 +351,15 @@ def run_tf_function(func):
         :param channels: list of raster channels (int). Contain `None` entries for non-raster inputs
         :param scalar_inputs: list of scalars (int/float). Contain `None` entries for non-scalar inputs
         """
+
         # Getting the string definition of the tf function (e.g. "def multiply(x1, x2):...")
-        # TODO: Not entirely foolproof (interactive sessions don't work), maybe we should use dill instead?
+        # TODO: maybe not entirely foolproof, maybe we should use dill instead? but it would add a dependency
         func_def_str = inspect.getsource(func)
         func_name = func.__name__
 
         create_and_save_model_str = func_def_str
+
+        # Adding the instructions to create the model and save it to output dir
         create_and_save_model_str += textwrap.dedent(f"""
             import tensorflow as tf
 
@@ -381,12 +384,11 @@ def run_tf_function(func):
 
         return create_and_save_model_str
 
-
     def wrapper(*inputs, tmp_dir='/tmp'):
         """
         For the user point of view, this function simply applies some TensorFlow operations to some rasters.
         Underlyingly, it saves a .pb model that describe the TF operations, then creates an OTB ModelServe application
-        that applies this .pb model to the actual inputs.
+        that applies this .pb model to the inputs.
 
         :param inputs: a list of pyotb objects, filepaths or int/float numbers
         :param tmp_dir: directory where temporary models can be written
@@ -398,11 +400,13 @@ def run_tf_function(func):
         raster_inputs = []
         for input in inputs:
             try:
+                # this is for raster input
                 channel = get_nbchannels(input)
                 channels.append(channel)
                 scalar_inputs.append(None)
                 raster_inputs.append(input)
             except Exception:
+                # this is for other inputs (float, int)
                 channels.append(None)
                 scalar_inputs.append(input)
 
@@ -411,10 +415,9 @@ def run_tf_function(func):
         out_savedmodel = os.path.join(tmp_dir, f'tmp_otbtf_model_{uuid.uuid4()}')
         pycmd = get_tf_pycmd(out_savedmodel, channels, scalar_inputs)
         cmd_args = [sys.executable, "-c", pycmd]
-        env = os.environ.copy()
         try:
             import subprocess
-            p = subprocess.run(cmd_args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p = subprocess.run(cmd_args, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             print('stderr', p.stderr.decode())
             print('stdout', p.stdout.decode())
         except subprocess.SubprocessError:
@@ -434,11 +437,3 @@ def run_tf_function(func):
         return model_serve
 
     return wrapper
-
-
-if __name__ == '__main__':
-    def f(x1, x2):
-        import tensorflow as tf
-        return tf.multiply(x1, x2)
-
-    run_tf_function(f)(2, '/home/nicolas/data/DEM/T31TCJ.tif')
