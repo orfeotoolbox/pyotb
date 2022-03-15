@@ -9,7 +9,7 @@ Requirements:
 pip install pyotb --upgrade
 ```
 
-For Python>=3.6, latest version available is pyotb 1.3.1. For Python 3.5, latest version available is pyotb 1.2.2
+For Python>=3.6, latest version available is pyotb 1.3.2. For Python 3.5, latest version available is pyotb 1.2.2
 
 ## Quickstart: running an OTB app as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.
@@ -293,25 +293,26 @@ between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script 
 
 ## Some examples
 ### Compute the mean of several rasters, taking into account NoData
-Let's consider we have at disposal 73 NDVI rasters and their 73 binary cloud masks (where cloud is 1 and clear pixel is 0), corresponding to 73 dates of a year.
+Let's consider we have at disposal 73 NDVI rasters for a year, where clouds have been masked with NoData (nodata value of -10 000 for example).
 
-Goal: compute the temporal mean (keeping the spatial dimension) of the NDVIs, excluding cloudy pixels. Piece of code to achieve that:
+Goal: compute the mean across time (keeping the spatial dimension) of the NDVIs, excluding cloudy pixels. Piece of code to achieve that:
 
 ```python
 import pyotb
 
-masks = [pyotb.Input(path) for path in mask_paths]
+nodata = -10000
+ndvis = [pyotb.Input(path) for path in ndvi_paths]
 
 # For each pixel location, summing all valid NDVI values 
-summed = sum([pyotb.where(mask != 1, ndvi, 0) for mask, ndvi in zip(masks, ndvi_paths)])
+summed = sum([pyotb.where(ndvi != nodata, ndvi, 0) for ndvi in ndvis])
 
 # Printing the generated BandMath expression
-print(summed.exp)  # this returns a very long exp: (0 + ((im1b1 != 1) ? im2b1 : 0)) + ((im3b1 != 1) ? im4b1 : 0)) + ... + ((im145b1 != 1) ? im146b1 : 0)))
+print(summed.exp)  # this returns a very long exp: "0 + ((im1b1 != -10000) ? im1b1 : 0) + ((im2b1 != -10000) ? im2b1 : 0) + ... + ((im73b1 != -10000) ? im73b1 : 0)"
 
 # For each pixel location, getting the count of valid pixels
-count = sum([pyotb.where(mask == 1, 0, 1) for mask in masks])
+count = sum([pyotb.where(ndvi == nodata, 0, 1) for ndvi in ndvis])
 
-mean = summed / count  # BandMath exp of this is very long: (0 + ((im1b1 != 1) ? im2b1 : 0)) + ... + ((im145b1 != 1) ? im146b1 : 0))) / (0 + ((im1b1 == 1) ? 0 : 1)) + ((im3b1 == 1) ? 0 : 1)) + ... + ((im145b1 == 1) ? 0 : 1)))
+mean = summed / count  # BandMath exp of this is very long: "(0 + ((im1b1 != -10000) ? im1b1 : 0) + ... + ((im73b1 != -10000) ? im73b1 : 0)) / (0 + ((im1b1 == -10000) ? 0 : 1) + ... + ((im73b1 == -10000) ? 0 : 1))"
 mean.write('ndvi_annual_mean.tif')
 ```
 
