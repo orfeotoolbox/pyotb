@@ -108,7 +108,7 @@ for _app in AVAILABLE_APPLICATIONS:
                     # Retrieving the number of `source#.il` parameters
                     params_dic = {k: v for arg in args if isinstance(arg, dict) for k, v in arg.items()}
                     n_sources = len([k for k in params_dic if k.startswith('source') and k.endswith('.il')])
-                    if n_sources > 1:
+                    if n_sources >= 1:
                         os.environ['OTB_TF_NSOURCES'] = str(n_sources)
 
             def __init__(self, *args, n_sources=None, **kwargs):
