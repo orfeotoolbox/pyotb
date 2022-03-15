@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+This module is the core of pyotb
+"""
 import logging
 from abc import ABC
 from pathlib import Path
@@ -14,6 +17,7 @@ class otbObject(ABC):
     Abstract class that gathers common operations for any OTB in-memory raster.
     All child of this class must have an `app` attribute that is an OTB application.
     """
+
     @property
     def shape(self):
         """
@@ -39,7 +43,7 @@ class otbObject(ABC):
                                    Will be used for all outputs
         :param pixel_type: Can be : - dictionary {output_parameter_key: pixeltype} when specifying for several outputs
                                     - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
-                                      outputs, all outputs are writen with this unique type
+                                      outputs, all outputs are written with this unique type
                            Valid pixel types are double, float, uint8, uint16, uint32, int16, int32, float, double,
                            cint16, cint32, cfloat, cdouble.
         :param is_intermediate: WARNING: not fully tested. whether the raster we want to write is intermediate,
@@ -52,7 +56,7 @@ class otbObject(ABC):
             if isinstance(arg, dict):
                 kwargs.update(arg)
             elif isinstance(arg, str) and kwargs:
-                logger.warning(f'{self.name}: Keyword arguments specified, ignoring argument "{arg}"')
+                logger.warning('%s: Keyword arguments specified, ignoring argument "%s"', self.name, arg)
             elif isinstance(arg, str):
                 if hasattr(self, 'output_parameter_key'):  # this is for Output, Operation...
                     output_parameter_key = self.output_parameter_key
@@ -85,8 +89,8 @@ class otbObject(ABC):
                     if not out_fn.endswith('?'):
                         out_fn += "?"
                     out_fn += filename_extension
-                    logger.info(f'{self.name}: Using extended filename for output.')
-                logger.info(f'{self.name}: write output file "{output_parameter_key}" to {out_fn}')
+                    logger.info('%s: Using extended filename for output.', self.name)
+                logger.info('%s: write output file "%s" to %s', self.name, output_parameter_key, out_fn)
                 self.app.SetParameterString(output_parameter_key, out_fn)
 
                 if output_parameter_key in pixel_types:
@@ -103,124 +107,206 @@ class otbObject(ABC):
         - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
                                                           selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
                                                           selecting 1000x1000 subset : object[:1000, :1000]
+        :param key: attribute key
+        :return: attribute or Slicer
         """
         # Accessing string attributes
         if isinstance(key, str):
             return self.__dict__.get(key)
 
         # Slicing
-        elif not isinstance(key, tuple) or (isinstance(key, tuple) and len(key) < 2):
-            raise ValueError('`{}`cannot be interpreted as valid slicing. Slicing should be 2D or 3D.'.format(key))
-        elif isinstance(key, tuple) and len(key) == 2:
-            # adding a 3rd dimension
+        if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
+            raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
+        if isinstance(key, tuple) and len(key) == 2:
+            # Adding a 3rd dimension
             key = key + (slice(None, None, None),)
         (cols, rows, channels) = key
         return Slicer(self, rows, cols, channels)
 
     def __getattr__(self, name):
         """
-        This method is called when the default attribute access fails. We choose to try to access the attribute of
-        self.app. Thus, any method of otbApplication can be used transparently on otbObject objects,
-        e.g. SetParameterOutputImagePixelType() or ExportImage() work
+        This method is called when the default attribute access fails. We try 2 things:
+        - 1) access the attribute `name` of self.app. Thus, any method of otbApplication can be used transparently on
+             otbObject objects, e.g. SetParameterOutputImagePixelType() or ExportImage() work
+        - 2) if the previous failed, we try to access the ParameterValue of `name`. It is useful for applications such
+             as PixelValue or CompareImages to access scalar "output" parameters
+        :param name: attribute name
+        :return: attribute
         """
-        return getattr(self.app, name)
+        try:
+            res = getattr(self.app, name)
+        except AttributeError:
+            try:
+                # TODO: how to access scalar output parameter whose key contains a `.` ?
+                res = self.app.GetParameterValue(name)
+            except RuntimeError as e:
+                raise AttributeError(f'{self.name}: Could not find attribute `{name}`') from e
+
+        return res
 
     def __add__(self, other):
-        """Overrides the default addition and flavours it with BandMathX"""
+        """
+        Overrides the default addition and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self + other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('+', self, other)
 
     def __sub__(self, other):
-        """Overrides the default subtraction and flavours it with BandMathX"""
+        """
+        Overrides the default subtraction and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self - other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('-', self, other)
 
     def __mul__(self, other):
-        """Overrides the default subtraction and flavours it with BandMathX"""
+        """
+        Overrides the default subtraction and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self * other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('*', self, other)
 
     def __truediv__(self, other):
-        """Overrides the default subtraction and flavours it with BandMathX"""
+        """
+        Overrides the default subtraction and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self / other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('/', self, other)
 
     def __radd__(self, other):
-        """Overrides the default reverse addition and flavours it with BandMathX"""
+        """
+        Overrides the default reverse addition and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: other + self
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('+', other, self)
 
     def __rsub__(self, other):
-        """Overrides the default subtraction and flavours it with BandMathX"""
+        """
+        Overrides the default subtraction and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: other - self
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('-', other, self)
 
     def __rmul__(self, other):
-        """Overrides the default multiplication and flavours it with BandMathX"""
+        """
+        Overrides the default multiplication and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: other * self
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('*', other, self)
 
     def __rtruediv__(self, other):
-        """Overrides the default division and flavours it with BandMathX"""
+        """
+        Overrides the default division and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: other / self
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation('/', other, self)
 
     def __abs__(self):
-        """Overrides the default abs operator and flavours it with BandMathX"""
+        """
+        Overrides the default abs operator and flavours it with BandMathX
+        :return: abs(self)
+        """
         return Operation('abs', self)
 
     def __ge__(self, other):
-        """Overrides the default greater or equal and flavours it with BandMathX"""
+        """
+        Overrides the default greater or equal and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self >= other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('>=', self, other)
 
     def __le__(self, other):
-        """Overrides the default less or equal and flavours it with BandMathX"""
+        """
+        Overrides the default less or equal and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self <= other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('<=', self, other)
 
     def __gt__(self, other):
-        """Overrides the default greater operator and flavours it with BandMathX"""
+        """
+        Overrides the default greater operator and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self > other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('>', self, other)
 
     def __lt__(self, other):
-        """Overrides the default less operator and flavours it with BandMathX"""
+        """
+        Overrides the default less operator and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self < other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('<', self, other)
 
     def __eq__(self, other):
-        """Overrides the default eq operator and flavours it with BandMathX"""
+        """
+        Overrides the default eq operator and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self == other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('==', self, other)
 
     def __ne__(self, other):
-        """Overrides the default different operator and flavours it with BandMathX"""
+        """
+        Overrides the default different operator and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self != other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('!=', self, other)
 
     def __or__(self, other):
-        """Overrides the default or operator and flavours it with BandMathX"""
+        """
+        Overrides the default or operator and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self || other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('||', self, other)
 
     def __and__(self, other):
-        """Overrides the default and operator and flavours it with BandMathX"""
+        """
+        Overrides the default and operator and flavours it with BandMathX
+        :param other: Another otbObject
+        :return: self && other
+        """
         if isinstance(other, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return logicalOperation('&&', self, other)
@@ -229,11 +315,16 @@ class otbObject(ABC):
     #  e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
 
     def __hash__(self):
+        """
+        :return: self hash
+        """
         return id(self)
 
     def to_numpy(self, propagate_pixel_type=False):
         """
         Export a pyotb object to numpy array
+        :param propagate_pixel_type: when set to True, the numpy array is created with the same pixel type as
+        the otbObject first output. Default is False.
         :return: a numpy array
         """
         if hasattr(self, 'output_parameter_key'):  # this is for Input, Output, Operation, Slicer
@@ -272,15 +363,15 @@ class otbObject(ABC):
             # Converting potential pyotb inputs to arrays
             arrays = []
             image_dic = None
-            for input in inputs:
-                if isinstance(input, (float, int, np.ndarray, np.generic)):
-                    arrays.append(input)
-                elif isinstance(input, (App, Input, Output, Operation, Slicer)):
+            for inp in inputs:
+                if isinstance(inp, (float, int, np.ndarray, np.generic)):
+                    arrays.append(inp)
+                elif isinstance(inp, (App, Input, Output, Operation, Slicer)):
                     if hasattr(self, 'output_parameter_key'):  # this is for Input, Output, Operation, Slicer
                         output_parameter_key = self.output_parameter_key
                     else:  # this is for App
                         output_parameter_key = self.output_parameters_keys[0]
-                    image_dic = input.app.ExportImage(output_parameter_key)
+                    image_dic = inp.app.ExportImage(output_parameter_key)
                     array = image_dic['array']
                     arrays.append(array)
                 else:
@@ -301,30 +392,31 @@ class otbObject(ABC):
             app.Execute()
             return app
 
-        else:
-            return NotImplemented
+        return NotImplemented
 
 
 class Slicer(otbObject):
-    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
+    """
+    Slicer objects i.e. when we call something like raster[:, :, 2] from Python
+    """
 
-    def __init__(self, input, rows, cols, channels):
+    def __init__(self, x, rows, cols, channels):
         """
         Create a slicer object, that can be used directly for writing or inside a BandMath :
         - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
         - in case the user only wants to extract one band, an expression such as "im1b#"
-        :param input:
-        :param rows:
-        :param cols:
-        :param channels:
+        :param x: input
+        :param rows: rows slicing (e.g. 100:2000)
+        :param cols: columns slicing (e.g. 100:2000)
+        :param channels: channels, can be slicing, list or int
         """
         # Initialize the app that will be used for writing the slicer
-        app = App('ExtractROI', {"in": input, 'mode': 'extent'}, propagate_pixel_type=True)
+        app = App('ExtractROI', {"in": x, 'mode': 'extent'}, propagate_pixel_type=True)
         self.output_parameter_key = 'out'
         self.name = 'Slicer'
 
         # Channel slicing
-        nb_channels = get_nbchannels(input)
+        nb_channels = get_nbchannels(x)
         if channels != slice(None, None, None):
             # if needed, converting int to list
             if isinstance(channels, int):
@@ -371,35 +463,49 @@ class Slicer(otbObject):
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
         if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
             self.one_band_sliced = channels[0] + 1  # OTB convention: channels start at 1
-            self.input = input
+            self.input = x
 
 
 class Input(otbObject):
     """
     Class for transforming a filepath to pyOTB object
     """
+
     def __init__(self, filepath):
+        """
+        :param filepath: raster file path
+        """
         self.app = App('ExtractROI', filepath, propagate_pixel_type=True).app
         self.output_parameter_key = 'out'
         self.filepath = filepath
         self.name = f'Input from {filepath}'
 
     def __str__(self):
-        return '<pyotb.Input object from {}>'.format(self.filepath)
+        """
+        :return: a str
+        """
+        return f'<pyotb.Input object from {self.filepath}>'
 
 
 class Output(otbObject):
     """
     Class for output of an app
     """
+
     def __init__(self, app, output_parameter_key):
+        """
+        :param app: The OTB application
+        :param output_parameter_key: Output parameter key
+        """
         self.app = app  # keeping a reference of the OTB app
         self.output_parameter_key = output_parameter_key
         self.name = f'Output {output_parameter_key} from {self.app.GetName()}'
 
     def __str__(self):
-        return '<pyotb.Output {} object, id {}>'.format(self.app.GetName(), id(self))
-
+        """
+        :return: a str
+        """
+        return f'<pyotb.Output {self.app.GetName()} object, id {id(self)}>'
 
 
 class App(otbObject):
@@ -407,28 +513,42 @@ class App(otbObject):
     Class of an OTB app
     """
     _name = ""
+
     @property
     def name(self):
-        """Property to store a custom app name that will be displayed in logs"""
+        """
+        :return: name or appname
+        """
         return self._name or self.appname
 
     @name.setter
     def name(self, val):
+        """
+        set name
+        :param val: new name
+        """
         self._name = val
 
     @property
     def finished(self):
-        """Property to store whether or not App has been executed"""
+        """
+        Property to store whether App has been executed
+        :return: True or False
+        """
         if self._finished and self.find_output():
             return True
         return False
 
     @finished.setter
     def finished(self, val):
-        # This will only store if app has been excuted, then find_output() is called when accessing the property
+        """
+        This will only store if app has been executed, then find_output() is called when accessing the property
+        :param val: new status
+        """
         self._finished = val
 
-    def __init__(self, appname, *args, execute=True, image_dic=None, otb_stdout=True, propagate_pixel_type=False, **kwargs):
+    def __init__(self, appname, *args, execute=True, image_dic=None, otb_stdout=True, propagate_pixel_type=False,
+                 **kwargs):
         """
         Enables to run an otb app as a oneliner. Handles in-memory connection between apps
         :param appname: name of the app, e.g. 'Smoothing'
@@ -460,7 +580,7 @@ class App(otbObject):
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         else:
-            logger.warning(f"{self.name}: No parameters where provided. Use App.set_parameters() then App.execute()")
+            logger.warning("%s: No parameters where provided. Use App.set_parameters() then App.execute()", self.name)
             execute = False
         # Run app, write output if needed, update `finished` property
         if execute:
@@ -479,7 +599,7 @@ class App(otbObject):
         Execute with appropriate App method and outputs to disk if needed"
         :return: boolean flag that indicate if command executed with success
         """
-        logger.debug(f"{self.name}: run execute() with parameters={self.parameters}")
+        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
         try:
             if self.__with_output():
                 self.app.ExecuteAndWriteOutput()
@@ -487,7 +607,7 @@ class App(otbObject):
             self.finished = True
         except (RuntimeError, FileNotFoundError) as e:
             raise Exception(f'{self.name}: error during during app execution') from e
-        logger.debug(f"{self.name}: execution succeeded")
+        logger.debug("%s: execution succeeded", self.name)
         return self.finished
 
     def find_output(self):
@@ -496,7 +616,7 @@ class App(otbObject):
         :return: list of files found on disk
         """
         if not self.__with_output():
-            return
+            return None
         files = []
         missing = []
         for param in self.output_parameters_keys:
@@ -507,15 +627,15 @@ class App(otbObject):
                 missing.append(filename)
         if missing:
             for filename in missing:
-                logger.error(f"{self.name}: execution seems to have failed, {filename} does not exist")
-                #raise FileNotFoundError(filename)
+                logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
+                # raise FileNotFoundError(filename)
         return files
 
     def clear(self, parameters=True, memory=False):
         """
-        Free ressources and reset App state
-        :param parameters: to clear settings dictionnary
-        :param memory: to free app ressources in memory
+        Free resources and reset App state
+        :param parameters: to clear settings dictionary
+        :param memory: to free app resources in memory
         """
         if parameters:
             for p in self.parameters:
@@ -524,6 +644,9 @@ class App(otbObject):
             self.app.FreeRessources()
 
     def get_output_parameters_keys(self):
+        """
+        :return: output parameters keys
+        """
         return [param for param in self.app.GetParametersKeys()
                 if self.app.GetParameterType(param) == otb.ParameterType_OutputImage]
 
@@ -582,35 +705,37 @@ class App(otbObject):
             self.app.ConnectImage(param, obj.app, obj.output_parameter_key)
         elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
             outparamkey = [param for param in obj.GetParametersKeys()
-                            if obj.GetParameterType(param) == otb.ParameterType_OutputImage][0]
+                           if obj.GetParameterType(param) == otb.ParameterType_OutputImage][0]
             self.app.ConnectImage(param, obj, outparamkey)
         elif param == 'ram':  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
             self.app.SetParameterInt('ram', int(obj))
         elif not isinstance(obj, list):  # any other parameters (str, int...)
             self.app.SetParameterValue(param, obj)
-        ### Parameter list cases
+        # Parameter list cases
         # Images list
         elif self.__is_key_images_list(param):
             # To enable possible in-memory connections, we go through the list and set the parameters one by one
-            for input in obj:
-                if isinstance(input, App):
-                    self.app.ConnectImage(param, input.app, input.output_parameters_keys[0])
-                elif isinstance(input, (Output, Input, Operation, Slicer)):
-                    self.app.ConnectImage(param, input.app, input.output_parameter_key)
-                elif isinstance(input, otb.Application):  # this is for backward comp with plain OTB
-                    outparamkey = [param for param in input.GetParametersKeys() if
-                                    input.GetParameterType(param) == otb.ParameterType_OutputImage][0]
-                    self.app.ConnectImage(param, input, outparamkey)
+            for inp in obj:
+                if isinstance(inp, App):
+                    self.app.ConnectImage(param, inp.app, inp.output_parameters_keys[0])
+                elif isinstance(inp, (Output, Input, Operation, Slicer)):
+                    self.app.ConnectImage(param, inp.app, inp.output_parameter_key)
+                elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
+                    outparamkey = [param for param in inp.GetParametersKeys() if
+                                   inp.GetParameterType(param) == otb.ParameterType_OutputImage][0]
+                    self.app.ConnectImage(param, inp, outparamkey)
                 else:  # here `input` should be an image filepath
                     # Append `input` to the list, do not overwrite any previously set element of the image list
-                    self.app.AddParameterStringList(param, input)
+                    self.app.AddParameterStringList(param, inp)
         # List of any other types (str, int...)
         else:
             self.app.SetParameterValue(param, obj)
 
     def __propagate_pixel_type(self):
-        """Propagate the pixel type from inputs to output. If several inputs, the type of an arbitrary input
-           is considered. If several outputs, all outputs will have the same type."""
+        """
+        Propagate the pixel type from inputs to output. If several inputs, the type of an arbitrary input
+        is considered. If several outputs, all outputs will have the same type.
+        """
         pixel_type = None
         for param in self.parameters.values():
             try:
@@ -618,18 +743,23 @@ class App(otbObject):
             except TypeError:
                 pass
         if pixel_type is None:  # we use this syntax because pixel_type can be equal to 0
-            logger.warning(f"{self.name}: Could not propagate pixel type from inputs to output, " +
-                           f"no valid input found")
+            logger.warning("%s: Could not propagate pixel type from inputs to output, no valid input found", self.name)
         else:
             for out_key in self.output_parameters_keys:
                 self.app.SetParameterOutputImagePixelType(out_key, pixel_type)
 
     def __with_output(self):
-        """Check if App has any output parameter key"""
-        return any([k in self.parameters for k in self.output_parameters_keys])
+        """
+        Check if App has any output parameter key
+        :return: True or False
+        """
+        return any(k in self.parameters for k in self.output_parameters_keys)
 
     def __is_key_list(self, key):
-        """Check if a key of the App is an input parameter list"""
+        """
+        Check if a key of the App is an input parameter list
+        :return: True or False
+        """
         return self.app.GetParameterType(key) in (
             otb.ParameterType_InputImageList,
             otb.ParameterType_StringList,
@@ -639,7 +769,11 @@ class App(otbObject):
         )
 
     def __is_key_images_list(self, key):
-        """Check if a key of the App is an input parameter image list"""
+        """
+        Check if a key of the App is an input parameter image list
+        :param key: key
+        :return: True or False
+        """
         return self.app.GetParameterType(key) in (
             otb.ParameterType_InputImageList,
             otb.ParameterType_InputFilenameList
@@ -647,13 +781,17 @@ class App(otbObject):
 
     # Special methods
     def __str__(self):
+        """
+        Return a nice str
+        """
         return f'<pyotb.App {self.appname} object id {id(self)}>'
 
 
 class Operation(otbObject):
-    """Class for all arithmetic operations.
+    """
+    Class for all arithmetic operations.
 
-    Example
+    Example:
     -------
     Consider the python expression (input1 + 2 * input2)  >  0.
     This class enables to create a BandMathX app, with expression such as (im2 + 2 * im1) > 0 ? 1 : 0
@@ -686,6 +824,11 @@ class Operation(otbObject):
 
         # We first create a 'fake' expression. E.g for the operation `input1 + input2` , we create a fake expression
         # that is like "str(input1) + str(input2)"
+        self.inputs = []
+        self.nb_channels = {}
+        self.fake_exp_bands = []
+        self.logical_fake_exp_bands = []
+
         self.create_fake_exp(operator, inputs, nb_bands=nb_bands)
 
         # Transforming images to the adequate im#, e.g. `input1` to "im1"
@@ -694,11 +837,11 @@ class Operation(otbObject):
         self.im_dic = {}
         self.im_count = 1
         mapping_str_to_input = {}  # to be able to retrieve the real python object from its string representation
-        for input in self.inputs:
-            if not isinstance(input, (int, float)):
-                if str(input) not in self.im_dic:
-                    self.im_dic[str(input)] = 'im{}'.format(self.im_count)
-                    mapping_str_to_input[str(input)] = input
+        for inp in self.inputs:
+            if not isinstance(inp, (int, float)):
+                if str(inp) not in self.im_dic:
+                    self.im_dic[str(inp)] = f'im{self.im_count}'
+                    mapping_str_to_input[str(inp)] = inp
                     self.im_count += 1
 
         # getting unique image inputs, in the order im1, im2, im3 ...
@@ -723,16 +866,17 @@ class Operation(otbObject):
         :param inputs: inputs. Can be App, Output, Input, Operation, Slicer, filepath, int or float
         :param nb_bands: to specify the output nb of bands. Optional
         """
-        self.inputs = []
-        self.nb_channels = {}
 
-        logger.debug(f"{operator}, {inputs}")
+        self.inputs.clear()
+        self.nb_channels.clear()
+
+        logger.debug("%s, %s", operator, inputs)
         # this is when we use the ternary operator with `pyotb.where` function. The output nb of bands is already known
         if operator == '?' and nb_bands:
-            nb_bands = nb_bands
+            pass
         # For any other operations, the output number of bands is the same as inputs
         else:
-            if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
+            if any(isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs):
                 nb_bands = 1
             else:
                 nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
@@ -743,23 +887,23 @@ class Operation(otbObject):
                 nb_bands = nb_bands_list[0]
 
         # Create a list of fake expressions, each item of the list corresponding to one band
-        self.fake_exp_bands = []
+        self.fake_exp_bands.clear()
         for i, band in enumerate(range(1, nb_bands + 1)):
             fake_exps = []
-            for k, input in enumerate(inputs):
+            for k, inp in enumerate(inputs):
                 # Generating the fake expression of the current input
                 # this is a special case for the condition of the ternary operator `cond ? x : y`
                 if len(inputs) == 3 and k == 0:
                     # when cond is monoband whereas the result is multiband, we expand the cond to multiband
-                    if nb_bands != input.shape[2]:
+                    if nb_bands != inp.shape[2]:
                         cond_band = 1
                     else:
                         cond_band = band
-                    fake_exp, corresponding_inputs, nb_channels = self._create_one_input_fake_exp(input, cond_band,
+                    fake_exp, corresponding_inputs, nb_channels = self._create_one_input_fake_exp(inp, cond_band,
                                                                                                   keep_logical=True)
                 # any other input
                 else:
-                    fake_exp, corresponding_inputs, nb_channels = self._create_one_input_fake_exp(input, band,
+                    fake_exp, corresponding_inputs, nb_channels = self._create_one_input_fake_exp(inp, band,
                                                                                                   keep_logical=False)
 
                 fake_exps.append(fake_exp)
@@ -780,64 +924,71 @@ class Operation(otbObject):
 
             self.fake_exp_bands.append(fake_exp)
 
-    def _create_one_input_fake_exp(self, input, band, keep_logical=False):
+    @staticmethod
+    def _create_one_input_fake_exp(x, band, keep_logical=False):
         """
         This an internal function, only to be used by `create_fake_exp`. Enable to create a fake expression just for one
         input and one band.
-        :param input:
+        :param x: input
         :param band: which band to consider (bands start at 1)
         :param keep_logical: whether to keep the logical expressions "as is" in case the input is a logical operation.
                     ex: if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
                         if False, for `input1 > input2`, returned fake expression is "str(input1) > str(input2) ? 1 : 0"
+        :return: fake_exp, inputs, nb_channels
         """
         # Special case for one-band slicer
-        if isinstance(input, Slicer) and hasattr(input, 'one_band_sliced'):
-            if keep_logical and isinstance(input.input, logicalOperation):
-                fake_exp = input.input.logical_fake_exp_bands[input.one_band_sliced - 1]
-                inputs = input.input.inputs
-                nb_channels = input.input.nb_channels
-            elif isinstance(input.input, Operation):
+        if isinstance(x, Slicer) and hasattr(x, 'one_band_sliced'):
+            if keep_logical and isinstance(x.input, logicalOperation):
+                fake_exp = x.input.logical_fake_exp_bands[x.one_band_sliced - 1]
+                inputs = x.input.inputs
+                nb_channels = x.input.nb_channels
+            elif isinstance(x.input, Operation):
                 # keep only one band of the expression
-                fake_exp = input.input.fake_exp_bands[input.one_band_sliced - 1]
-                inputs = input.input.inputs
-                nb_channels = input.input.nb_channels
+                fake_exp = x.input.fake_exp_bands[x.one_band_sliced - 1]
+                inputs = x.input.inputs
+                nb_channels = x.input.nb_channels
             else:
                 # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                fake_exp = str(input.input) + f'b{input.one_band_sliced}'
-                inputs = [input.input]
-                nb_channels = {input.input: 1}
+                fake_exp = str(x.input) + f'b{x.one_band_sliced}'
+                inputs = [x.input]
+                nb_channels = {x.input: 1}
         # For logicalOperation, we save almost the same attributes as an Operation
-        elif keep_logical and isinstance(input, logicalOperation):
-            fake_exp = input.logical_fake_exp_bands[band - 1]
-            inputs = input.inputs
-            nb_channels = input.nb_channels
-        elif isinstance(input, Operation):
-            fake_exp = input.fake_exp_bands[band - 1]
-            inputs = input.inputs
-            nb_channels = input.nb_channels
+        elif keep_logical and isinstance(x, logicalOperation):
+            fake_exp = x.logical_fake_exp_bands[band - 1]
+            inputs = x.inputs
+            nb_channels = x.nb_channels
+        elif isinstance(x, Operation):
+            fake_exp = x.fake_exp_bands[band - 1]
+            inputs = x.inputs
+            nb_channels = x.nb_channels
         # For int or float input, we just need to save their value
-        elif isinstance(input, (int, float)):
-            fake_exp = str(input)
+        elif isinstance(x, (int, float)):
+            fake_exp = str(x)
             inputs = None
             nb_channels = None
         # We go on with other inputs, i.e. pyotb objects, filepaths...
         else:
-            nb_channels = {input: get_nbchannels(input)}
-            inputs = [input]
+            nb_channels = {x: get_nbchannels(x)}
+            inputs = [x]
             # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-            fake_exp = str(input) + f'b{band}'
+            fake_exp = str(x) + f'b{band}'
 
         return fake_exp, inputs, nb_channels
 
     def get_real_exp(self, fake_exp_bands):
-        """Generates the BandMathX expression"""
+        """
+        Generates the BandMathX expression
+        :param fake_exp_bands: list of fake expressions, each item corresponding to one band
+        :return exp_bands: BandMath expression, split in a list, each item corresponding to one band
+        :return exp: BandMath expression
+        """
         # Create a list of expression, each item corresponding to one band (e.g. ['im1b1 + 1', 'im1b2 + 1'])
         exp_bands = []
         for one_band_fake_exp in fake_exp_bands:
             one_band_exp = one_band_fake_exp
-            for input in self.inputs:
+            for inp in self.inputs:
                 # replace the name of in-memory object (e.g. '<pyotb.App object>b1' by 'im1b1')
-                one_band_exp = one_band_exp.replace(str(input), self.im_dic[str(input)])
+                one_band_exp = one_band_exp.replace(str(inp), self.im_dic[str(inp)])
             exp_bands.append(one_band_exp)
 
         # Form the final expression (e.g. 'im1b1 + 1; im1b2 + 1')
@@ -846,6 +997,9 @@ class Operation(otbObject):
         return exp_bands, exp
 
     def __str__(self):
+        """
+        :return: a nice str
+        """
         return f'<pyotb.Operation `{self.operator}` object, id {id(self)}>'
 
 
@@ -857,16 +1011,25 @@ class logicalOperation(Operation):
     """
 
     def __init__(self, operator, *inputs, nb_bands=None):
+        """
+        operator: Operator
+        inputs: inputs
+        nb_bands: number of channels
+        """
         super().__init__(operator, *inputs, nb_bands=nb_bands)
 
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
-        self.inputs = []
-        self.nb_channels = {}
+        """
+        Create a dummy bandmath expression
+        :param operator: (str) one of >, <, >=, <=, ==, !=, &, |
+        :param inputs: Can be App, Output, Input, Operation, Slicer, filepath, int or float
+        :param nb_bands: to specify the output nb of bands. Optional, should only be used for `?` operation
+        """
 
         # For any other operations, the output number of bands is the same as inputs
-        if any([isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs]):
+        if any(isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs):
             nb_bands = 1
         else:
             nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
@@ -877,12 +1040,10 @@ class logicalOperation(Operation):
             nb_bands = nb_bands_list[0]
 
         # Create a list of fake exp, each item of the list corresponding to one band
-        self.fake_exp_bands = []
-        self.logical_fake_exp_bands = []
         for i, band in enumerate(range(1, nb_bands + 1)):
             fake_exps = []
-            for input in inputs:
-                fake_exp, corresponding_inputs, nb_channels = self._create_one_input_fake_exp(input, band,
+            for inp in inputs:
+                fake_exp, corresponding_inputs, nb_channels = self._create_one_input_fake_exp(inp, band,
                                                                                               keep_logical=True)
 
                 fake_exps.append(fake_exp)
@@ -915,8 +1076,8 @@ def get_nbchannels(inp):
         try:
             info = App("ReadImageInfo", inp, otb_stdout=False)
             nb_channels = info.GetParameterInt("numberbands")
-        except Exception:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath')
+        except Exception as e:  # this happens when we pass a str that is not a filepath
+            raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
     return nb_channels
 
 
@@ -932,8 +1093,8 @@ def get_pixel_type(inp):
         # Executing the app, without printing its log
         try:
             info = App("ReadImageInfo", inp, otb_stdout=False)
-        except Exception:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath')
+        except Exception as info_err:  # this happens when we pass a str that is not a filepath
+            raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath') from info_err
         datatype = info.GetParameterString("datatype")  # which is such as short, float...
         dataype_to_pixeltype = {'unsigned_char': 'uint8', 'short': 'int16', 'unsigned_short': 'uint16',
                                 'int': 'int32', 'unsigned_int': 'uint32', 'long': 'int32', 'ulong': 'uint32',
