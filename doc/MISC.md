@@ -1,4 +1,4 @@
-## Miscellaneous: Work with images with differents footprints / resolutions
+## Miscellaneous: Work with images with different footprints / resolutions
 OrfeoToolBox provides a handy `Superimpose` application that enables the projection of an image into the geometry of another one.
 
 In pyotb, a function has been created to handle more than 2 images.

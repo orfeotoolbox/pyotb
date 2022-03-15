@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+"""
+This module provides some helpers to properly initialize pyotb
+"""
 import os
 import sys
 import logging
@@ -29,7 +32,7 @@ def find_otb(root="", scan=True, scan_userdir=True):
     # OTB_ROOT env variable is first (allow override default OTB version)
     prefix = root or os.environ.get("OTB_ROOT") or os.environ.get("OTB_DIR")
     if prefix:
-        logger.info(f"Found OTB Python API in {prefix}")
+        logger.info("Found OTB Python API in %s", prefix)
         # Add path first in PYTHONPATH
         otb_api = get_python_api(prefix)
         sys.path.insert(0, str(otb_api))
@@ -44,7 +47,7 @@ def find_otb(root="", scan=True, scan_userdir=True):
                 return str(prefix), str(apps_path)
 
             except ImportError:
-                logging.critical(f"Can't import OTB with OTB_ROOT={prefix}")
+                logging.critical("Can't import OTB with OTB_ROOT=%s", prefix)
                 return None, None
         else:
             logger.warning("Can't reset otb module with new path. You need to restart Python")
@@ -60,15 +63,15 @@ def find_otb(root="", scan=True, scan_userdir=True):
     # Else search system
     except ImportError:
         PYTHONPATH = os.environ.get("PYTHONPATH")
-        logger.info(f"Failed to import otbApplication with PYTHONPATH={PYTHONPATH}")
+        logger.info("Failed to import otbApplication with PYTHONPATH=%s", PYTHONPATH)
         if not scan:
             return None, None
         logger.info("Searching for it...")
         lib_dir = None
         # Scan user's HOME directory tree (this may take some time)
-        if scan_userdir :
+        if scan_userdir:
             for path in Path().home().glob("**/OTB-*/lib"):
-                logger.info(f"Found {path.parent}")
+                logger.info("Found %s", path.parent)
                 lib_dir = path
                 prefix = str(path.parent.absolute())
         # Or search possible known locations (system scpecific)
@@ -81,7 +84,7 @@ def find_otb(root="", scan=True, scan_userdir=True):
                 path = Path(str_path)
                 if not path.exists():
                     continue
-                logger.info(f"Found " + str_path)
+                logger.info("Found %s", str_path)
                 if not prefix:
                     if path.parent.name == "x86_64-linux-gnu":
                         prefix = path.parent.parent.parent
@@ -103,18 +106,19 @@ def find_otb(root="", scan=True, scan_userdir=True):
             # Try to import one last time before sys.exit (in apps.py)
             try:
                 sys.path.insert(0, str(otb_api))
-                import otbApplication as otb
-                logger.info(f"Using OTB in {prefix}")
+                import otbApplication
+                logger.info("Using OTB in %s", prefix)
                 return prefix, get_apps_path(lib_dir)
             except ModuleNotFoundError:
-                logger.critical(f"Unable to find OTB Python bindings", exc_info=1)
+                logger.critical("Unable to find OTB Python bindings", exc_info=1)
                 return None, None
             except ImportError as e:
-                logger.critical(f"An error occured while importing Python API")
+                logger.critical("An error occurred while importing Python API")
                 if str(e).startswith('libpython3.'):
                     logger.critical("It seems like you need to symlink or recompile OTB SWIG bindings")
                     if sys.platform == "linux":
-                        logger.critical(f"Use 'cd {prefix} ; source otbenv.profile ; ctest -S share/otb/swig/build_wrapping.cmake -VV'")
+                        logger.critical("Use 'cd %s ; source otbenv.profile ; "
+                                        "ctest -S share/otb/swig/build_wrapping.cmake -VV'", prefix)
                         return None, None
                 logger.critical("full traceback", exc_info=1)
 
@@ -122,17 +126,27 @@ def find_otb(root="", scan=True, scan_userdir=True):
 
 
 def get_python_api(prefix):
+    """
+    Try to find the python path
+    :param prefix: prefix
+    :return: the path if found, else None
+    """
     root = Path(prefix)
     if root.exists():
         otb_api = root / "lib/python"
         if not otb_api.exists():
             otb_api = root / "lib/otb/python"
-        if not otb_api.exists():
-            return
-        return otb_api.absolute()
+        if otb_api.exists():
+            return otb_api.absolute()
+    return None
 
 
 def get_lib(otb_module):
+    """
+    Try to find the otb library path
+    :param otb_module: otb module (otbApplication)
+    :return: library path
+    """
     lib_dir = Path(otb_module.__file__).parent.parent
     # OTB .run file
     if lib_dir.name == "lib":
@@ -147,17 +161,27 @@ def get_lib(otb_module):
 
 
 def get_apps_path(lib_dir):
+    """
+    Try to get the otb applications path
+    :param lib_dir: library path
+    :return: library path if found, else ""
+    """
     if isinstance(lib_dir, Path) and lib_dir.exists():
-        logger.debug(f"Using library from {lib_dir}")
+        logger.debug("Using library from %s", lib_dir)
         otb_application_path = lib_dir / "otb/applications"
         if otb_application_path.exists():
             return str(otb_application_path.absolute())
         # This should not happen, may be with failed builds ?
-        logger.debug(f"Library directory found but no 'applications' directory whithin it")
-        return ""
+        logger.debug("Library directory found but no 'applications' directory inside")
+    return ""
 
 
 def set_gdal_vars(root):
+    """
+    Set GDAL environment variables
+    :param root: root directory
+    :return: True is succeed, False else
+    """
     if (Path(root) / "share/gdal").exists():
         # Local GDAL (OTB Superbuild, .run, .exe)
         gdal_data = str(Path(root + "/share/gdal"))
@@ -167,7 +191,7 @@ def set_gdal_vars(root):
         gdal_data = "/usr/share/gdal"
         proj_lib = "/usr/share/proj"
     else:
-        logger.warning(f"Can't find GDAL directory with prefix {root}")
+        logger.warning("Can't find GDAL directory with prefix %s", root)
         return False
     # Not sure if SWIG will see these
     os.environ["LC_NUMERIC"] = "C"

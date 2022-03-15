@@ -1,0 +1,62 @@
+workflow:
+  rules:
+    - if: $CI_MERGE_REQUEST_ID            # Execute jobs in merge request context
+    - if: $CI_COMMIT_BRANCH == 'develop'  # Execute jobs when a new commit is pushed to develop branch
+
+image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop:20.04
+
+stages:
+  - Static Analysis
+  - Test
+
+# --------------------------------- Static analysis ---------------------------------
+
+.static_analysis_base:
+  stage: Static Analysis
+  tags:
+    - light
+  allow_failure: true
+
+flake8:
+  extends: .static_analysis_base
+  script:
+    - pip install flake8 && python3 -m flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
+
+pylint:
+  extends: .static_analysis_base
+  script:
+    - pip install pylint && pylint --max-line-length=120 $PWD/pyotb --disable=too-many-nested-blocks,too-many-locals,too-many-statements,too-few-public-methods,too-many-instance-attributes,too-many-arguments,invalid-name,fixme,too-many-return-statements,too-many-lines,too-many-branches,import-outside-toplevel,wrong-import-position,wrong-import-order,import-error
+
+codespell:
+  extends: .static_analysis_base
+  script:
+    - pip install codespell && codespell --skip="*.png,*.jpg,*git/lfs*"
+
+pydocstyle:
+  extends: .static_analysis_base
+  script:
+    - pip install pydocstyle && pydocstyle $PWD/pyotb --ignore=D400,D403,D213,D212,D202,D203,D200,D210,D205,D401,D404,D204,D415
+
+# --------------------------------- Test ---------------------------------
+
+.test_base:
+  stage: Test
+  tags:
+    - light
+  allow_failure: false
+  before_script:
+    - pip install .
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/otb/lib/
+    - ls /opt/otb/lib/
+    - export OTB_APPLICATION_PATH=/opt/otb/lib/otb/applications/
+
+import_pyotb:
+  extends: .test_base
+  script:
+    - python3 -c "import pyotb"
+
+compute_ndvi:
+  extends: .test_base
+  script:
+    - cd tests
+    - python3 ndvi_test.py
