@@ -759,10 +759,11 @@ class App(otbObject):
         Check if App has any output parameter key
         :return: True or False
         """
-        return any(k in self.parameters for k in [param for param in self.app.GetParametersKeys() if
-                                                  self.app.GetParameterType(param) in [otb.ParameterType_OutputImage,
-                                                                                       otb.ParameterType_OutputVectorData,
-                                                                                       otb.ParameterType_OutputFilename]])
+        return any(k in self.parameters for k in
+                   [param for param in self.app.GetParametersKeys() if
+                    self.app.GetParameterType(param) in [otb.ParameterType_OutputImage,
+                                                         otb.ParameterType_OutputVectorData,
+                                                         otb.ParameterType_OutputFilename]])
 
     def __is_key_list(self, key):
         """
