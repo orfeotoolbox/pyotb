@@ -125,24 +125,17 @@ class otbObject(ABC):
 
     def __getattr__(self, name):
         """
-        This method is called when the default attribute access fails. We try 2 things:
-        - 1) access the attribute `name` of self.app. Thus, any method of otbApplication can be used transparently on
-             otbObject objects, e.g. SetParameterOutputImagePixelType() or ExportImage() work
-        - 2) if the previous failed, we try to access the ParameterValue of `name`. It is useful for applications such
-             as PixelValue or CompareImages to access scalar "output" parameters
+        This method is called when the default attribute access fails. We choose to access the attribute `name`
+        of self.app. Thus, any method of otbApplication can be used transparently on otbObject objects,
+        e.g. SetParameterOutputImagePixelType() or ExportImage() work
         :param name: attribute name
         :return: attribute
         """
         try:
             res = getattr(self.app, name)
+            return res
         except AttributeError:
-            try:
-                # TODO: how to access scalar output parameter whose key contains a `.` ?
-                res = self.app.GetParameterValue(name)
-            except RuntimeError as e:
-                raise AttributeError(f'{self.name}: Could not find attribute `{name}`') from e
-
-        return res
+            raise AttributeError(f'{self.name}: Could not find attribute `{name}`')
 
     def __add__(self, other):
         """
@@ -608,6 +601,18 @@ class App(otbObject):
         except (RuntimeError, FileNotFoundError) as e:
             raise Exception(f'{self.name}: error during during app execution') from e
         logger.debug("%s: execution succeeded", self.name)
+
+        # Saving all parameters of the app as attributes, so that they can be accessed with `obj.key` or `obj['key']`
+        for key in self.app.GetParametersKeys():
+            if key in self.output_parameters_keys:  # raster outputs
+                output = Output(self.app, key)
+                setattr(self, key, output)
+            else:  # any other attributes (scalars...)
+                try:
+                    setattr(self, key, self.app.GetParameterValue(key))
+                except RuntimeError:
+                    pass  # this is when there is no value for key
+
         return self.finished
 
     def find_output(self):
@@ -645,6 +650,7 @@ class App(otbObject):
 
     def get_output_parameters_keys(self):
         """
+        Get raster output parameter keys
         :return: output parameters keys
         """
         return [param for param in self.app.GetParametersKeys()
@@ -742,7 +748,7 @@ class App(otbObject):
                 pixel_type = get_pixel_type(param)
             except TypeError:
                 pass
-        if pixel_type is None:  # we use this syntax because pixel_type can be equal to 0
+        if pixel_type is None:
             logger.warning("%s: Could not propagate pixel type from inputs to output, no valid input found", self.name)
         else:
             for out_key in self.output_parameters_keys:
@@ -753,7 +759,10 @@ class App(otbObject):
         Check if App has any output parameter key
         :return: True or False
         """
-        return any(k in self.parameters for k in self.output_parameters_keys)
+        return any(k in self.parameters for k in [param for param in self.app.GetParametersKeys() if
+                                                  self.app.GetParameterType(param) in [otb.ParameterType_OutputImage,
+                                                                                       otb.ParameterType_OutputVectorData,
+                                                                                       otb.ParameterType_OutputFilename]])
 
     def __is_key_list(self, key):
         """
