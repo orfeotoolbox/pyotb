@@ -9,9 +9,9 @@ Requirements:
 pip install pyotb --upgrade
 ```
 
-For Python>=3.6, latest version available is pyotb 1.3.2. For Python 3.5, latest version available is pyotb 1.2.2
+For Python>=3.6, latest version available is pyotb 1.3.3. For Python 3.5, latest version available is pyotb 1.2.2
 
-## Quickstart: running an OTB app as a oneliner
+## Quickstart: running an OTB application as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.
 
 For example, let's consider one wants to undersample a raster. Using OTB, the code would be like :
