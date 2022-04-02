@@ -27,7 +27,7 @@ def get_available_applications(as_subprocess=False):
     :returns: tuple of available applications
     """
     app_list = ()
-    if as_subprocess and sys.executable and hasattr(sys, 'ps1'):
+    if as_subprocess and sys.executable:
         # Currently, there is an incompatibility between OTBTF and Tensorflow that causes segfault
         # when OTBTF apps are used in a script where tensorflow has already been imported.
         # See https://github.com/remicres/otbtf/issues/28
