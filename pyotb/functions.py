@@ -88,9 +88,18 @@ def all(*inputs):  # pylint: disable=redefined-builtin
     a singleband boolean raster
     For several images, this function checks that all images are True (i.e. !=0) and outputs
     a boolean raster, with as many bands as the inputs
-    :param inputs:
+    :param inputs: can be 1) a single image
+                          2) several images, either passed as separate arguments or inside a list
     :return: AND intersection
     """
+    # If necessary, flatten inputs
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        inputs = inputs[0]
+
+    # Add support for generator inputs (to have the same behavior as built-in `all` function)
+    if isinstance(inputs, tuple) and len(inputs) == 1 and inspect.isgenerator(inputs[0]):
+        inputs = list(inputs[0])
+
     # Transforming potential filepaths to pyotb objects
     inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
 
@@ -129,9 +138,18 @@ def any(*inputs):  # pylint: disable=redefined-builtin
     a single band boolean raster
     For several images, this function checks that at least one of the images is True (i.e. !=0) and outputs
     a boolean raster, with as many bands as the inputs
-    :param inputs:
+    :param inputs: can be 1) a single image
+                          2) several images, either passed as separate arguments or inside a list
     :return: OR intersection
     """
+    # If necessary, flatten inputs
+    if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
+        inputs = inputs[0]
+
+    # Add support for generator inputs (to have the same behavior as built-in `any` function)
+    if isinstance(inputs, tuple) and len(inputs) == 1 and inspect.isgenerator(inputs[0]):
+        inputs = list(inputs[0])
+
     # Transforming potential filepaths to pyotb objects
     inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
 
