@@ -6,25 +6,20 @@ import os
 import sys
 from pathlib import Path
 
-from .tools import logger, find_otb, set_gdal_vars
+from .helpers import logger, find_otb
 
-# Will first call `import otbApplication`, trying to workaround any ImportError
-OTB_ROOT, OTB_APPLICATION_PATH = find_otb()
-
-if not OTB_ROOT:
-    raise EnvironmentError("Can't run without OTB installed.")
-
-set_gdal_vars(OTB_ROOT)
-
-# Should not raise ImportError since it was tested in find_otb()
-import otbApplication as otb
+otb = find_otb()
 
 
 def get_available_applications(as_subprocess=False):
-    """
-    Find available OTB applications
-    :param as_subprocess: indicate if function should list available applications using subprocess call
-    :returns: tuple of available applications
+    """Find available OTB applications
+
+    Args:
+        as_subprocess: indicate if function should list available applications using subprocess call
+
+    Returns:
+        tuple of available applications
+
     """
     app_list = ()
     if as_subprocess and sys.executable:
@@ -39,25 +34,26 @@ def get_available_applications(as_subprocess=False):
         env["OTB_LOGGER_LEVEL"] = "CRITICAL"  # in order to suppress warnings while listing applications
         pycmd = "import otbApplication; print(otbApplication.Registry.GetAvailableApplications())"
         cmd_args = [sys.executable, "-c", pycmd]
+
         try:
-            import subprocess
+            import subprocess  # pylint: disable=import-outside-toplevel
             params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
             with subprocess.Popen(cmd_args, **params) as p:
-                logger.debug("%s %s", ' '.join(cmd_args[:-1]), pycmd)
+                logger.debug('Exec "%s \'%s\'"', ' '.join(cmd_args[:-1]), pycmd)
                 stdout, stderr = p.communicate()
                 stdout, stderr = stdout.decode(), stderr.decode()
                 # ast.literal_eval is secure and will raise more handy Exceptions than eval
-                from ast import literal_eval
+                from ast import literal_eval  # pylint: disable=import-outside-toplevel
                 app_list = literal_eval(stdout.strip())
                 assert isinstance(app_list, (tuple, list))
-
         except subprocess.SubprocessError:
             logger.debug("Failed to call subprocess")
         except (ValueError, SyntaxError, AssertionError):
             logger.debug("Failed to decode output or convert to tuple:\nstdout=%s\nstderr=%s", stdout, stderr)
-        if not app_list:
-            logger.info("Failed to list applications in an independent process. Falling back to local otb import")
 
+        if not app_list:
+            logger.info("Failed to list applications in an independent process. Falling back to local python import")
+    # Find applications using the normal way
     if not app_list:
         app_list = otb.Registry.GetAvailableApplications()
     if not app_list:
@@ -68,34 +64,31 @@ def get_available_applications(as_subprocess=False):
     return app_list
 
 
-if OTB_APPLICATION_PATH:
-    otb.Registry.SetApplicationPath(OTB_APPLICATION_PATH)
-    os.environ["OTB_APPLICATION_PATH"] = OTB_APPLICATION_PATH
-
 AVAILABLE_APPLICATIONS = get_available_applications(as_subprocess=True)
 
 # First core.py call (within __init__ scope)
-from .core import App
+from .core import App  # pylint: disable=wrong-import-position
 
 # This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App("AppName", ...)`
-_code_template = """
+_CODE_TEMPLATE = """
 class {name}(App):
+    """ """
     def __init__(self, *args, **kwargs):
         super().__init__('{name}', *args, **kwargs)
 """
 
 
 class OTBTFApp(App):
-    """
-    Helper for OTBTF
-    """
+    """Helper for OTBTF"""
     @staticmethod
     def set_nb_sources(*args, n_sources=None):
         """Set the number of sources of TensorflowModelServe. Can be either user-defined or deduced from the args
 
-        :param args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
-        :param n_sources: number of sources. Default is None (resolves the number of sources based on the
-                          content of the dict passed in args, where some 'source' str is found)
+        Args:
+            *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
+            n_sources: number of sources. Default is None (resolves the number of sources based on the
+                       content of the dict passed in args, where some 'source' str is found)
+
         """
         if n_sources:
             os.environ['OTB_TF_NSOURCES'] = str(int(n_sources))
@@ -108,19 +101,18 @@ class OTBTFApp(App):
 
     def __init__(self, app_name, *args, n_sources=None, **kwargs):
         """
-        :param args: args
-        :param n_sources: number of sources. Default is None (resolves the number of sources based on the
-                          content of the dict passed in args, where some 'source' str is found)
-        :param kwargs: kwargs
+        Args
+            app_name: name of the OTBTF app
+            *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
+            n_sources: number of sources. Default is None (resolves the number of sources based on the
+                       content of the dict passed in args, where some 'source' str is found)
+            **kwargs: kwargs
         """
         self.set_nb_sources(*args, n_sources=n_sources)
         super().__init__(app_name, *args, **kwargs)
 
 
 for _app in AVAILABLE_APPLICATIONS:
-    # Default behavior for any OTB application
-    exec(_code_template.format(name=_app))  # pylint: disable=exec-used
-
     # Customize the behavior for some OTBTF applications. The user doesn't need to set the env variable
     # `OTB_TF_NSOURCES`, it is handled in pyotb
     if _app == 'TensorflowModelServe':
@@ -137,3 +129,7 @@ for _app in AVAILABLE_APPLICATIONS:
         class TensorflowModelTrain(OTBTFApp):
             def __init__(self, *args, n_sources=None, **kwargs):
                 super().__init__('TensorflowModelTrain', *args, n_sources=n_sources, **kwargs)
+
+    # Default behavior for any OTB application
+    else:
+        exec(_CODE_TEMPLATE.format(name=_app))  # pylint: disable=exec-used

@@ -7,6 +7,7 @@ image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop:20.04
 
 stages:
   - Static Analysis
+  - Documentation
   - Test
 
 # --------------------------------- Static analysis ---------------------------------
@@ -20,22 +21,58 @@ stages:
 flake8:
   extends: .static_analysis_base
   script:
-    - pip install flake8 && python3 -m flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
+    - pip install flake8
+    - python3 -m flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
 
 pylint:
   extends: .static_analysis_base
   script:
-    - pip install pylint && pylint --max-line-length=120 $PWD/pyotb --disable=too-many-nested-blocks,too-many-locals,too-many-statements,too-few-public-methods,too-many-instance-attributes,too-many-arguments,invalid-name,fixme,too-many-return-statements,too-many-lines,too-many-branches,import-outside-toplevel,wrong-import-position,wrong-import-order,import-error
+    - pip install pylint
+    - pylint --max-line-length=120 $PWD/pyotb --disable=too-many-nested-blocks,too-many-locals,too-many-statements,too-few-public-methods,too-many-instance-attributes,too-many-arguments,invalid-name,fixme,too-many-return-statements,too-many-lines,too-many-branches,import-outside-toplevel,wrong-import-position,wrong-import-order,import-error,missing-class-docstring
 
 codespell:
   extends: .static_analysis_base
   script:
-    - pip install codespell && codespell --skip="*.png,*.jpg,*git/lfs*"
+    - pip install codespell
+    - codespell --skip="*.png,*.jpg,*git/lfs*"
 
 pydocstyle:
   extends: .static_analysis_base
   script:
-    - pip install pydocstyle && pydocstyle $PWD/pyotb --ignore=D400,D403,D213,D212,D202,D203,D200,D210,D205,D401,D404,D204,D415
+    - pip install pydocstyle
+    - pydocstyle $PWD/pyotb --convention=google
+
+
+# ------------------------------------------------------- Doc ----------------------------------------------------------
+.doc_base:
+  stage: Documentation
+  tags:
+    - light
+  before_script:
+    - apt-get update && apt-get -y install virtualenv
+    - virtualenv doc_env
+    - source doc_env/bin/activate
+    - pip install --upgrade pip
+    - pip install mkdocstrings mkdocstrings[crystal,python] mkdocs-material mkdocs-gen-files mkdocs-section-index mkdocs-literate-nav mkdocs-mermaid2-plugin --upgrade
+  artifacts:
+    paths:
+      - public
+      - public_test
+
+test:
+  extends: .doc_base
+  rules:
+    - if: $CI_COMMIT_REF_NAME != $CI_DEFAULT_BRANCH
+  script:
+    - mkdocs build --site-dir public_test
+
+pages:
+  extends: .doc_base
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  script:
+    - mkdocs build --site-dir public
+
 
 # --------------------------------- Test ---------------------------------
 
@@ -46,9 +83,11 @@ pydocstyle:
   allow_failure: false
   before_script:
     - pip install .
-    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/otb/lib/
-    - ls /opt/otb/lib/
-    - export OTB_APPLICATION_PATH=/opt/otb/lib/otb/applications/
+  variables:
+    OTB_ROOT: /opt/otb
+    LD_LIBRARY_PATH: /opt/otb/lib
+    PYOTB_LOGGER_LEVEL: DEBUG
+    OTB_LOGGER_LEVEL: INFO
 
 import_pyotb:
   extends: .test_base
@@ -60,3 +99,10 @@ compute_ndvi:
   script:
     - cd tests
     - python3 ndvi_test.py
+
+pipeline_test:
+  extends: .test_base
+  script:
+    - cd tests
+    - python3 pipeline_test.py
+    - python3 pipeline_test.py backward

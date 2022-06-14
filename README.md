@@ -1,50 +1,44 @@
 # pyotb: a pythonic extension of OTB
 
+Full documentation is available at [pyotb.readthedocs.io](https://pyotb.readthedocs.io/)
+
 ## Installation
 Requirements:
-- python >= 3.5
-- OrfeoToolBox python API installed
+- python>=3.5 and numpy
+- OrfeoToolBox python API
 
 ```bash
 pip install pyotb --upgrade
 ```
 
-For Python>=3.6, latest version available is pyotb 1.3.3. For Python 3.5, latest version available is pyotb 1.2.2
+For Python>=3.6, latest version available is pyotb 1.4.0 For Python 3.5, latest version available is pyotb 1.2.2
 
 ## Quickstart: running an OTB application as a oneliner
 pyotb has been written so that it is more convenient to run an application in Python.
 
-For example, let's consider one wants to undersample a raster. Using OTB, the code would be like :
-```python
-import otbApplication
-
-input_path = 'my_image.tif'
-resampled = otbApplication.Registry.CreateApplication('RigidTransformResample')
-resampled.SetParameterString('in', input_path)
-resampled.SetParameterString('interpolator', 'linear')
-resampled.SetParameterFloat('transform.type.id.scalex', 0.5)
-resampled.SetParameterFloat('transform.type.id.scaley', 0.5)
-resampled.SetParameterString('out', 'output.tif')
-resampled.ExecuteAndWriteOutput()
-```
-
-Instead, using pyotb, you can pass the parameters as a dictionary : 
+You can pass the parameters of an application as a dictionary :
 ```python
 import pyotb
+resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear',
+                                          'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
+```
+Note that pyotb has a 'lazy' evaluation: it only performs operation when it is needed, i.e. results are written to disk.
+Thus, the previous line doesn't trigger the application.
 
-input_path = 'my_image.tif'
-pyotb.RigidTransformResample({'in': input_path, 'interpolator': 'linear', 'out': 'output.tif',
-                              'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
+To actually trigger the application execution, you need to write the result to disk:
+
+```python
+resampled.write('output.tif')  # this is when the application actually runs
 ```
 
 ## Using Python keyword arguments
 It is also possible to use the Python keyword arguments notation for passing the parameters:
 ```python
-pyotb.SuperImpose(inr='reference_image.tif', inm='image.tif', out='output.tif')
+output = pyotb.SuperImpose(inr='reference_image.tif', inm='image.tif')
 ```
 is equivalent to:
 ```python
-pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif', 'out': 'output.tif'})
+output = pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif'})
 ```
 
 Limitations : for this notation, python doesn't accept the parameter `in` or any parameter that contains a `.`. E.g., it is not possible to use `pyotb.RigidTransformResample(in=input_path...)` or `pyotb.VectorDataExtractROI(io.vd=vector_path...)`.
@@ -56,34 +50,9 @@ Limitations : for this notation, python doesn't accept the parameter `in` or any
 The big asset of pyotb is the ease of in-memory connections between apps.
 
 Let's start from our previous example. Consider the case where one wants to apply optical calibration and binary morphological dilatation 
-following the undersampling. Using OTB : 
+following the undersampling.
 
-```python
-import otbApplication
-
-resampled = otbApplication.Registry.CreateApplication('RigidTransformResample')
-resampled.SetParameterString('in', 'my_image.tif')
-resampled.SetParameterString('interpolator', 'linear')
-resampled.SetParameterFloat('transform.type.id.scalex', 0.5)
-resampled.SetParameterFloat('transform.type.id.scaley', 0.5)
-resampled.Execute()
-
-calibrated = otbApplication.Registry.CreateApplication('OpticalCalibration')
-calibrated.ConnectImage('in', resampled, 'out')
-calibrated.SetParameterString('level', 'toa')
-calibrated.Execute()
-
-dilated = otbApplication.Registry.CreateApplication('BinaryMorphologicalOperation')
-dilated.ConnectImage('in', calibrated, 'out')
-dilated.SetParameterString("filter", 'dilatation')
-dilated.SetParameterString("structype", 'ball')
-dilated.SetParameterInt("xradius", 3)
-dilated.SetParameterInt("yradius", 3)
-dilated.SetParameterString('out', 'output.tif')
-dilated.ExecuteAndWriteOutput()
-```
-
-Using pyotb, you can pass the output of an app as input of another app : 
+Using pyotb, you can pass the output of an app as input of another app :
 ```python
 import pyotb
 
@@ -92,11 +61,9 @@ resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 
 
 calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa'}) 
 
-pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilatation', 
-                                    'structype': 'ball', 'xradius': 3, 'yradius': 3})
-# equivalent to
-# pyotb.BinaryMorphologicalOperation(calibrated, out='output.tif', filter='dilatation', structype='ball',
-#                                    xradius=3, yradius=3)
+dilated = pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilatation', 
+                                              'structype': 'ball', 'xradius': 3, 'yradius': 3})
+dilated.write('result.tif')
 ```
 
 ## Writing the result of an app
@@ -107,37 +74,34 @@ import pyotb
 
 resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear',
                                           'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
-
-resampled.write('output.tif', pixel_type='uint16')
+# Here you can set optionally pixel type and extended filename variables
+resampled.write({'out': 'output.tif'}, pixel_type='uint16', filename_extension='?nodata=65535')
 ```
 
+Another possibility for writing results is to set the output parameter when initializing the application:
+```python
+import pyotb
+
+resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear', 'out': 'output.tif',
+                                          'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
+# Here you can set optionally pixel type and extended filename variables
+resampled.write(pixel_type='uint16', filename_extension='?nodata=65535')
+```
 
 ## Arithmetic operations
 Every pyotb object supports arithmetic operations, such as addition, subtraction, comparison...
-Consider an example where we want to perform the arithmetic operation `image1 * image2 - 2*image3`
+Consider an example where we want to compute a vegeteation mask from NDVI, i.e. the arithmetic operation `(nir - red) / (nir + red) > 0.3`
 
-Using OTB, the following code works for 3-bands images :
-```python
-import otbApplication
-
-bmx = otbApplication.Registry.CreateApplication('BandMathX')
-bmx.SetParameterStringList('il', ['image1.tif', 'image2.tif', 'image3.tif'])  # all images are 3-bands
-exp = 'im1b1*im2b1 - 2*im3b1; im1b2*im2b2 - 2*im3b2; im1b3*im2b3 - 2*im3b3'
-bmx.SetParameterString('exp', exp)
-bmx.SetParameterString('out', 'output.tif')
-bmx.SetParameterOutputImagePixelType('out', otbApplication.ImagePixelType_uint8)
-bmx.ExecuteAndWriteOutput()
-```
-
-With pyotb, the following works with images of any number of bands : 
+With pyotb, one can simply do :
 ```python
 import pyotb
 
 # transforming filepaths to pyotb objects
-input1, input2, input3 = pyotb.Input('image1.tif'), pyotb.Input('image2.tif') , pyotb.Input('image3.tif')
+nir, red = pyotb.Input('nir.tif'), pyotb.Input('red.tif')
 
-res = input1 * input2 - 2 * input2
-res.write('output.tif', pixel_type='uint8')
+res = (nir - red) / (nir + red) > 0.3
+print(res.exp)  # prints the BandMath expression: "((im1b1 - im2b1) / (im1b1 + im2b1)) > 0.3 ? 1 : 0"
+res.write('vegetation_mask.tif', pixel_type='uint8')
 ```
 
 ## Slicing
@@ -147,33 +111,12 @@ pyotb objects support slicing in a Python fashion :
 import pyotb
 
 # transforming filepath to pyotb object
-input = pyotb.Input('my_image.tif')
+inp = pyotb.Input('my_image.tif')
 
-input[:, :, :3]  # selecting first 3 bands
-input[:, :, [0, 1, 4]]  # selecting bands 1, 2 & 5
-input[:1000, :1000]  # selecting 1000x1000 subset
-```
-
-Using OTB only, this would be more laborious :
-```python
-import otbApplication
-
-# selecting first 3 bands
-extracted = otbApplication.Registry.CreateApplication('ExtractROI')
-extracted.SetParameterString('in', 'my_image.tif')
-extracted.SetParameterStringList('cl', ['Channel1', 'Channel2', 'Channel3'])
-extracted.Execute()
-
-# selecting 1000x1000 subset
-extracted = otbApplication.Registry.CreateApplication('ExtractROI')
-extracted.SetParameterString('in', 'my_image.tif')
-extracted.SetParameterString('mode', 'extent')
-extracted.SetParameterString('mode.extent.unit', 'pxl')
-extracted.SetParameterFloat('mode.extent.ulx', 0)
-extracted.SetParameterFloat('mode.extent.uly', 0)
-extracted.SetParameterFloat('mode.extent.lrx', 999)
-extracted.SetParameterFloat('mode.extent.lry', 999)
-extracted.Execute()
+inp[:, :, :3]  # selecting first 3 bands
+inp[:, :, [0, 1, 4]]  # selecting bands 1, 2 & 5
+inp[:1000, :1000]  # selecting 1000x1000 subset, same as inp[:1000, :1000, :] 
+inp[:100, :100].write('my_image_roi.tif')  # write cropped image to disk
 ```
 
 ## Numpy-inspired functions
@@ -205,7 +148,7 @@ Equivalent of `numpy.clip`. Clip (limit) the values in a raster to a range.
 ```python
 import pyotb
 
-pyotb.clip('my_image.tif', 0, 255)  # clips the values between 0 and 255
+res = pyotb.clip('my_image.tif', 0, 255)  # clips the values between 0 and 255
 ```
 
 ### pyotb.all
@@ -230,24 +173,25 @@ a boolean raster, with as many bands as the inputs.
 
 pyotb objects can be transparently used in numpy functions.
 
+For example:
+
 ```python
 import pyotb
 import numpy as np
 
-input = pyotb.Input('image.tif')  # this is a pyotb object
+inp = pyotb.Input('image.tif')  # this is a pyotb object
 
 # Creating a numpy array of noise
-white_noise = np.random.normal(0, 50, size=input.shape)  # this is a numpy object
+white_noise = np.random.normal(0, 50, size=inp.shape)  # this is a numpy object
 
 # Adding the noise to the image
-noisy_image = input + white_noise  # magic: this is a pyotb object that has the same georeference as input. 
-                                   # `np.add(input, white_noise)` would have worked the same
+noisy_image = inp + white_noise  # magic: this is a pyotb object that has the same georeference as input. 
+                                 # `np.add(inp, white_noise)` would have worked the same
 noisy_image.write('image_plus_noise.tif')
 ```
 Limitations : 
 - The whole image is loaded into memory
 - The georeference can not be modified. Thus, numpy operations can not change the image or pixel size
-  (e.g. it is not possible to use `np.pad`)
 
 
 ## Interaction with Tensorflow
@@ -288,7 +232,7 @@ Advantages :
 
 Limitations :
 - It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues 
-between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script where pyotb has been imported
+between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script where OTBTF apps have been initialized
 
 
 ## Some examples
@@ -318,8 +262,22 @@ mean.write('ndvi_annual_mean.tif')
 
 Note that no actual computation is executed before the last line where the result is written to disk.
 
+### Process raw Pleiades data
+This is a common case of Pleiades data preprocessing : optical calibration -> orthorectification -> pansharpening
 
+```python
+import pyotb
+srtm = '/media/data/raster/nasa/srtm_30m'
+geoid = '/media/data/geoid/egm96.grd'
 
+pan =  pyotb.OpticalCalibration('IMG_PHR1A_P_001/DIM_PHR1A_P_201509011347379_SEN_1791374101-001.XML', level='toa')
+ms = pyotb.OpticalCalibration('IMG_PHR1A_MS_002/DIM_PHR1A_MS_201509011347379_SEN_1791374101-002.XML', level='toa')
 
+pan_ortho = pyotb.OrthoRectification({'io.in': pan, 'elev.dem': srtm, 'elev.geoid': geoid})
+ms_ortho = pyotb.OrthoRectification({'io.in': ms, 'elev.dem': srtm, 'elev.geoid': geoid})
 
+pxs = pyotb.BundleToPerfectSensor(inp=pan_ortho, inxs=ms_ortho, method='bayes', mode="default")
 
+# Here we trigger every app in the pipeline and the process is blocked until result is written to disk
+pxs.write('pxs_image.tif', pixel_type='uint16', filename_extension='?gdal:co:COMPRESS=DEFLATE&gdal:co:PREDICTOR=2')
+```

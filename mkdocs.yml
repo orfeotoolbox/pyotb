@@ -1,0 +1,72 @@
+# mkdocs.yml
+theme:
+  name: "readthedocs"
+  icon:
+    repo: fontawesome/brands/gitlab
+  features:
+    - content.code.annotate
+    - navigation.tabs
+    - toc.follow
+
+plugins:
+- search
+- gen-files:
+    scripts:
+    - doc/gen_ref_pages.py
+- mkdocstrings:
+    watch:
+    - pyotb/
+- literate-nav:
+    nav_file: SUMMARY.md
+- section-index
+- mermaid2
+
+nav:
+- Home: index.md
+- Get Started:
+  - Installation: installation.md
+  - How to use pyotb: quickstart.md
+  - Useful features: features.md
+  - Functions: functions.md
+  - Interaction with other processing libraries: interaction.md
+- Examples:
+    - Pleiades data processing: examples/pleiades.md
+    - Nodata mean: examples/nodata_mean.md
+- Advanced use:
+    - Comparison between pyotb and OTB native library: comparison_otb.md
+    - OTB versions: otb_versions.md
+    - Managing loggers: managing_loggers.md
+- API:
+  - pyotb:
+      - core: reference/pyotb/core.md
+      - apps: reference/pyotb/apps.md
+      - functions: reference/pyotb/functions.md
+      - helpers: reference/pyotb/helpers.md
+
+
+# Customization
+extra:
+  feature:
+    tabs: true
+  social:
+    - icon: fontawesome/brands/gitlab
+      link: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
+extra_css:
+  - stylesheets/extra.css
+use_directory_urls: false  # this creates some pyotb/core.html pages instead of pyotb/core/index.html
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      title: On this page
+      toc_depth: 1-2
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+# rest of the navigation..
+site_name: pyotb
+repo_url: hhttps://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
+repo_name: pyotb
+docs_dir: doc/

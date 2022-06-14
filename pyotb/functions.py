@@ -7,26 +7,25 @@ import os
 import sys
 import textwrap
 import uuid
-import logging
 from collections import Counter
 
 from .core import (App, Input, Operation, logicalOperation, get_nbchannels)
-
-logger = logging.getLogger()
-"""
-Contains several useful functions base on pyotb
-"""
+from .helpers import logger
 
 
 def where(cond, x, y):
     """
     Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y
 
-    :param cond: condition, must be a raster (filepath, App, Operation...). If cond is monoband whereas x or y are
-                 multiband, cond channels are expanded to match x & y ones.
-    :param x: value if cond is True. Can be float, int, App, filepath, Operation...
-    :param y: value if cond is False. Can be float, int, App, filepath, Operation...
-    :return: an output where pixels are x if cond is True, else y
+    Args:
+        cond: condition, must be a raster (filepath, App, Operation...). If cond is monoband whereas x or y are
+              multiband, cond channels are expanded to match x & y ones.
+        x: value if cond is True. Can be float, int, App, filepath, Operation...
+        y: value if cond is False. Can be float, int, App, filepath, Operation...
+
+    Returns:
+        an output where pixels are x if cond is True, else y
+
     """
     # Checking the number of bands of rasters. Several cases :
     # - if cond is monoband, x and y can be multibands. Then cond will adapt to match x and y nb of bands
@@ -69,10 +68,14 @@ def clip(a, a_min, a_max):
     """
     Clip values of image in a range of values
 
-    :param a: input raster, can be filepath or any pyotb object
-    :param a_min: minimum value of the range
-    :param a_max: maximum value of the range
-    :return: raster whose values are clipped in the range
+    Args:
+        a: input raster, can be filepath or any pyotb object
+        a_min: minimum value of the range
+        a_max: maximum value of the range
+
+    Returns:
+        raster whose values are clipped in the range
+
     """
     if isinstance(a, str):
         a = Input(a)
@@ -88,9 +91,14 @@ def all(*inputs):  # pylint: disable=redefined-builtin
     a singleband boolean raster
     For several images, this function checks that all images are True (i.e. !=0) and outputs
     a boolean raster, with as many bands as the inputs
-    :param inputs: can be 1) a single image
-                          2) several images, either passed as separate arguments or inside a list
-    :return: AND intersection
+
+    Args:
+        inputs: inputs can be 1) a single image or 2) several images, either passed as separate arguments
+                or inside a list
+
+    Returns:
+        AND intersection
+
     """
     # If necessary, flatten inputs
     if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
@@ -138,9 +146,13 @@ def any(*inputs):  # pylint: disable=redefined-builtin
     a single band boolean raster
     For several images, this function checks that at least one of the images is True (i.e. !=0) and outputs
     a boolean raster, with as many bands as the inputs
-    :param inputs: can be 1) a single image
-                          2) several images, either passed as separate arguments or inside a list
-    :return: OR intersection
+
+    Args:
+        inputs: inputs can be 1) a single image or 2) several images, either passed as separate arguments
+                or inside a list
+    Returns:
+        OR intersection
+
     """
     # If necessary, flatten inputs
     if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
@@ -187,16 +199,22 @@ def run_tf_function(func):
     This function enables using a function that calls some TF operations, with pyotb object as inputs.
 
     For example, you can write a function that uses TF operations like this :
+        ```python
         @run_tf_function
         def multiply(input1, input2):
             import tensorflow as tf
             return tf.multiply(input1, input2)
 
-    Then you can use it like this :
+        # Then you can use the function like this :
         result = multiply(pyotb_object1, pyotb_object1)  # this is a pyotb object
+        ```
 
-    :param func: function taking one or several inputs and returning *one* output
-    :return wrapper: a function that returns a pyotb object
+    Args:
+        func: function taking one or several inputs and returning *one* output
+
+    Returns:
+        wrapper: a function that returns a pyotb object
+
     """
     try:
         from .apps import TensorflowModelServe
@@ -209,9 +227,14 @@ def run_tf_function(func):
         """
         Create a string containing all python instructions necessary to create and save the Keras model
 
-        :param output_dir: directory under which to save the model
-        :param channels: list of raster channels (int). Contain `None` entries for non-raster inputs
-        :param scalar_inputs: list of scalars (int/float). Contain `None` entries for non-scalar inputs
+        Args:
+            output_dir: directory under which to save the model
+            channels: list of raster channels (int). Contain `None` entries for non-raster inputs
+            scalar_inputs: list of scalars (int/float). Contain `None` entries for non-scalar inputs
+
+        Returns:
+            the whole string code for function definition + model saving
+
         """
 
         # Getting the string definition of the tf function (e.g. "def multiply(x1, x2):...")
@@ -252,9 +275,13 @@ def run_tf_function(func):
         Implicitly, it saves a .pb model that describe the TF operations, then creates an OTB ModelServe application
         that applies this .pb model to the inputs.
 
-        :param inputs: a list of pyotb objects, filepaths or int/float numbers
-        :param tmp_dir: directory where temporary models can be written
-        :return: a pyotb object, output of TensorFlowModelServe
+        Args:
+            *inputs: a list of pyotb objects, filepaths or int/float numbers
+            tmp_dir: directory where temporary models can be written (Default value = '/tmp')
+
+        Returns:
+            a pyotb object, output of TensorFlowModelServe
+
         """
         # Get infos about the inputs
         channels = []
@@ -305,13 +332,17 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     Given several inputs, this function handles the potential resampling and cropping to same extent.
     WARNING: Not fully implemented / tested
 
-    :param args: list of raster inputs. Can be str (filepath) or pyotb objects
-    :param window_rule: Can be 'intersection', 'union', 'same_as_input', 'specify'
-    :param pixel_size_rule: Can be 'minimal', 'maximal', 'same_as_input', 'specify'
-    :param interpolator: Can be 'bco', 'nn', 'linear'
-    :param reference_window_input: Required if window_rule = 'same_as_input'
-    :param reference_pixel_size_input: Required if pixel_size_rule = 'same_as_input'
-    :return: list of in-memory pyotb objects with all the same resolution, shape and extent
+    Args:
+        *args: list of raster inputs. Can be str (filepath) or pyotb objects
+        window_rule: Can be 'intersection', 'union', 'same_as_input', 'specify' (Default value = 'intersection')
+        pixel_size_rule: Can be 'minimal', 'maximal', 'same_as_input', 'specify' (Default value = 'minimal')
+        interpolator: Can be 'bco', 'nn', 'linear' (Default value = 'nn')
+        reference_window_input: Required if window_rule = 'same_as_input' (Default value = None)
+        reference_pixel_size_input: Required if pixel_size_rule = 'same_as_input' (Default value = None)
+
+    Returns:
+        list of in-memory pyotb objects with all the same resolution, shape and extent
+
     """
 
     # Flatten all args into one list
@@ -382,9 +413,12 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         new_inputs = []
         for inp in inputs:
             try:
-                new_input = App('ExtractROI', {'in': inp, 'mode': 'extent', 'mode.extent.unit': 'phy',
-                                               'mode.extent.ulx': ulx, 'mode.extent.uly': lry,  # bug in OTB <= 7.3 :
-                                               'mode.extent.lrx': lrx, 'mode.extent.lry': uly})  # ULY/LRY are inverted
+                params = {
+                    'in': inp, 'mode': 'extent', 'mode.extent.unit': 'phy',
+                    'mode.extent.ulx': ulx, 'mode.extent.uly': lry,  # bug in OTB <= 7.3 :
+                    'mode.extent.lrx': lrx, 'mode.extent.lry': uly,  # ULY/LRY are inverted
+                }
+                new_input = App('ExtractROI', params, execute=True)
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
@@ -426,6 +460,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         for inp in inputs:
             if metadatas[inp]['GeoTransform'][1] != pixel_size:
                 superimposed = App('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
+                superimposed.execute()
                 new_inputs.append(superimposed)
             else:
                 new_inputs.append(inp)
@@ -450,8 +485,9 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     new_inputs = []
     for inp in inputs:
         if image_sizes[inp] != most_common_image_size:
-            new_input = App('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
-            new_inputs.append(new_input)
+            superimposed = App('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
+            superimposed.execute()
+            new_inputs.append(superimposed)
         else:
             new_inputs.append(inp)
     inputs = new_inputs
