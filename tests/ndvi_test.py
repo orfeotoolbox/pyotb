@@ -26,3 +26,8 @@ assert thresholded_bandmath.exp == '((((im1b4 - im1b3) / (im1b4 + im1b3)) >= 0.3
 # Sum of bands
 summed = sum(inp[:, :, b] for b in range(inp.shape[-1]))
 assert summed.exp == '((((0 + im1b1) + im1b2) + im1b3) + im1b4)'
+
+# Create binary mask based on several possible values
+values = [1, 2, 3, 4]
+res = pyotb.where(pyotb.any(inp[:, :, 0] == value for value in values), 255, 0)
+assert res.exp == '(((((im1b1 == 1) || (im1b1 == 2)) || (im1b1 == 3)) || (im1b1 == 4)) ? 255 : 0)'
