@@ -7,6 +7,8 @@ theme:
     - content.code.annotate
     - navigation.tabs
     - toc.follow
+  analytics:
+    - gtag: G-PD85X2X108
 
 plugins:
 - search
@@ -67,6 +69,6 @@ markdown_extensions:
 
 # rest of the navigation..
 site_name: pyotb
-repo_url: hhttps://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
+repo_url: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 repo_name: pyotb
 docs_dir: doc/
