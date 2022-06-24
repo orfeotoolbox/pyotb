@@ -9,6 +9,7 @@ theme:
     - toc.follow
   analytics:
     - gtag: G-PD85X2X108
+  custom_dir: doc/custom_theme
 
 plugins:
 - search
