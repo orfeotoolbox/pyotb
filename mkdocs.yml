@@ -27,7 +27,7 @@ plugins:
 nav:
 - Home: index.md
 - Get Started:
-  - Installation: installation.md
+  - Installation of pyotb: installation.md
   - How to use pyotb: quickstart.md
   - Useful features: features.md
   - Functions: functions.md
@@ -39,6 +39,7 @@ nav:
     - Comparison between pyotb and OTB native library: comparison_otb.md
     - OTB versions: otb_versions.md
     - Managing loggers: managing_loggers.md
+    - Troubleshooting & limitations: troubleshooting.md
 - API:
   - pyotb:
       - core: reference/pyotb/core.md
@@ -69,7 +70,7 @@ markdown_extensions:
   - pymdownx.snippets
 
 # rest of the navigation..
-site_name: pyotb
+site_name: "pyotb documentation: a Python extension of OTB"
 repo_url: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 repo_name: pyotb
 docs_dir: doc/

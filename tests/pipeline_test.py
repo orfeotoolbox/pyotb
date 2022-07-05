@@ -21,6 +21,10 @@ PYOTB_BLOCKS = [
 
 ALL_BLOCKS = PYOTB_BLOCKS + OTBAPPS_BLOCKS
 
+# These apps are problematic when used in pipelines with intermediate outputs
+# (cf https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/2290)
+PROBLEMATIC_APPS = ['DynamicConvert', 'BandMath']
+
 
 def backward():
     """
@@ -52,7 +56,7 @@ def check_app_write(app, out):
 
 filepath = 'Data/Input/QB_MUL_ROI_1000_100.tif'
 pyotb_input = pyotb.Input(filepath)
-
+args = [arg.lower() for arg in sys.argv[1:]] if len(sys.argv) > 1 else []
 
 def generate_pipeline(inp, building_blocks):
     """
@@ -104,25 +108,27 @@ def test_pipeline(pipeline):
     report = {"shapes_errs": [], "write_errs": []}
 
     # Test outputs shapes
-    generator = enumerate(pipeline)
-    if len(sys.argv) > 1:
-        if "backward" in sys.argv[1].lower():
-            print("Perform tests in backward mode")
-            generator = enumerate(reversed(pipeline))
-    for i, app in generator:
-        try:
-            print(f"Trying to access shape of app {app.name} output...")
-            shape = app.shape
-            print(f"App {app.name} output shape is {shape}")
-        except Exception as e:
-            print("\n\033[91mGET SHAPE ERROR\033[0m")
-            print(e)
-            report["shapes_errs"].append(i)
+    pipeline_items = [pipeline[-1]] if "no-intermediate-output" in args else pipeline
+    generator = lambda: enumerate(pipeline_items)
+    if "backward" in args:
+        print("Perform tests in backward mode")
+        generator = lambda: enumerate(reversed(pipeline_items))
+    if "shape" in args:
+        for i, app in generator():
+            try:
+                print(f"Trying to access shape of app {app.name} output...")
+                shape = app.shape
+                print(f"App {app.name} output shape is {shape}")
+            except Exception as e:
+                print("\n\033[91mGET SHAPE ERROR\033[0m")
+                print(e)
+                report["shapes_errs"].append(i)
 
     # Test all pipeline outputs
-    for i, app in generator:
-        if not check_app_write(app, f"/tmp/out_{i}.tif"):
-            report["write_errs"].append(i)
+    if "write" in args:
+        for i, app in generator():
+            if not check_app_write(app, f"/tmp/out_{i}.tif"):
+                report["write_errs"].append(i)
 
     return report
 
@@ -161,10 +167,11 @@ for pipeline in pipelines:
 
 # Summary
 cols = max([len(pipeline2str(pipeline)) for pipeline in pipelines]) + 1
-print("Tests summary:")
+print(f'Tests summary (\033[93mTest options: {"; ".join(args)}\033[0m)')
 print("Pipeline".ljust(cols) + " | Status (reason)")
 print("-" * cols + "-|-" + "-" * 20)
 nb_fails = 0
+allowed_to_fail = 0
 for pipeline, errs in results.items():
     has_err = sum(len(value) for key, value in errs.items()) > 0
     graph = pipeline2str(pipeline)
@@ -173,12 +180,19 @@ for pipeline, errs in results.items():
         msg = f"\033[91m{msg}\033[0m"
     msg += " | "
     if has_err:
-        nb_fails += 1
-        causes = [f"{section}: " + ", ".join([str(i) for i in out_ids])
+        causes = [f"{section}: " + ", ".join([f"app{i}" for i in out_ids])
                   for section, out_ids in errs.items() if out_ids]
         msg += "\033[91mFAIL\033[0m (" + "; ".join(causes) + ")"
+
+        # There is a failure when the pipeline length is >=3, the last app is an Operation and the first app of the
+        # piepline is one of the problematic apps
+        if ("write" in args and "backward" not in args and isinstance(pipeline[-1], pyotb.Operation)
+            and len(pipeline) == 3 and pipeline[0].name in PROBLEMATIC_APPS):
+            allowed_to_fail += 1
+        else:
+            nb_fails += 1
     else:
         msg += "\033[92mPASS\033[0m"
     print(msg)
-print(f"End of summary ({nb_fails} error(s)).", flush=True)
+print(f"End of summary ({nb_fails} error(s), {allowed_to_fail} 'allowed to fail' error(s))", flush=True)
 assert nb_fails == 0, "One of the pipelines have failed. Please read the report."

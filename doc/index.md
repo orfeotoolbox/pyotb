@@ -1,4 +1,4 @@
-# Pyotb
+# Pyotb: Orfeo Toolbox for Python
 
 pyotb is a Python extension of Orfeo Toolbox. It has been built on top of the existing Python API of OTB, in order 
 to make OTB more Python friendly.
@@ -20,4 +20,7 @@ to make OTB more Python friendly.
 - [Comparison between pyotb and OTB native library](comparison_otb.md)
 - [OTB versions](otb_versions.md)
 - [Managing loggers](managing_loggers.md)
+- [Troubleshooting & limitations](troubleshooting.md)
+
+
 ## API

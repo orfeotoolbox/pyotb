@@ -33,6 +33,7 @@ noisy_image = inp + white_noise  # magic: this is a pyotb object that has the sa
 noisy_image.write('image_plus_noise.tif')
 ```
 Limitations : 
+
 - The whole image is loaded into memory
 - The georeference can not be modified. Thus, numpy operations can not change the image or pixel size
 
@@ -70,9 +71,11 @@ res = scalar_product('image1.tif', 'image2.tif')  # magic: this is a pyotb objec
 ```
 
 Advantages :
+
 - The process supports streaming, hence the whole image is **not** loaded into memory
 - Can be integrated in OTB pipelines
 
 Limitations :
+
 - It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues 
 between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script where OTBTF apps have been initialized
