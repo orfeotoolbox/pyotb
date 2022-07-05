@@ -120,8 +120,6 @@ class otbObject(ABC):
             if key in dtypes:
                 self.app.SetParameterOutputImagePixelType(key, dtypes[key])
 
-        self.app.PropagateConnectMode(False)
-
         if isinstance(self, App):
             return self.execute()
 
@@ -176,8 +174,9 @@ class otbObject(ABC):
         if isinstance(self, App):
             if not self.finished:
                 self.execute()
-        elif isinstance(self, Output):
-            self.app.Execute()
+        elif isinstance(self, otbObject):
+            if not self.pyotb_app.finished:
+                self.pyotb_app.execute()
 
     # Special methods
     def __getitem__(self, key):
@@ -549,183 +548,11 @@ class otbObject(ABC):
         return NotImplemented
 
 
-class Slicer(otbObject):
-    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
-
-    def __init__(self, x, rows, cols, channels):
-        """
-        Create a slicer object, that can be used directly for writing or inside a BandMath :
-        - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
-        - in case the user only wants to extract one band, an expression such as "im1b#"
-
-        Args:
-            x: input
-            rows: rows slicing (e.g. 100:2000)
-            cols: columns slicing (e.g. 100:2000)
-            channels: channels, can be slicing, list or int
-
-        """
-        # Initialize the app that will be used for writing the slicer
-        self.output_parameter_key = 'out'
-        self.name = 'Slicer'
-        # Trigger source app execution if needed
-        x.execute_if_needed()
-        app = App('ExtractROI', {'in': x, 'mode': 'extent'}, propagate_pixel_type=True)
-        # First exec required in order to read image dim
-        app.app.Execute()
-
-        parameters = {}
-        # Channel slicing
-        nb_channels = get_nbchannels(x)
-        if channels != slice(None, None, None):
-            # if needed, converting int to list
-            if isinstance(channels, int):
-                channels = [channels]
-            # if needed, converting slice to list
-            elif isinstance(channels, slice):
-                channels_start = channels.start if channels.start is not None else 0
-                channels_end = channels.stop if channels.stop is not None else nb_channels
-                channels_step = channels.step if channels.step is not None else 1
-                channels = range(channels_start, channels_end, channels_step)
-            elif isinstance(channels, tuple):
-                channels = list(channels)
-            elif not isinstance(channels, list):
-                raise ValueError(f'Invalid type for channels, should be int, slice or list of bands. : {channels}')
-
-            # Change the potential negative index values to reverse index
-            channels = [c if c >= 0 else nb_channels + c for c in channels]
-            parameters.update({'cl': [f'Channel{i + 1}' for i in channels]})
-
-        # Spatial slicing
-        spatial_slicing = False
-        # TODO: handle PixelValue app so that accessing value is possible, e.g. raster[120, 200, 0]
-        # TODO TBD: handle the step value in the slice so that NN undersampling is possible ? e.g. obj[::2, ::2]
-        if rows.start is not None:
-            parameters.update({'mode.extent.uly': rows.start})
-            spatial_slicing = True
-        if rows.stop is not None and rows.stop != -1:
-            parameters.update(
-                {'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
-            spatial_slicing = True
-        if cols.start is not None:
-            parameters.update({'mode.extent.ulx': cols.start})
-            spatial_slicing = True
-        if cols.stop is not None and cols.stop != -1:
-            parameters.update(
-                {'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
-            spatial_slicing = True
-        # Execute app
-        app.set_parameters(**parameters)
-        app.execute()
-        # Keeping the OTB app, not the pyotb app
-        self.app = app.app
-
-        # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
-        if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
-            self.one_band_sliced = channels[0] + 1  # OTB convention: channels start at 1
-            self.input = x
-
-
-class Input(otbObject):
-    """
-    Class for transforming a filepath to pyOTB object
-    """
-
-    def __init__(self, filepath):
-        """
-        Args:
-            filepath: raster file path
-
-        """
-        self.output_parameter_key = 'out'
-        self.filepath = filepath
-        self.name = f'Input from {filepath}'
-        app = App('ExtractROI', filepath, execute=True, propagate_pixel_type=True)
-        self.app = app.app
-
-    def __str__(self):
-        """
-        Returns:
-            string representation
-
-        """
-        return f'<pyotb.Input object from {self.filepath}>'
-
-
-class Output(otbObject):
-    """
-    Class for output of an app
-    """
-
-    def __init__(self, app, output_parameter_key):
-        """
-        Args:
-            app: The OTB application
-            output_parameter_key: Output parameter key
-
-        """
-        self.app = app  # keeping a reference of the OTB app
-        self.output_parameter_key = output_parameter_key
-        self.name = f'Output {output_parameter_key} from {self.app.GetName()}'
-
-    def __str__(self):
-        """
-        Returns:
-            string representation
-
-        """
-        return f'<pyotb.Output {self.app.GetName()} object, id {id(self)}>'
-
-
 class App(otbObject):
     """
     Class of an OTB app
     """
     _name = ""
-
-    @property
-    def name(self):
-        """
-        Returns:
-            user's defined name or appname
-
-        """
-        return self._name or self.appname
-
-    @name.setter
-    def name(self, val):
-        """Set custom App name
-
-        Args:
-          val: new name
-
-        """
-        self._name = val
-
-    @property
-    def finished(self):
-        """
-        Property to store whether App has been executed but False if any output file is missing
-
-        Returns:
-            True if exec ended and output files are found else False
-
-        """
-        if self._ended and self.find_output():
-            return True
-        return False
-
-    @finished.setter
-    def finished(self, val):
-        """
-        Value `_ended` will be set to True right after App.execute() or App.write(),
-        then find_output() is called when accessing the property
-
-        Args:
-            val: True if execution ended without exceptions
-
-        """
-        self._ended = val
 
     def __init__(self, appname, *args, execute=False, image_dic=None, otb_stdout=True,
                  pixel_type=None, propagate_pixel_type=False, **kwargs):
@@ -779,15 +606,60 @@ class App(otbObject):
             dtypes = {key: parse_pixel_type(pixel_type) for key in self.output_parameters_keys}
         for key, typ in dtypes.items():
             self.app.SetParameterOutputImagePixelType(key, typ)
-        # Here we make sure that intermediate outputs will be flushed to disk
-        if self.__with_output():
-            self.app.PropagateConnectMode(False)
         # Run app, write output if needed, update `finished` property
         if execute or not self.output_param:
             self.execute()
         # Force save param because it wasn't called during execute()
         else:
             self.__save_objects()
+
+    def get_output_parameters_keys(self):
+        """Get raster output parameter keys
+
+        Returns:
+            output parameters keys
+        """
+        return [param for param in self.app.GetParametersKeys()
+                if self.app.GetParameterType(param) == otb.ParameterType_OutputImage]
+
+    def set_parameters(self, *args, **kwargs):
+        """Set some parameters of the app. When useful, e.g. for images list, this function appends the parameters
+        instead of overwriting them. Handles any parameters, i.e. in-memory & filepaths
+
+        Args:
+            *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
+                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
+                            - string, App or Output, useful when the user implicitly wants to set the param "in"
+                            - list, useful when the user implicitly wants to set the param "il"
+            **kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
+
+        Raises:
+            Exception: when the setting of a parameter failed
+
+        """
+        parameters = kwargs
+        parameters.update(self.__parse_args(args))
+        # Going through all arguments
+        for param, obj in parameters.items():
+            if param not in self.app.GetParametersKeys():
+                raise Exception(f"{self.name}: parameter '{param}' was not recognized. "
+                                f"Available keys are {self.app.GetParametersKeys()}")
+            # When the parameter expects a list, if needed, change the value to list
+            if self.__is_key_list(param) and not isinstance(obj, (list, tuple)):
+                parameters[param] = [obj]
+                obj = [obj]
+                logger.warning('%s: Argument for parameter "%s" was converted to list', self.name, param)
+            try:
+                # This is when we actually call self.app.SetParameter*
+                self.__set_param(param, obj)
+            except (RuntimeError, TypeError, ValueError, KeyError) as e:
+                raise Exception(f"{self.name}: something went wrong before execution "
+                                f"(while setting parameter {param} to '{obj}')") from e
+
+        # Update App's parameters attribute
+        self.parameters.update(parameters)
+        if self.preserve_dtype:
+            self.__propagate_pixel_type()
 
     def execute(self):
         """
@@ -797,12 +669,11 @@ class App(otbObject):
              boolean flag that indicate if command executed with success
 
         """
-        success = False
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
         try:
             self.app.Execute()
             if self.__with_output():
-                self.app.WriteOutput()
+                self.app.ExecuteAndWriteOutput()
             self.finished = True
         except (RuntimeError, FileNotFoundError) as e:
             raise Exception(f'{self.name}: error during during app execution') from e
@@ -812,6 +683,50 @@ class App(otbObject):
             logger.debug("%s: execution succeeded", self.name)
 
         return success
+
+    @property
+    def name(self):
+        """
+        Returns:
+            user's defined name or appname
+
+        """
+        return self._name or self.appname
+
+    @name.setter
+    def name(self, val):
+        """Set custom App name
+
+        Args:
+          val: new name
+
+        """
+        self._name = val
+
+    @property
+    def finished(self):
+        """
+        Property to store whether App has been executed but False if any output file is missing
+
+        Returns:
+            True if exec ended and output files are found else False
+
+        """
+        if self._ended and self.find_output():
+            return True
+        return False
+
+    @finished.setter
+    def finished(self, val):
+        """
+        Value `_ended` will be set to True right after App.execute() or App.write(),
+        then find_output() is called when accessing the property
+
+        Args:
+            val: True if execution ended without exceptions
+
+        """
+        self._ended = val
 
     def find_output(self):
         """
@@ -864,54 +779,6 @@ class App(otbObject):
         if memory:
             self.app.FreeRessources()
 
-    def get_output_parameters_keys(self):
-        """Get raster output parameter keys
-
-        Returns:
-            output parameters keys
-        """
-        return [param for param in self.app.GetParametersKeys()
-                if self.app.GetParameterType(param) == otb.ParameterType_OutputImage]
-
-    def set_parameters(self, *args, **kwargs):
-        """Set some parameters of the app. When useful, e.g. for images list, this function appends the parameters
-        instead of overwriting them. Handles any parameters, i.e. in-memory & filepaths
-
-        Args:
-            *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
-                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-                            - string, App or Output, useful when the user implicitly wants to set the param "in"
-                            - list, useful when the user implicitly wants to set the param "il"
-            **kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
-
-        Raises:
-            Exception: when the setting of a parameter failed
-
-        """
-        parameters = kwargs
-        parameters.update(self.__parse_args(args))
-        # Going through all arguments
-        for param, obj in parameters.items():
-            if param not in self.app.GetParametersKeys():
-                raise Exception(f"{self.name}: parameter '{param}' was not recognized. "
-                                f"Available keys are {self.app.GetParametersKeys()}")
-            # When the parameter expects a list, if needed, change the value to list
-            if self.__is_key_list(param) and not isinstance(obj, (list, tuple)):
-                parameters[param] = [obj]
-                obj = [obj]
-                logger.warning('%s: Argument for parameter "%s" was converted to list', self.name, param)
-            try:
-                # This is when we actually call self.app.SetParameter*
-                self.__set_param(param, obj)
-            except (RuntimeError, TypeError, ValueError, KeyError) as e:
-                raise Exception(f"{self.name}: something went wrong before execution "
-                                f"(while setting parameter {param} to '{obj}')") from e
-
-        # Update App's parameters attribute
-        self.parameters.update(parameters)
-        if self.preserve_dtype:
-            self.__propagate_pixel_type()
-
     # Private functions
     @staticmethod
     def __parse_args(args):
@@ -932,33 +799,34 @@ class App(otbObject):
         """
         Set one parameter, decide which otb.Application method to use depending on target object
         """
-        # Single-parameter cases
-        if isinstance(obj, otbObject):
-            self.app.ConnectImage(param, obj.app, obj.output_param)
-        elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
-            outparamkey = [param for param in obj.GetParametersKeys()
-                           if obj.GetParameterType(param) == otb.ParameterType_OutputImage][0]
-            self.app.ConnectImage(param, obj, outparamkey)
-        elif param == 'ram':  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
-            self.app.SetParameterInt('ram', int(obj))
-        elif not isinstance(obj, list):  # any other parameters (str, int...)
-            self.app.SetParameterValue(param, obj)
-        # Images list
-        elif self.__is_key_images_list(param):
-            # To enable possible in-memory connections, we go through the list and set the parameters one by one
-            for inp in obj:
-                if isinstance(inp, otbObject):
-                    self.app.ConnectImage(param, inp.app, inp.output_param)
-                elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
-                    outparamkey = [param for param in inp.GetParametersKeys() if
-                                   inp.GetParameterType(param) == otb.ParameterType_OutputImage][0]
-                    self.app.ConnectImage(param, inp, outparamkey)
-                else:  # here `input` should be an image filepath
-                    # Append `input` to the list, do not overwrite any previously set element of the image list
-                    self.app.AddParameterStringList(param, inp)
-        # List of any other types (str, int...)
-        else:
-            self.app.SetParameterValue(param, obj)
+        if obj is not None:
+            # Single-parameter cases
+            if isinstance(obj, otbObject):
+                self.app.ConnectImage(param, obj.app, obj.output_param)
+            elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
+                outparamkey = [param for param in obj.GetParametersKeys()
+                               if obj.GetParameterType(param) == otb.ParameterType_OutputImage][0]
+                self.app.ConnectImage(param, obj, outparamkey)
+            elif param == 'ram':  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
+                self.app.SetParameterInt('ram', int(obj))
+            elif not isinstance(obj, list):  # any other parameters (str, int...)
+                self.app.SetParameterValue(param, obj)
+            # Images list
+            elif self.__is_key_images_list(param):
+                # To enable possible in-memory connections, we go through the list and set the parameters one by one
+                for inp in obj:
+                    if isinstance(inp, otbObject):
+                        self.app.ConnectImage(param, inp.app, inp.output_param)
+                    elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
+                        outparamkey = [param for param in inp.GetParametersKeys() if
+                                       inp.GetParameterType(param) == otb.ParameterType_OutputImage][0]
+                        self.app.ConnectImage(param, inp, outparamkey)
+                    else:  # here `input` should be an image filepath
+                        # Append `input` to the list, do not overwrite any previously set element of the image list
+                        self.app.AddParameterStringList(param, inp)
+            # List of any other types (str, int...)
+            else:
+                self.app.SetParameterValue(param, obj)
 
     def __propagate_pixel_type(self):
         """
@@ -992,7 +860,7 @@ class App(otbObject):
         """
         for key in self.app.GetParametersKeys():
             if key in self.output_parameters_keys:  # raster outputs
-                output = Output(self.app, key)
+                output = Output(self, key)
                 setattr(self, key, output)
             elif key not in ('parameters',):  # any other attributes (scalars...)
                 try:
@@ -1004,22 +872,15 @@ class App(otbObject):
         """
         Check if a key of the App is an input parameter list
         """
-        return self.app.GetParameterType(key) in (
-            otb.ParameterType_InputImageList,
-            otb.ParameterType_StringList,
-            otb.ParameterType_InputFilenameList,
-            otb.ParameterType_InputVectorDataList,
-            otb.ParameterType_ListView
-        )
+        return self.app.GetParameterType(key) in (otb.ParameterType_InputImageList, otb.ParameterType_StringList,
+                                                  otb.ParameterType_InputFilenameList, otb.ParameterType_ListView,
+                                                  otb.ParameterType_InputVectorDataList)
 
     def __is_key_images_list(self, key):
         """
         Check if a key of the App is an input parameter image list
         """
-        return self.app.GetParameterType(key) in (
-            otb.ParameterType_InputImageList,
-            otb.ParameterType_InputFilenameList
-        )
+        return self.app.GetParameterType(key) in (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
 
     # Special methods
     def __str__(self):
@@ -1027,6 +888,135 @@ class App(otbObject):
         Return a nice str
         """
         return f'<pyotb.App {self.appname} object id {id(self)}>'
+
+
+class Slicer(otbObject):
+    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
+
+    def __init__(self, x, rows, cols, channels):
+        """
+        Create a slicer object, that can be used directly for writing or inside a BandMath. It contains :
+        - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
+        - in case the user only wants to extract one band, an expression such as "im1b#"
+
+        Args:
+            x: input
+            rows: rows slicing (e.g. 100:2000)
+            cols: columns slicing (e.g. 100:2000)
+            channels: channels, can be slicing, list or int
+
+        """
+        # Initialize the app that will be used for writing the slicer
+        self.output_parameter_key = 'out'
+        self.name = 'Slicer'
+        app = App('ExtractROI', {'in': x, 'mode': 'extent'}, propagate_pixel_type=True)
+
+        parameters = {}
+        # Channel slicing
+        if channels != slice(None, None, None):
+            # Trigger source app execution if needed
+            nb_channels = get_nbchannels(x)
+            app.app.Execute()  # this is needed by ExtractROI for setting the `cl` parameter
+            # if needed, converting int to list
+            if isinstance(channels, int):
+                channels = [channels]
+            # if needed, converting slice to list
+            elif isinstance(channels, slice):
+                channels_start = channels.start if channels.start is not None else 0
+                channels_end = channels.stop if channels.stop is not None else nb_channels
+                channels_step = channels.step if channels.step is not None else 1
+                channels = range(channels_start, channels_end, channels_step)
+            elif isinstance(channels, tuple):
+                channels = list(channels)
+            elif not isinstance(channels, list):
+                raise ValueError(f'Invalid type for channels, should be int, slice or list of bands. : {channels}')
+
+            # Change the potential negative index values to reverse index
+            channels = [c if c >= 0 else nb_channels + c for c in channels]
+            parameters.update({'cl': [f'Channel{i + 1}' for i in channels]})
+
+        # Spatial slicing
+        spatial_slicing = False
+        # TODO: handle PixelValue app so that accessing value is possible, e.g. raster[120, 200, 0]
+        # TODO TBD: handle the step value in the slice so that NN undersampling is possible ? e.g. raster[::2, ::2]
+        if rows.start is not None:
+            parameters.update({'mode.extent.uly': rows.start})
+            spatial_slicing = True
+        if rows.stop is not None and rows.stop != -1:
+            parameters.update(
+                {'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
+            spatial_slicing = True
+        if cols.start is not None:
+            parameters.update({'mode.extent.ulx': cols.start})
+            spatial_slicing = True
+        if cols.stop is not None and cols.stop != -1:
+            parameters.update(
+                {'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
+            spatial_slicing = True
+        # Execute app
+        app.set_parameters(**parameters)
+
+        # Keeping the OTB app and the pyotb app
+        self.pyotb_app, self.app = app, app.app
+
+        # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
+        if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
+            self.one_band_sliced = channels[0] + 1  # OTB convention: channels start at 1
+            self.input = x
+
+
+class Input(otbObject):
+    """
+    Class for transforming a filepath to pyOTB object
+    """
+
+    def __init__(self, filepath):
+        """
+        Args:
+            filepath: raster file path
+
+        """
+        self.output_parameter_key = 'out'
+        self.filepath = filepath
+        self.name = f'Input from {filepath}'
+        app = App('ExtractROI', filepath, execute=True, propagate_pixel_type=True)
+
+        # Keeping the OTB app and the pyotb app
+        self.pyotb_app, self.app = app, app.app
+
+    def __str__(self):
+        """
+        Returns:
+            string representation
+
+        """
+        return f'<pyotb.Input object from {self.filepath}>'
+
+
+class Output(otbObject):
+    """
+    Class for output of an app
+    """
+
+    def __init__(self, app, output_parameter_key):
+        """
+        Args:
+            app: The pyotb App
+            output_parameter_key: Output parameter key
+
+        """
+        # Keeping the OTB app and the pyotb app
+        self.pyotb_app, self.app = app, app.app
+        self.output_parameter_key = output_parameter_key
+        self.name = f'Output {output_parameter_key} from {self.app.GetName()}'
+
+    def __str__(self):
+        """
+        Returns:
+            string representation
+
+        """
+        return f'<pyotb.Output {self.app.GetName()} object, id {id(self)}>'
 
 
 class Operation(otbObject):
@@ -1055,7 +1045,7 @@ class Operation(otbObject):
         """
         Given some inputs and an operator, this function enables to transform this into an OTB application.
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
-        It can have 3 inputs for the ternary operator `cond ? x : y`,
+        It can have 3 inputs for the ternary operator `cond ? x : y`.
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
@@ -1101,8 +1091,9 @@ class Operation(otbObject):
             app = App('BandMath', il=self.unique_inputs, exp=self.exp)
         else:
             app = App('BandMathX', il=self.unique_inputs, exp=self.exp)
-        app.execute()
-        self.app = app.app
+
+        # Keeping the OTB app and the pyotb app
+        self.pyotb_app, self.app = app, app.app
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """
