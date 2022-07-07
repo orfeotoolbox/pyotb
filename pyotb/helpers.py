@@ -285,9 +285,13 @@ def __suggest_fix_import(error_message, prefix):
                 if Path(lib).exists():
                     target_lib = f"{prefix}/lib/libpython3.{expect_minor}.so.rh-python3{expect_minor}-1.0"
                     logger.critical("Use 'ln -s %s %s'", lib, target_lib)
-            elif which('ctest'):
-                logger.critical("To recompile python bindings, use 'cd %s ; source otbenv.profile ; "
-                                "ctest -S share/otb/swig/build_wrapping.cmake -VV'", prefix)
+                elif which('ctest'):
+                    logger.critical("To recompile python bindings, use 'cd %s ; source otbenv.profile ; "
+                                    "ctest -S share/otb/swig/build_wrapping.cmake -VV'", prefix)
+                else:
+                    logger.critical("You need to install cmake in order to recompile python bindings for your system")
+            else:
+                logger.critical("Unable to automatically locate python dynamic library of %s", sys.executable)
         else:
             docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
             logger.crical("You can verify installation requirements for your OS at %s", docs_link)
