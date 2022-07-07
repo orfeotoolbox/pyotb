@@ -62,7 +62,7 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
             import otbApplication as otb  # pylint: disable=import-outside-toplevel
             return otb
         except (ImportError, EnvironmentError) as e:
-            raise SystemExit(f"Failed to import OTB with {prefix=}") from e
+            raise SystemExit(f"Failed to import OTB with prefix={prefix}") from e
     # Else try import from actual Python path
     try:
         # Here, we can't properly set env variables before OTB import. We assume user did this before running python
@@ -76,7 +76,7 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
     except ImportError as e:
         PYTHONPATH = os.environ.get("PYTHONPATH")
         if not scan:
-            raise SystemExit(f"Failed to import OTB with env {PYTHONPATH=}") from e
+            raise SystemExit(f"Failed to import OTB with env PYTHONPATH={PYTHONPATH}") from e
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
     prefix = __find_otb_root(scan_userdir)
