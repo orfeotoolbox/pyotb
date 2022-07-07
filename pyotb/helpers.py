@@ -294,4 +294,4 @@ def __suggest_fix_import(error_message, prefix):
                 logger.critical("Unable to automatically locate python dynamic library of %s", sys.executable)
         else:
             docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
-            logger.crical("You can verify installation requirements for your OS at %s", docs_link)
+            logger.critical("You can verify installation requirements for your OS at %s", docs_link)
