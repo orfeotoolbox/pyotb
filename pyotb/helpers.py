@@ -6,6 +6,8 @@ import os
 import sys
 import logging
 from pathlib import Path
+from shutil import which
+
 
 # Allow user to switch between OTB directories without setting every env variable
 OTB_ROOT = os.environ.get("OTB_ROOT")
@@ -93,16 +95,8 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
     # Help user to fix this
     except ImportError as e:
         logger.critical("An error occurred while importing OTB Python API")
-        if str(e).startswith('libpython3.'):
-            logger.critical("It seems like you need to symlink or recompile python bindings")
-            if sys.platform == "linux":
-                if sys.executable.startswith('/usr/bin') and sys.version_info.minor == 8:
-                    lib = "/usr/lib/x86_64-linux-gnu/libpython3.8.so"
-                    if Path(lib).exists():
-                        logger.critical("Use 'ln -s %s %s/lib/libpython3.8.so.rh-python38-1.0'", lib, prefix)
-                else:
-                    logger.critical("If cmake is installed, use 'cd %s ; source otbenv.profile ; "
-                                    "ctest -S share/otb/swig/build_wrapping.cmake -VV'", prefix)
+        logger.critical("OTB error message was '%s'", e)
+        __suggest_fix_import(str(e), prefix)
         raise SystemExit("Failed to import OTB. Exiting.") from e
 
 
@@ -276,3 +270,24 @@ def __find_otb_root(scan_userdir=False):
             prefix = path.parent.absolute()
 
     return prefix
+
+
+def __suggest_fix_import(error_message, prefix):
+    if error_message.startswith('libpython3.'):
+        if sys.platform == "linux":
+            logger.critical("It seems like you need to symlink or recompile python bindings")
+            expect_minor = int(error_message[11])
+            if expect_minor != sys.version_info.minor:
+                logger.critical("Python library version mismatch (OTB was expecting 3.%s) : "
+                                "a simple symlink may not work, depending on your python version", expect_minor)
+            if sys.executable.startswith('/usr/bin'):
+                lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
+                if Path(lib).exists():
+                    target_lib = f"{prefix}/lib/libpython3.{expect_minor}.so.rh-python3{expect_minor}-1.0"
+                    logger.critical("Use 'ln -s %s %s'", lib, target_lib)
+            elif which('ctest'):
+                logger.critical("To recompile python bindings, use 'cd %s ; source otbenv.profile ; "
+                                "ctest -S share/otb/swig/build_wrapping.cmake -VV'", prefix)
+        else:
+            docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
+            logger.crical("You can verify installation requirements for your OS at %s", docs_link)
