@@ -41,11 +41,14 @@ import pyotb
 ```
 ```text
 2022-06-14 14:00:34 (INFO) [pyOTB] Preparing environment for OTB in /home/otbuser/Applications/OTB-8.0.1-Linux64
-2022-06-14 14:00:34 (CRITICAL) [pyOTB] An error occurred while importing OTB Python API
-2022-06-14 14:00:34 (CRITICAL) [pyOTB] It seems like you need to symlink or recompile python bindings
-2022-06-14 14:00:34 (CRITICAL) [pyOTB] Use 'ln -s /usr/lib/x86_64-linux-gnu/libpython3.8.so /home/otbuser/Applications/OTB-8.0.1-Linux64/lib/libpython3.8.so.rh-python38-1.0'
-# OR in case Python version is not 3.8 :
-2022-06-14 14:04:33 (CRITICAL) [pyOTB] It seems like you need to symlink or recompile python bindings
-2022-06-14 14:04:33 (CRITICAL) [pyOTB] If cmake is installed, use 'cd /home/otbuser/Applications/OTB-8.0.1-Linux64 ; source otbenv.profile ; ctest -S share/otb/swig/build_wrapping.cmake -VV'
+2022-07-07 16:56:04 (CRITICAL) [pyOTB] An error occurred while importing OTB Python API
+2022-07-07 16:56:04 (CRITICAL) [pyOTB] OTB error message was 'libpython3.8.so.rh-python38-1.0: cannot open shared object file: No such file or directory'
+2022-07-07 16:56:04 (CRITICAL) [pyOTB] It seems like you need to symlink or recompile python bindings
+2022-07-07 16:56:04 (CRITICAL) [pyOTB] Use 'ln -s /usr/lib/x86_64-linux-gnu/libpython3.8.so /home/otbuser/Applications/OTB-8.0.1-Linux64/lib/libpython3.8.so.rh-python38-1.0'
+
+# OR in case Python version is not 3.8 and cmake is installed :
+2022-07-07 16:54:34 (CRITICAL) [pyOTB] Python library version mismatch (OTB was expecting 3.8) : a simple symlink may not work, depending on your python version
+2022-07-07 16:54:34 (CRITICAL) [pyOTB] To recompile python bindings, use 'cd /home/otbuser/Applications/OTB-8.0.1-Linux64 ; source otbenv.profile ; ctest -S share/otb/swig/build_wrapping.cmake -VV'
+
 Failed to import OTB. Exiting.
 ```
