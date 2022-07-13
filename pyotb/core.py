@@ -38,13 +38,13 @@ class otbObject(ABC):
         Enables to retrieve the shape of a pyotb object.
 
         Returns:
-            shape: (width, height, bands)
+            shape: (height, width, bands)
 
         """
         self.execute_if_needed()
-        image_size = self.app.GetImageSize(self.output_param)
-        image_bands = self.app.GetImageNbBands(self.output_param)
-        return (*image_size, image_bands)
+        width, height = self.app.GetImageSize(self.output_param)
+        bands = self.app.GetImageNbBands(self.output_param)
+        return (height, width, bands)
 
     def write(self, *args, filename_extension="", pixel_type=None, **kwargs):
         """
