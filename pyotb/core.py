@@ -162,19 +162,16 @@ class otbObject(ABC):
           profile: a metadata dict required to write image using rasterio
 
         """
-        array = self.to_numpy(propagate_pixel_type=True, copy=True)
+        array = self.to_numpy(propagate_pixel_type=True, copy=False)
         array = np.moveaxis(array, 2, 0)
         proj = self.app.GetImageProjection(self.output_param)
         spacing_x, spacing_y = self.app.GetImageSpacing(self.output_param)
         origin_x, origin_y = self.app.GetImageOrigin(self.output_param)
-        # Fix image origin since OTB is giving coordinates of pixel center
+        # Shift image origin since OTB is giving coordinates of pixel center instead of corners
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         profile = {
-            'crs': proj,
-            'count': array.shape[0],
-            'height': array.shape[1],
-            'width': array.shape[2],
-            'dtype': array.dtype,
+            'crs': proj, 'dtype': array.dtype,
+            'count': array.shape[0], 'height': array.shape[1], 'width': array.shape[2],
             'transform': (spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y)  # here we force pixel rotation to 0 !
         }
         return array, profile
