@@ -219,7 +219,6 @@ class otbObject(ABC):
         # Accessing string attributes
         if isinstance(key, str):
             return self.__dict__.get(key)
-
         # Slicing
         if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
             raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
@@ -963,18 +962,18 @@ class Slicer(otbObject):
         # TODO: handle PixelValue app so that accessing value is possible, e.g. raster[120, 200, 0]
         # TODO TBD: handle the step value in the slice so that NN undersampling is possible ? e.g. raster[::2, ::2]
         if rows.start is not None:
-            parameters.update({'mode.extent.uly': rows.start})
+            parameters.update({'mode.extent.ulx': rows.start})
             spatial_slicing = True
         if rows.stop is not None and rows.stop != -1:
             parameters.update(
-                {'mode.extent.lry': rows.stop - 1})  # subtract 1 to be compliant with python convention
+                {'mode.extent.lrx': rows.stop - 1})  # subtract 1 to be compliant with python convention
             spatial_slicing = True
         if cols.start is not None:
-            parameters.update({'mode.extent.ulx': cols.start})
+            parameters.update({'mode.extent.uly': cols.start})
             spatial_slicing = True
         if cols.stop is not None and cols.stop != -1:
             parameters.update(
-                {'mode.extent.lrx': cols.stop - 1})  # subtract 1 to be compliant with python convention
+                {'mode.extent.lry': cols.stop - 1})  # subtract 1 to be compliant with python convention
             spatial_slicing = True
         # Execute app
         app.set_parameters(**parameters)
