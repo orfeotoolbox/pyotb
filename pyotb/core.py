@@ -204,7 +204,7 @@ class otbObject(ABC):
             # Adding a 3rd dimension
             key = key + (slice(None, None, None),)
         (cols, rows, channels) = key
-        return Slicer(self, rows, cols, channels)
+        return Slicer(self, cols, rows, channels)
 
     def __getattr__(self, name):
         """
@@ -893,7 +893,7 @@ class App(otbObject):
 class Slicer(otbObject):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
 
-    def __init__(self, x, rows, cols, channels):
+    def __init__(self, x, cols, rows, channels):
         """
         Create a slicer object, that can be used directly for writing or inside a BandMath. It contains :
         - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
@@ -901,8 +901,8 @@ class Slicer(otbObject):
 
         Args:
             x: input
-            rows: rows slicing (e.g. 100:2000)
             cols: columns slicing (e.g. 100:2000)
+            rows: rows slicing (e.g. 100:2000)
             channels: channels, can be slicing, list or int
 
         """
