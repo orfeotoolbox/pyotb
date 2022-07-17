@@ -314,11 +314,11 @@ def run_tf_function(func):
 
         # Initialize the OTBTF model serving application
         model_serve = TensorflowModelServe({'model.dir': out_savedmodel, 'optim.disabletiling': 'on',
-                                            'model.fullyconv': 'on'}, n_sources=len(raster_inputs), execute=False)
+                                            'model.fullyconv': 'on'}, n_sources=len(raster_inputs), frozen=True)
         # Set parameters and execute
         for i, inp in enumerate(raster_inputs):
             model_serve.set_parameters({f'source{i + 1}.il': [inp]})
-        model_serve.Execute()
+        model_serve.execute()
         # TODO: handle the deletion of the temporary model ?
 
         return model_serve
@@ -418,7 +418,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
                     'mode.extent.ulx': ulx, 'mode.extent.uly': lry,  # bug in OTB <= 7.3 :
                     'mode.extent.lrx': lrx, 'mode.extent.lry': uly,  # ULY/LRY are inverted
                 }
-                new_input = App('ExtractROI', params, execute=True)
+                new_input = App('ExtractROI', params)
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
@@ -460,7 +460,6 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         for inp in inputs:
             if metadatas[inp]['GeoTransform'][1] != pixel_size:
                 superimposed = App('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
-                superimposed.execute()
                 new_inputs.append(superimposed)
             else:
                 new_inputs.append(inp)
@@ -486,7 +485,6 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     for inp in inputs:
         if image_sizes[inp] != most_common_image_size:
             superimposed = App('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
-            superimposed.execute()
             new_inputs.append(superimposed)
         else:
             new_inputs.append(inp)
