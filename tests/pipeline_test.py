@@ -9,14 +9,14 @@ OTBAPPS_BLOCKS = [
     #lambda inp: pyotb.ExtractROI({"in": inp, "startx": 10, "starty": 10, "sizex": 50, "sizey": 50}),
     lambda inp: pyotb.ManageNoData({"in": inp, "mode": "changevalue"}),
     lambda inp: pyotb.DynamicConvert({"in": inp}),
-    lambda inp: pyotb.Mosaic({"il": inp}),
-    lambda inp: pyotb.BandMath({"il": inp, "exp": "im1b1 + 1"}),
-    lambda inp: pyotb.BandMathX({"il": inp, "exp": "im1"})
+    lambda inp: pyotb.Mosaic({"il": [inp]}),
+    lambda inp: pyotb.BandMath({"il": [inp], "exp": "im1b1 + 1"}),
+    lambda inp: pyotb.BandMathX({"il": [inp], "exp": "im1"})
 ]
 
 PYOTB_BLOCKS = [
     lambda inp: 1 + abs(inp) * 2,
-    lambda inp: inp[10:80, 10:80, :],
+    lambda inp: inp[:80, 10:60, :],
 ]
 
 ALL_BLOCKS = PYOTB_BLOCKS + OTBAPPS_BLOCKS
@@ -108,7 +108,7 @@ def test_pipeline(pipeline):
     report = {"shapes_errs": [], "write_errs": []}
 
     # Test outputs shapes
-    pipeline_items = [pipeline[-1]] if "no-intermediate-output" in args else pipeline
+    pipeline_items = [pipeline[-1]] if "no-intermediate-result" in args else pipeline
     generator = lambda: enumerate(pipeline_items)
     if "backward" in args:
         print("Perform tests in backward mode")
@@ -183,11 +183,7 @@ for pipeline, errs in results.items():
         causes = [f"{section}: " + ", ".join([f"app{i}" for i in out_ids])
                   for section, out_ids in errs.items() if out_ids]
         msg += "\033[91mFAIL\033[0m (" + "; ".join(causes) + ")"
-
-        # There is a failure when the pipeline length is >=3, the last app is an Operation and the first app of the
-        # piepline is one of the problematic apps
-        if ("write" in args and "backward" not in args and isinstance(pipeline[-1], pyotb.Operation)
-            and len(pipeline) == 3 and pipeline[0].name in PROBLEMATIC_APPS):
+        if any([app.name in PROBLEMATIC_APPS for app in pipeline]):
             allowed_to_fail += 1
         else:
             nb_fails += 1
