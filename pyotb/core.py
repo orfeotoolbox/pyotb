@@ -689,31 +689,6 @@ class App(otbObject):
         """
         self._name = val
 
-    @property
-    def finished(self):
-        """
-        Property to store whether App has been executed but False if any output file is missing
-
-        Returns:
-            True if exec ended and output files are found else False
-
-        """
-        if self._ended and self.find_output():
-            return True
-        return False
-
-    @finished.setter
-    def finished(self, val):
-        """
-        Value `_ended` will be set to True right after App.execute() or App.write(),
-        then find_output() is called when accessing the property
-
-        Args:
-            val: True if execution ended without exceptions
-
-        """
-        self._ended = val
-
     def find_output(self):
         """
         Find output files on disk using parameters
@@ -722,9 +697,6 @@ class App(otbObject):
             list of files found on disk
 
         """
-        if not self.__with_output():
-            return [""]
-        # Return non-empty list to make sure finished returns True
         files = []
         missing = []
         outputs = [p for p in self.output_parameters_keys if p in self.parameters]
@@ -742,28 +714,8 @@ class App(otbObject):
             missing = tuple(missing)
             for filename in missing:
                 logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-        else:
-            # Force set _ended to True since Execute was triggered by OTB, execute() was not called
-            self.finished = True
 
         return files
-
-    def clear(self, parameters=False, memory=False, key=""):
-        """Free resources and reset App state
-
-        Args:
-            parameters: to clear settings dictionary (Default value = False)
-            memory: to free app resources in memory (Default value = False)
-            key: to clear one specific parameter value (Default value = "")
-
-        """
-        if parameters:
-            for p in self.parameters:
-                self.app.ClearValue(p)
-        elif key:
-            self.app.ClearValue(key)
-        if memory:
-            self.app.FreeRessources()
 
     # Private functions
     @staticmethod
