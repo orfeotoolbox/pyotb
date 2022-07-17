@@ -19,7 +19,9 @@ class otbObject(ABC):
     @property
     def parameters(self):
         """Property to merge otb.Application parameters and user's parameters dicts."""
-        return {**self.app.GetParameters(), **self._parameters}
+        parameters = self.app.GetParameters().items()
+        parameters = {k: str(v) if isinstance(v, otb.ApplicationProxy) else v for k, v in parameters}
+        return {**parameters, **self._parameters}
 
     @property
     def output_param(self):
@@ -657,10 +659,12 @@ class App(otbObject):
         super().execute()
         self.frozen = False
         if self.__with_output() or not self.output_param:
+            logger.debug('%s: flushing data to disk', self.name)
             self.app.WriteOutput()
+        self.__save_objects()
 
     def find_output(self):
-        """Find output files on disk using parameters.
+        """Find output files on disk using path found in parameters.
 
         Returns:
             list of files found on disk
@@ -777,14 +781,20 @@ class App(otbObject):
         This is useful when the key contains reserved characters such as a point eg "io.out"
         """
         for key in self.app.GetParametersKeys():
+            if key == 'parameters':  # skip forbidden attribute since it is already used by the App class
+                continue
+            value = None
             if key in self.output_parameters_keys:  # raster outputs
-                output = Output(self, key)
-                setattr(self, key, output)
-            elif key not in ('parameters',):  # any other attributes (scalars...)
+                value = Output(self, key)
+            elif key in self.parameters:  # user or default app parameters
+                value = self.parameters[key]
+            else:  # any other app attribute (e.g. ReadImageInfo results)
                 try:
-                    setattr(self, key, self.app.GetParameterValue(key))
+                    value = self.app.GetParameterValue(key)
                 except RuntimeError:
                     pass  # this is when there is no value for key
+            if value is not None:
+                setattr(self, key, value)
 
     def __is_key_list(self, key):
         """Check if a key of the App is an input parameter list."""
