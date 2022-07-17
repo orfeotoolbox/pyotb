@@ -15,6 +15,10 @@ class otbObject(ABC):
     """Abstract class that gathers common operations for any OTB in-memory raster.
     All child of this class must have an `app` attribute that is an OTB application.
     """
+    _parameters = {}
+    @property
+    def parameters(self):
+        return {**self.app.GetParameters(), **self._parameters}
 
     @property
     def output_param(self):
@@ -122,12 +126,11 @@ class otbObject(ABC):
 
             logger.debug('%s: "%s" parameter is %s', self.name, key, output_filename)
             self.app.SetParameterString(key, output_filename)
-            self.parameters[key] = output_filename
 
             if key in dtypes:
                 self.app.SetParameterOutputImagePixelType(key, dtypes[key])
 
-        logger.debug(f'{self.name}: flushing data to disk')
+        logger.debug('%s: flushing data to disk', self.name)
         self.app.ExecuteAndWriteOutput()
 
     def to_numpy(self, propagate_pixel_type=True, copy=False):
@@ -597,12 +600,12 @@ class App(otbObject):
             self.app = otb.Registry.CreateApplication(appname)
         else:
             self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
-        self.parameters = {}
         self.output_parameters_keys = self.get_output_parameters_keys()
+        self._parameters = {}
         if (args or kwargs):
             self.set_parameters(*args, **kwargs)
         self.frozen = frozen
-        if not frozen:
+        if not self.frozen:
             self.execute()
 
     def get_output_parameters_keys(self):
@@ -648,8 +651,7 @@ class App(otbObject):
                 raise Exception(f"{self.name}: something went wrong before execution "
                                 f"(while setting parameter {param} to '{obj}')") from e
 
-        # Update App's parameters attribute
-        self.parameters.update(parameters)
+        self._parameters.update(parameters)
         if self.preserve_dtype:
             self.__propagate_pixel_type()
 
@@ -893,7 +895,6 @@ class Slicer(otbObject):
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
-        self.parameters = app.parameters
 
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
         if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
@@ -919,7 +920,6 @@ class Input(otbObject):
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
-        self.parameters = app.parameters
 
     def __str__(self):
         """
@@ -1028,7 +1028,6 @@ class Operation(otbObject):
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
-        self.parameters =  app.parameters
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """
@@ -1053,7 +1052,7 @@ class Operation(otbObject):
             if any(isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs):
                 nb_bands = 1
             else:
-                nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
+                nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
                 # check that all inputs have the same nb of bands
                 if len(nb_bands_list) > 1:
                     if not all(x == nb_bands_list[0] for x in nb_bands_list):
