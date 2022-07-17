@@ -575,7 +575,7 @@ class App(otbObject):
             self.app = otb.Registry.CreateApplication(appname)
         else:
             self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
-        self.output_parameters_keys = self.get_output_parameters_keys()
+        self.output_parameters_keys = self.__get_output_parameters_keys()
         self._parameters = {}
         if (args or kwargs):
             self.set_parameters(*args, **kwargs)
@@ -693,6 +693,15 @@ class App(otbObject):
         return files
 
     # Private functions
+    def __get_output_parameters_keys(self):
+        """Get raster output parameter keys.
+
+        Returns:
+            output parameters keys
+        """
+        return [param for param in self.app.GetParametersKeys()
+                if self.app.GetParameterType(param) == otb.ParameterType_OutputImage]
+
     @staticmethod
     def __parse_args(args):
         """Gather all input arguments in kwargs dict.
