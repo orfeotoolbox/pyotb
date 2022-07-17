@@ -585,7 +585,7 @@ class App(otbObject):
             otb_stdout: whether to print logs of the OTB app
             propagate_pixel_type: propagate the pixel type from inputs to output. If several inputs, the type of an
                                   arbitrary input is considered. If several outputs, all will have the same type.
-            frozen: freeze OTB app in order to use .execute() or write() later and avoid blocking process during __init___
+            frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             **kwargs: Used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
@@ -662,6 +662,7 @@ class App(otbObject):
 
         """
         super().execute()
+        self.frozen = False
         if self.__with_output() or not self.output_param:
             self.app.WriteOutput()
         self.__save_objects()
