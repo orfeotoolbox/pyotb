@@ -100,14 +100,14 @@ class otbObject(ABC):
 
         # Case output parameter was set during App init
         if not kwargs:
-                if self.output_param in self.parameters:
-                    if dtypes:
-                        self.app.SetParameterOutputImagePixelType(self.output_param, dtypes[self.output_param])
+            if self.output_param in self.parameters:
+                if dtypes:
+                    self.app.SetParameterOutputImagePixelType(self.output_param, dtypes[self.output_param])
                 if filename_extension:
                     new_val = self.parameters[self.output_param] + filename_extension
                     self.app.SetParameterString(self.output_param, new_val)
             else:
-            raise ValueError(f'{self.app.GetName()}: Output parameter is missing.')
+                raise ValueError(f'{self.app.GetName()}: Output parameter is missing.')
 
         # Parse kwargs
         for key, output_filename in kwargs.items():
@@ -121,7 +121,7 @@ class otbObject(ABC):
                 output_filename += filename_extension
 
             logger.debug('%s: "%s" parameter is %s', self.name, key, output_filename)
-                self.app.SetParameterString(key, output_filename)
+            self.app.SetParameterString(key, output_filename)
             self.parameters[key] = output_filename
 
             if key in dtypes:
@@ -544,8 +544,8 @@ class App(otbObject):
     """
     _name = ""
 
-    def __init__(self, appname, *args, execute=False, image_dic=None, otb_stdout=True,
-                 pixel_type=None, propagate_pixel_type=False, **kwargs):
+    def __init__(self, appname, *args, image_dic=None, otb_stdout=False,
+                 propagate_pixel_type=False, frozen=False, **kwargs):
         """
         Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
 
@@ -556,52 +556,32 @@ class App(otbObject):
                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
                            - string, App or Output, useful when the user wants to specify the input "in"
                            - list, useful when the user wants to specify the input list 'il'
-            execute: whether to Execute the app. False is default and required when not all mandatory params are set
-                     Should be set to True when creating an app as a oneliner.
             image_dic: optional. Enables to keep a reference to image_dic. image_dic is a dictionary, such as
                        the result of app.ExportImage(). Use it when the app takes a numpy array as input.
                        See this related issue for why it is necessary to keep reference of object:
                        https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
             otb_stdout: whether to print logs of the OTB app
-            pixel_type: Can be : - dictionary {output_parameter_key: pixeltype} when specifying for several outputs
-                                 - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
-                                   outputs, all outputs are written with this unique type
-                                   Valid pixel types are double, float, uint8, uint16, uint32, int16, int32,
-                                   cint16, cint32, cfloat, cdouble.
             propagate_pixel_type: propagate the pixel type from inputs to output. If several inputs, the type of an
                                   arbitrary input is considered. If several outputs, all will have the same type.
+            frozen: freeze OTB app in order to use .execute() or write() later and avoid blocking process during __init___
             **kwargs: Used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
         self.appname = appname
+        self.image_dic = image_dic
+        self.preserve_dtype = propagate_pixel_type
         if otb_stdout:
             self.app = otb.Registry.CreateApplication(appname)
         else:
             self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
-        self.image_dic = image_dic
-        self.preserve_dtype = propagate_pixel_type
-        self._ended = False
-        # Parameters
         self.parameters = {}
         self.output_parameters_keys = self.get_output_parameters_keys()
-        if not (args or kwargs):
-            return
-        self.set_parameters(*args, **kwargs)
-        # Output pixel type
-        dtypes = {}
-        if isinstance(pixel_type, dict):
-            dtypes = {k: parse_pixel_type(v) for k, v in pixel_type.items()}
-        elif pixel_type is not None:
-            dtypes = {key: parse_pixel_type(pixel_type) for key in self.output_parameters_keys}
-        for key, typ in dtypes.items():
-            self.app.SetParameterOutputImagePixelType(key, typ)
-        # Run app, write output if needed, update `finished` property
-        if execute or not self.output_param:
+        if (args or kwargs):
+            self.set_parameters(*args, **kwargs)
+        self.frozen = frozen
+        if not frozen:
             self.execute()
-        # Force save param because it wasn't called during execute()
-        else:
-            self.__save_objects()
 
     def get_output_parameters_keys(self):
         """Get raster output parameter keys
@@ -839,10 +819,9 @@ class Slicer(otbObject):
 
         """
         # Initialize the app that will be used for writing the slicer
-        self.output_parameter_key = 'out'
         self.name = 'Slicer'
-        app = App('ExtractROI', {'in': x, 'mode': 'extent'}, propagate_pixel_type=True)
-
+        self.output_parameter_key = 'out'
+        app = App('ExtractROI', {'in': x, 'mode': 'extent'}, propagate_pixel_type=True, frozen=True)
         parameters = {}
         # Channel slicing
         if channels != slice(None, None, None):
