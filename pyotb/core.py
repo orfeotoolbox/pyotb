@@ -604,7 +604,7 @@ class App(otbObject):
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
 
-        When useful, e.g. for images list, this function appends the parameters 
+        When useful, e.g. for images list, this function appends the parameters
         instead of overwriting them. Handles any parameters, i.e. in-memory & filepaths
 
         Args:
@@ -697,7 +697,7 @@ class App(otbObject):
         """Gather all input arguments in kwargs dict.
 
         Returns:
-            a dictionnary with the right keyword depending on the object
+            a dictionary with the right keyword depending on the object
 
         """
         kwargs = {}
@@ -765,7 +765,7 @@ class App(otbObject):
     def __with_output(self):
         """Check if App has any output parameter key."""
         if not self.output_param:
-            return True  # apps like ReadImageInfo don't a have filetype output param but stil need to WriteOutput
+            return True  # apps like ReadImageInfo with no filetype output param still needs to WriteOutput
         types = (otb.ParameterType_OutputFilename, otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData)
         outfile_params = [param for param in self.app.GetParametersKeys() if self.app.GetParameterType(param) in types]
         return any(key in self.parameters for key in outfile_params)
@@ -812,7 +812,7 @@ class Slicer(otbObject):
 
     def __init__(self, x, rows, cols, channels):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
-        
+
         It contains :
         - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
         - in case the user only wants to extract one band, an expression such as "im1b#"
@@ -1000,7 +1000,7 @@ class Operation(otbObject):
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """Create a 'fake' expression.
-        
+
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
 
         Args:
