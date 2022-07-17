@@ -41,7 +41,6 @@ class otbObject(ABC):
             shape: (width, height, bands)
 
         """
-        self.execute_if_needed()
         image_size = self.app.GetImageSize(self.output_param)
         image_bands = self.app.GetImageNbBands(self.output_param)
         return (*image_size, image_bands)
@@ -141,7 +140,6 @@ class otbObject(ABC):
           a numpy array
 
         """
-        self.execute_if_needed()
         array = self.app.ExportImage(self.output_param)['array']
         if propagate_pixel_type:
             otb_pixeltype = get_pixel_type(self)
@@ -166,17 +164,6 @@ class otbObject(ABC):
         if hasattr(self, 'output_parameter_key'):
             return key == self.output_parameter_key
         return key in self.output_parameters_keys
-
-    def execute_if_needed(self):
-        """
-        Execute the app if it hasn't been already executed
-        """
-        if isinstance(self, App):
-            if not self.finished:
-                self.execute()
-        elif isinstance(self, otbObject):
-            if not self.pyotb_app.finished:
-                self.pyotb_app.execute()
 
     # Special methods
     def __getitem__(self, key):
@@ -523,7 +510,6 @@ class otbObject(ABC):
                 if isinstance(inp, (float, int, np.ndarray, np.generic)):
                     arrays.append(inp)
                 elif isinstance(inp, otbObject):
-                    inp.execute_if_needed()
                     image_dic = inp.app.ExportImage(self.output_param)
                     array = image_dic['array']
                     arrays.append(array)
@@ -1056,9 +1042,6 @@ class Operation(otbObject):
 
         """
         self.operator = operator
-        for inp in inputs:
-            if isinstance(inp, otbObject):
-                inp.execute_if_needed()
         # We first create a 'fake' expression. E.g for the operation `input1 + input2` , we create a fake expression
         # that is like "str(input1) + str(input2)"
         self.inputs = []
