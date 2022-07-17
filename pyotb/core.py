@@ -138,9 +138,7 @@ class otbObject(ABC):
         array = self.app.ExportImage(self.output_param)['array']
         if propagate_pixel_type:
             otb_pixeltype = get_pixel_type(self)
-            otb_pixeltype_to_np_pixeltype = {0: np.uint8, 1: np.int16, 2: np.uint16, 3: np.int32,
-                                             4: np.uint32, 5: np.float32, 6: np.float64}
-            np_pixeltype = otb_pixeltype_to_np_pixeltype[otb_pixeltype]
+            np_pixeltype = self.app.ConvertPixelTypeToNumpy(otb_pixeltype)
             return array.astype(np_pixeltype)
         if copy:
             return array.copy()
