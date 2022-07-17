@@ -1050,7 +1050,7 @@ class Operation(otbObject):
             pass
         # For any other operations, the output number of bands is the same as inputs
         else:
-            if any(isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs):
+            if any(isinstance(inp, Slicer) and hasattr(inp, 'one_band_sliced') for inp in inputs):
                 nb_bands = 1
             else:
                 nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
@@ -1225,10 +1225,10 @@ class logicalOperation(Operation):
         """
 
         # For any other operations, the output number of bands is the same as inputs
-        if any(isinstance(input, Slicer) and hasattr(input, 'one_band_sliced') for input in inputs):
+        if any(isinstance(inp, Slicer) and hasattr(inp, 'one_band_sliced') for inp in inputs):
             nb_bands = 1
         else:
-            nb_bands_list = [get_nbchannels(input) for input in inputs if not isinstance(input, (float, int))]
+            nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
             # check that all inputs have the same nb of bands
             if len(nb_bands_list) > 1:
                 if not all(x == nb_bands_list[0] for x in nb_bands_list):

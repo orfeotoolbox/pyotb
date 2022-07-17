@@ -109,7 +109,7 @@ def all(*inputs):  # pylint: disable=redefined-builtin
         inputs = list(inputs[0])
 
     # Transforming potential filepaths to pyotb objects
-    inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
+    inputs = [Input(inp) if isinstance(inp, str) else inp for inp in inputs]
 
     # Checking that all bands of the single image are True
     if len(inputs) == 1:
@@ -163,7 +163,7 @@ def any(*inputs):  # pylint: disable=redefined-builtin
         inputs = list(inputs[0])
 
     # Transforming potential filepaths to pyotb objects
-    inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
+    inputs = [Input(inp) if isinstance(inp, str) else inp for inp in inputs]
 
     # Checking that at least one band of the image is True
     if len(inputs) == 1:
@@ -466,7 +466,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         inputs = new_inputs
 
         # Update metadatas
-        metadatas = {input: input.GetImageMetaData('out') for input in inputs}
+        metadatas = {inp: inp.GetImageMetaData('out') for inp in inputs}
 
     # Final superimposition to be sure to have the exact same image sizes
     # Getting the sizes of images
@@ -478,7 +478,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
 
     # Selecting the most frequent image size. It will be used as reference.
     most_common_image_size, _ = Counter(image_sizes.values()).most_common(1)[0]
-    same_size_images = [input for input, image_size in image_sizes.items() if image_size == most_common_image_size]
+    same_size_images = [inp for inp, image_size in image_sizes.items() if image_size == most_common_image_size]
 
     # Superimposition for images that do not have the same size as the others
     new_inputs = []
