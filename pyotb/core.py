@@ -583,14 +583,29 @@ class App(otbObject):
         if not self.frozen:
             self.execute()
 
-    def get_output_parameters_keys(self):
-        """Get raster output parameter keys.
+    @property
+    def name(self):
+        """Application name that will be printed in logs.
 
         Returns:
-            output parameters keys
+            user's defined name or appname
+
         """
-        return [param for param in self.app.GetParametersKeys()
-                if self.app.GetParameterType(param) == otb.ParameterType_OutputImage]
+        return self._name or self.appname
+
+    @name.setter
+    def name(self, val):
+        """Set custom App name.
+
+        Args:
+          val: new name
+
+        """
+        self._name = val
+
+    @property
+    def description(self):
+        return self.app.GetDocLongDescription()
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -643,27 +658,6 @@ class App(otbObject):
         self.frozen = False
         if self.__with_output() or not self.output_param:
             self.app.WriteOutput()
-        self.__save_objects()
-
-    @property
-    def name(self):
-        """Application name that will be printed in logs.
-
-        Returns:
-            user's defined name or appname
-
-        """
-        return self._name or self.appname
-
-    @name.setter
-    def name(self, val):
-        """Set custom App name.
-
-        Args:
-          val: new name
-
-        """
-        self._name = val
 
     def find_output(self):
         """Find output files on disk using parameters.
