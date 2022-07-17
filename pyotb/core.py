@@ -81,7 +81,7 @@ class otbObject(ABC):
             if isinstance(arg, dict):
                 kwargs.update(arg)
             elif isinstance(arg, str) and kwargs:
-                logger.warning('%s: Keyword arguments specified, ignoring argument "%s"', self.name, arg)
+                logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
             elif isinstance(arg, str):
                 kwargs.update({self.output_param: arg})
 
@@ -96,7 +96,7 @@ class otbObject(ABC):
                 dtypes = {self.output_parameter_key: typ}
 
         if filename_extension:
-            logger.debug('%s: Using extended filename for outputs: %s', self.name, filename_extension)
+            logger.debug('%s: using extended filename for outputs: %s', self.name, filename_extension)
             if not filename_extension.startswith('?'):
                 filename_extension = "?" + filename_extension
 
@@ -118,7 +118,7 @@ class otbObject(ABC):
                 raise KeyError(f'{self.app.GetName()}: Wrong parameter key "{key}"')
             # Check if extended filename was not provided twice
             if '?' in output_filename and filename_extension:
-                logger.warning('%s: Extended filename was provided twice. Using the one found in path.', self.name)
+                logger.warning('%s: extended filename was provided twice. Using the one found in path.', self.name)
             elif filename_extension:
                 output_filename += filename_extension
 
@@ -607,6 +607,7 @@ class App(otbObject):
 
     @property
     def description(self):
+        """Return app's long description from OTB documentation."""
         return self.app.GetDocLongDescription()
 
     def set_parameters(self, *args, **kwargs):
@@ -637,7 +638,7 @@ class App(otbObject):
             if self.__is_key_list(param) and not isinstance(obj, (list, tuple)):
                 parameters[param] = [obj]
                 obj = [obj]
-                logger.warning('%s: Argument for parameter "%s" was converted to list', self.name, param)
+                logger.warning('%s: argument for parameter "%s" was converted to list', self.name, param)
             try:
                 # This is when we actually call self.app.SetParameter*
                 self.__set_param(param, obj)
@@ -650,12 +651,7 @@ class App(otbObject):
             self.__propagate_pixel_type()
 
     def execute(self):
-        """Override base execute method in order to save objects as class attribute.
-
-        Returns:
-            list of files found on disk
-
-        """
+        """Override base execute method in order to save objects as class attribute."""
         super().execute()
         self.frozen = False
         if self.__with_output() or not self.output_param:
@@ -763,9 +759,10 @@ class App(otbObject):
             except TypeError:
                 pass
         if pixel_type is None:
-            logger.warning("%s: Could not propagate pixel type from inputs to output, no valid input found", self.name)
+            logger.warning("%s: could not propagate pixel type from inputs to output, no valid input found", self.name)
         else:
-            logger.debug('Output(s) will be written with type "%s"', self.app.ConvertPixelTypeToNumpy(pixel_type))
+            type_name = self.app.ConvertPixelTypeToNumpy(pixel_type)
+            logger.debug('%s: output(s) will be written with type "%s"', self.name, type_name)
             for out_key in self.output_parameters_keys:
                 self.app.SetParameterOutputImagePixelType(out_key, pixel_type)
 
