@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This module provides convenient python wrapping of otbApplications
-"""
+"""This module provides convenient python wrapping of otbApplications."""
 __version__ = "1.4.1"
 
 from .apps import *

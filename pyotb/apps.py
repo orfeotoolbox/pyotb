@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Search for OTB (set env if necessary), subclass core.App for each available application
-"""
+"""Search for OTB (set env if necessary), subclass core.App for each available application."""
 import os
 import sys
 from pathlib import Path
@@ -12,7 +10,7 @@ otb = find_otb()
 
 
 def get_available_applications(as_subprocess=False):
-    """Find available OTB applications
+    """Find available OTB applications.
 
     Args:
         as_subprocess: indicate if function should list available applications using subprocess call
@@ -79,10 +77,10 @@ class {name}(App):
 
 
 class OTBTFApp(App):
-    """Helper for OTBTF"""
+    """Helper for OTBTF."""
     @staticmethod
     def set_nb_sources(*args, n_sources=None):
-        """Set the number of sources of TensorflowModelServe. Can be either user-defined or deduced from the args
+        """Set the number of sources of TensorflowModelServe. Can be either user-defined or deduced from the args.
 
         Args:
             *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
@@ -100,8 +98,9 @@ class OTBTFApp(App):
                 os.environ['OTB_TF_NSOURCES'] = str(n_sources)
 
     def __init__(self, app_name, *args, n_sources=None, **kwargs):
-        """
-        Args
+        """Constructor for an OTBTFApp object.
+
+        Args:
             app_name: name of the OTBTF app
             *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
             n_sources: number of sources. Default is None (resolves the number of sources based on the
@@ -117,17 +116,23 @@ for _app in AVAILABLE_APPLICATIONS:
     # `OTB_TF_NSOURCES`, it is handled in pyotb
     if _app == 'TensorflowModelServe':
         class TensorflowModelServe(OTBTFApp):
+            """Serve a Tensorflow model using OTBTF."""
             def __init__(self, *args, n_sources=None, **kwargs):
+                """Constructor for a TensorflowModelServe object."""
                 super().__init__('TensorflowModelServe', *args, n_sources=n_sources, **kwargs)
 
     elif _app == 'PatchesExtraction':
         class PatchesExtraction(OTBTFApp):
+            """Extract patches using OTBTF."""
             def __init__(self, *args, n_sources=None, **kwargs):
+                """Constructor for a PatchesExtraction object."""
                 super().__init__('PatchesExtraction', *args, n_sources=n_sources, **kwargs)
 
     elif _app == 'TensorflowModelTrain':
         class TensorflowModelTrain(OTBTFApp):
+            """Train a Tensorflow model using OTBTF."""
             def __init__(self, *args, n_sources=None, **kwargs):
+                """Constructor for a TensorflowModelTrain object."""
                 super().__init__('TensorflowModelTrain', *args, n_sources=n_sources, **kwargs)
 
     # Default behavior for any OTB application

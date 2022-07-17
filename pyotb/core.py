@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This module is the core of pyotb
-"""
+"""This module is the core of pyotb."""
 from abc import ABC
 from pathlib import Path
 
@@ -13,17 +11,19 @@ from .helpers import logger
 
 class otbObject(ABC):
     """Abstract class that gathers common operations for any OTB in-memory raster.
+
     All child of this class must have an `app` attribute that is an OTB application.
     """
     _parameters = {}
+
     @property
     def parameters(self):
+        """Property to merge otb.Application parameters and user's parameters dicts."""
         return {**self.app.GetParameters(), **self._parameters}
 
     @property
     def output_param(self):
-        """
-        Property to get object's unique (or first) output parameter key
+        """Property to get object's unique (or first) output parameter key.
 
         Returns:
            output parameter key
@@ -38,8 +38,7 @@ class otbObject(ABC):
 
     @property
     def shape(self):
-        """
-        Enables to retrieve the shape of a pyotb object.
+        """Enables to retrieve the shape of a pyotb object.
 
         Returns:
             shape: (height, width, bands)
@@ -50,9 +49,7 @@ class otbObject(ABC):
         return (height, width, bands)
 
     def execute(self):
-        """
-        Execute with appropriate and outputs to disk if any output parameter was set
-        """
+        """Execute with appropriate and outputs to disk if any output parameter was set."""
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
         try:
             self.app.Execute()
@@ -61,8 +58,7 @@ class otbObject(ABC):
         logger.debug("%s: execution ended", self.name)
 
     def write(self, *args, filename_extension="", pixel_type=None, **kwargs):
-        """
-        Trigger execution (always), set output pixel type and write the output
+        """Trigger execution, set output pixel type and write the output.
 
         Args:
             *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key contains
@@ -134,8 +130,7 @@ class otbObject(ABC):
         self.app.ExecuteAndWriteOutput()
 
     def to_numpy(self, propagate_pixel_type=True, copy=False):
-        """
-        Export a pyotb object to numpy array
+        """Export a pyotb object to numpy array.
 
         Args:
             propagate_pixel_type: when set to True, the numpy array is created with the same pixel type as
@@ -159,8 +154,7 @@ class otbObject(ABC):
         return array
 
     def to_rasterio(self):
-        """
-        Export image as a numpy array and its metadata compatible with rasterio
+        """Export image as a numpy array and its metadata compatible with rasterio.
 
         Returns:
           array : a numpy array in the (bands, height, width) order
@@ -182,8 +176,7 @@ class otbObject(ABC):
         return array, profile
 
     def __check_output_param(self, key):
-        """
-        Check param name to prevent strange behaviour in write() if kwarg key is not implemented
+        """Check param name to prevent strange behaviour in write() if kwarg key is not implemented.
 
         Args:
             key: parameter key
@@ -197,7 +190,8 @@ class otbObject(ABC):
 
     # Special methods
     def __getitem__(self, key):
-        """
+        """Override the default __getitem__ behaviour.
+
         This function enables 2 things :
         - access attributes like that : object['any_attribute']
         - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
@@ -223,9 +217,10 @@ class otbObject(ABC):
         return Slicer(self, rows, cols, channels)
 
     def __getattr__(self, name):
-        """
-        This method is called when the default attribute access fails. We choose to access the attribute `name`
-        of self.app. Thus, any method of otbApplication can be used transparently on otbObject objects,
+        """This method is called when the default attribute access fails.
+
+        We choose to access the attribute `name` of self.app.
+        Thus, any method of otbApplication can be used transparently on otbObject objects,
         e.g. SetParameterOutputImagePixelType() or ExportImage() work
 
         Args:
@@ -245,8 +240,7 @@ class otbObject(ABC):
             raise AttributeError(f'{self.name}: could not find attribute `{name}`') from e
 
     def __add__(self, other):
-        """
-        Overrides the default addition and flavours it with BandMathX
+        """Overrides the default addition and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -260,8 +254,7 @@ class otbObject(ABC):
         return Operation('+', self, other)
 
     def __sub__(self, other):
-        """
-        Overrides the default subtraction and flavours it with BandMathX
+        """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -275,8 +268,7 @@ class otbObject(ABC):
         return Operation('-', self, other)
 
     def __mul__(self, other):
-        """
-        Overrides the default subtraction and flavours it with BandMathX
+        """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -290,8 +282,7 @@ class otbObject(ABC):
         return Operation('*', self, other)
 
     def __truediv__(self, other):
-        """
-        Overrides the default subtraction and flavours it with BandMathX
+        """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -305,8 +296,7 @@ class otbObject(ABC):
         return Operation('/', self, other)
 
     def __radd__(self, other):
-        """
-        Overrides the default reverse addition and flavours it with BandMathX
+        """Overrides the default reverse addition and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -320,8 +310,7 @@ class otbObject(ABC):
         return Operation('+', other, self)
 
     def __rsub__(self, other):
-        """
-        Overrides the default subtraction and flavours it with BandMathX
+        """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -335,8 +324,7 @@ class otbObject(ABC):
         return Operation('-', other, self)
 
     def __rmul__(self, other):
-        """
-        Overrides the default multiplication and flavours it with BandMathX
+        """Overrides the default multiplication and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -350,8 +338,7 @@ class otbObject(ABC):
         return Operation('*', other, self)
 
     def __rtruediv__(self, other):
-        """
-        Overrides the default division and flavours it with BandMathX
+        """Overrides the default division and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -365,8 +352,7 @@ class otbObject(ABC):
         return Operation('/', other, self)
 
     def __abs__(self):
-        """
-        Overrides the default abs operator and flavours it with BandMathX
+        """Overrides the default abs operator and flavours it with BandMathX.
 
         Returns:
             abs(self)
@@ -375,8 +361,7 @@ class otbObject(ABC):
         return Operation('abs', self)
 
     def __ge__(self, other):
-        """
-        Overrides the default greater or equal and flavours it with BandMathX
+        """Overrides the default greater or equal and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -390,8 +375,7 @@ class otbObject(ABC):
         return logicalOperation('>=', self, other)
 
     def __le__(self, other):
-        """
-        Overrides the default less or equal and flavours it with BandMathX
+        """Overrides the default less or equal and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -405,8 +389,7 @@ class otbObject(ABC):
         return logicalOperation('<=', self, other)
 
     def __gt__(self, other):
-        """
-        Overrides the default greater operator and flavours it with BandMathX
+        """Overrides the default greater operator and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -420,8 +403,7 @@ class otbObject(ABC):
         return logicalOperation('>', self, other)
 
     def __lt__(self, other):
-        """
-        Overrides the default less operator and flavours it with BandMathX
+        """Overrides the default less operator and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -435,8 +417,7 @@ class otbObject(ABC):
         return logicalOperation('<', self, other)
 
     def __eq__(self, other):
-        """
-        Overrides the default eq operator and flavours it with BandMathX
+        """Overrides the default eq operator and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -450,8 +431,7 @@ class otbObject(ABC):
         return logicalOperation('==', self, other)
 
     def __ne__(self, other):
-        """
-        Overrides the default different operator and flavours it with BandMathX
+        """Overrides the default different operator and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -465,8 +445,7 @@ class otbObject(ABC):
         return logicalOperation('!=', self, other)
 
     def __or__(self, other):
-        """
-        Overrides the default or operator and flavours it with BandMathX
+        """Overrides the default or operator and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -480,8 +459,7 @@ class otbObject(ABC):
         return logicalOperation('||', self, other)
 
     def __and__(self, other):
-        """
-        Overrides the default and operator and flavours it with BandMathX
+        """Overrides the default and operator and flavours it with BandMathX.
 
         Args:
             other: the other member of the operation
@@ -498,7 +476,8 @@ class otbObject(ABC):
     #  e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
 
     def __hash__(self):
-        """
+        """Override the default behaviour of the hash function.
+
         Returns:
             self hash
 
@@ -506,19 +485,18 @@ class otbObject(ABC):
         return id(self)
 
     def __array__(self):
-        """
-        This is called when running np.asarray(pyotb_object)
+        """This is called when running np.asarray(pyotb_object).
 
-        Returns
+        Returns:
             a numpy array
 
         """
         return self.to_numpy()
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """
-        This is called whenever a numpy function is called on a pyotb object. Operation is performed in numpy, then
-        imported back to pyotb with the same georeference as input.
+        """This is called whenever a numpy function is called on a pyotb object.
+
+        Operation is performed in numpy, then imported back to pyotb with the same georeference as input.
 
         Args:
             ufunc: numpy function
@@ -564,15 +542,12 @@ class otbObject(ABC):
 
 
 class App(otbObject):
-    """
-    Class of an OTB app
-    """
+    """Class of an OTB app."""
     _name = ""
 
     def __init__(self, appname, *args, image_dic=None, otb_stdout=False,
                  propagate_pixel_type=False, frozen=False, **kwargs):
-        """
-        Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
+        """Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
 
         Args:
             appname: name of the app, e.g. 'Smoothing'
@@ -609,7 +584,7 @@ class App(otbObject):
             self.execute()
 
     def get_output_parameters_keys(self):
-        """Get raster output parameter keys
+        """Get raster output parameter keys.
 
         Returns:
             output parameters keys
@@ -618,7 +593,9 @@ class App(otbObject):
                 if self.app.GetParameterType(param) == otb.ParameterType_OutputImage]
 
     def set_parameters(self, *args, **kwargs):
-        """Set some parameters of the app. When useful, e.g. for images list, this function appends the parameters
+        """Set some parameters of the app.
+
+        When useful, e.g. for images list, this function appends the parameters 
         instead of overwriting them. Handles any parameters, i.e. in-memory & filepaths
 
         Args:
@@ -656,8 +633,7 @@ class App(otbObject):
             self.__propagate_pixel_type()
 
     def execute(self):
-        """
-        Override base execute method in order to save objects as class attribute
+        """Override base execute method in order to save objects as class attribute.
 
         Returns:
             list of files found on disk
@@ -671,7 +647,8 @@ class App(otbObject):
 
     @property
     def name(self):
-        """
+        """Application name that will be printed in logs.
+
         Returns:
             user's defined name or appname
 
@@ -680,7 +657,7 @@ class App(otbObject):
 
     @name.setter
     def name(self, val):
-        """Set custom App name
+        """Set custom App name.
 
         Args:
           val: new name
@@ -689,8 +666,7 @@ class App(otbObject):
         self._name = val
 
     def find_output(self):
-        """
-        Find output files on disk using parameters
+        """Find output files on disk using parameters.
 
         Returns:
             list of files found on disk
@@ -719,8 +695,11 @@ class App(otbObject):
     # Private functions
     @staticmethod
     def __parse_args(args):
-        """
-        Gather all input arguments in kwargs dict
+        """Gather all input arguments in kwargs dict.
+
+        Returns:
+            a dictionnary with the right keyword depending on the object
+
         """
         kwargs = {}
         for arg in args:
@@ -733,9 +712,7 @@ class App(otbObject):
         return kwargs
 
     def __set_param(self, param, obj):
-        """
-        Set one parameter, decide which otb.Application method to use depending on target object
-        """
+        """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is not None:
             # Single-parameter cases
             if isinstance(obj, otbObject):
@@ -766,9 +743,11 @@ class App(otbObject):
                 self.app.SetParameterValue(param, obj)
 
     def __propagate_pixel_type(self):
-        """
-        Propagate the pixel type from inputs to output. If several inputs, the type of an arbitrary input
-        is considered. If several outputs, all outputs will have the same type.
+        """Propagate the pixel type from inputs to output.
+
+        If several inputs, the type of an arbitrary input is considered.
+        If several outputs, all outputs will have the same type.
+
         """
         pixel_type = None
         for param in self.parameters.values():
@@ -784,17 +763,15 @@ class App(otbObject):
                 self.app.SetParameterOutputImagePixelType(out_key, pixel_type)
 
     def __with_output(self):
-        """
-        Check if App has any output parameter key
-        """
+        """Check if App has any output parameter key."""
         types = (otb.ParameterType_OutputFilename, otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData)
         params = [param for param in self.app.GetParametersKeys() if self.app.GetParameterType(param) in types]
         return any(key in self.parameters for key in params)
 
     def __save_objects(self):
-        """
-        Saving app parameters and outputs as attributes, so that they can be accessed with `obj.key`
-        which is useful when the key contains reserved characters such as a point eg "io.out"
+        """Saving app parameters and outputs as attributes, so that they can be accessed with `obj.key`.
+
+        This is useful when the key contains reserved characters such as a point eg "io.out"
         """
         for key in self.app.GetParametersKeys():
             if key in self.output_parameters_keys:  # raster outputs
@@ -807,33 +784,28 @@ class App(otbObject):
                     pass  # this is when there is no value for key
 
     def __is_key_list(self, key):
-        """
-        Check if a key of the App is an input parameter list
-        """
+        """Check if a key of the App is an input parameter list."""
         return self.app.GetParameterType(key) in (otb.ParameterType_InputImageList, otb.ParameterType_StringList,
                                                   otb.ParameterType_InputFilenameList, otb.ParameterType_ListView,
                                                   otb.ParameterType_InputVectorDataList)
 
     def __is_key_images_list(self, key):
-        """
-        Check if a key of the App is an input parameter image list
-        """
+        """Check if a key of the App is an input parameter image list."""
         return self.app.GetParameterType(key) in (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
 
     # Special methods
     def __str__(self):
-        """
-        Return a nice str
-        """
+        """Return a nice string representation with object id."""
         return f'<pyotb.App {self.appname} object id {id(self)}>'
 
 
 class Slicer(otbObject):
-    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python"""
+    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
     def __init__(self, x, rows, cols, channels):
-        """
-        Create a slicer object, that can be used directly for writing or inside a BandMath. It contains :
+        """Create a slicer object, that can be used directly for writing or inside a BandMath.
+        
+        It contains :
         - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
         - in case the user only wants to extract one band, an expression such as "im1b#"
 
@@ -904,12 +876,11 @@ class Slicer(otbObject):
 
 
 class Input(otbObject):
-    """
-    Class for transforming a filepath to pyOTB object
-    """
+    """Class for transforming a filepath to pyOTB object."""
 
     def __init__(self, filepath):
-        """
+        """Constructor for an Input object.
+
         Args:
             filepath: raster file path
 
@@ -923,21 +894,16 @@ class Input(otbObject):
         self.pyotb_app, self.app = app, app.app
 
     def __str__(self):
-        """
-        Returns:
-            string representation
-
-        """
+        """Return a nice string representation with input file path."""
         return f'<pyotb.Input object from {self.filepath}>'
 
 
 class Output(otbObject):
-    """
-    Class for output of an app
-    """
+    """Class for output of an app."""
 
     def __init__(self, app, output_parameter_key):
-        """
+        """Constructor for an Output object.
+
         Args:
             app: The pyotb App
             output_parameter_key: Output parameter key
@@ -949,17 +915,12 @@ class Output(otbObject):
         self.name = f'Output {output_parameter_key} from {self.app.GetName()}'
 
     def __str__(self):
-        """
-        Returns:
-            string representation
-
-        """
+        """Return a nice string representation with object id."""
         return f'<pyotb.Output {self.app.GetName()} object, id {id(self)}>'
 
 
 class Operation(otbObject):
-    """
-    Class for arithmetic/math operations done in Python.
+    """Class for arithmetic/math operations done in Python.
 
     Example:
         Consider the python expression (input1 + 2 * input2)  >  0.
@@ -980,8 +941,8 @@ class Operation(otbObject):
     """
 
     def __init__(self, operator, *inputs, nb_bands=None):
-        """
-        Given some inputs and an operator, this function enables to transform this into an OTB application.
+        """Given some inputs and an operator, this function enables to transform this into an OTB application.
+
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
         It can have 3 inputs for the ternary operator `cond ? x : y`.
 
@@ -1031,9 +992,9 @@ class Operation(otbObject):
         self.pyotb_app, self.app = app, app.app
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
-        """
-        Create a 'fake' expression. E.g for the operation input1 + input2 , we create a fake expression
-        that is like "str(input1) + str(input2)"
+        """Create a 'fake' expression.
+        
+        E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
@@ -1098,8 +1059,7 @@ class Operation(otbObject):
             self.fake_exp_bands.append(fake_exp)
 
     def get_real_exp(self, fake_exp_bands):
-        """
-        Generates the BandMathX expression
+        """Generates the BandMathX expression.
 
         Args:
             fake_exp_bands: list of fake expressions, each item corresponding to one band
@@ -1125,9 +1085,9 @@ class Operation(otbObject):
 
     @staticmethod
     def create_one_input_fake_exp(x, band, keep_logical=False):
-        """
-        This an internal function, only to be used by `create_fake_exp`. Enable to create a fake expression just for one
-        input and one band.
+        """This an internal function, only to be used by `create_fake_exp`.
+
+        Enable to create a fake expression just for one input and one band.
 
         Args:
             x: input
@@ -1183,24 +1143,21 @@ class Operation(otbObject):
         return fake_exp, inputs, nb_channels
 
     def __str__(self):
-        """
-        Returns:
-            a nice string representation
-
-        """
+        """Return a nice string representation with object id."""
         return f'<pyotb.Operation `{self.operator}` object, id {id(self)}>'
 
 
 class logicalOperation(Operation):
-    """
-    This is a specialization of Operation class for boolean logical operations i.e. >, <, >=, <=, ==, !=, `&` and `|`.
+    """A specialization of Operation class for boolean logical operations i.e. >, <, >=, <=, ==, !=, `&` and `|`.
+
     The only difference is that not only the BandMath expression is saved (e.g. "im1b1 > 0 ? 1 : 0"), but also the
     logical expression (e.g. "im1b1 > 0")
 
     """
 
     def __init__(self, operator, *inputs, nb_bands=None):
-        """
+        """Constructor for a logicalOperation object.
+
         Args:
             operator: string operator (one of >, <, >=, <=, ==, !=, &, |)
             *inputs: inputs
@@ -1212,10 +1169,10 @@ class logicalOperation(Operation):
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
-        """
-        Create a 'fake' expression. E.g for the operation input1 > input2 , we create a fake expression
-        that is like "str(input1) > str(input2) ? 1 : 0" and a logical fake expression that is like
-        "str(input1) > str(input2)"
+        """Create a 'fake' expression.
+
+        E.g for the operation input1 > input2, we create a fake expression that is like
+        "str(input1) > str(input2) ? 1 : 0" and a logical fake expression that is like "str(input1) > str(input2)"
 
         Args:
             operator: str (one of >, <, >=, <=, ==, !=, &, |)
@@ -1223,7 +1180,6 @@ class logicalOperation(Operation):
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
-
         # For any other operations, the output number of bands is the same as inputs
         if any(isinstance(inp, Slicer) and hasattr(inp, 'one_band_sliced') for inp in inputs):
             nb_bands = 1
@@ -1259,7 +1215,7 @@ class logicalOperation(Operation):
 
 
 def get_nbchannels(inp):
-    """Get the nb of bands of input image
+    """Get the nb of bands of input image.
 
     Args:
         inp: can be filepath or pyotb object
@@ -1281,12 +1237,12 @@ def get_nbchannels(inp):
 
 
 def get_pixel_type(inp):
-    """Get the encoding of input image pixels
+    """Get the encoding of input image pixels.
 
     Args:
         inp: can be filepath or pyotb object
 
-    Returns
+    Returns:
         pixel_type: format is like `otbApplication.ImagePixelType_uint8', which actually is an int. For an App
                     with several outputs, only the pixel type of the first output is returned
 
@@ -1314,7 +1270,7 @@ def get_pixel_type(inp):
 
 
 def parse_pixel_type(pixel_type):
-    """Convert one str pixel type to OTB integer enum if necessary
+    """Convert one str pixel type to OTB integer enum if necessary.
 
     Args:
         pixel_type: pixel type. can be str, int or dict

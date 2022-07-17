@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This module provides some helpers to properly initialize pyotb
-"""
+"""This module provides some helpers to properly initialize pyotb."""
 import os
 import sys
 import logging
@@ -29,8 +27,7 @@ logger.addHandler(logger_handler)
 
 
 def set_logger_level(level):
-    """
-    Allow user to change the current logging level
+    """Allow user to change the current logging level.
 
     Args:
         level: logging level string ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
@@ -40,8 +37,8 @@ def set_logger_level(level):
 
 
 def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
-    """
-    Try to load OTB bindings or scan system, help user in case of failure, set env variables
+    """Try to load OTB bindings or scan system, help user in case of failure, set env variables.
+
     Path precedence :                                OTB_ROOT > python bindings directory
         OR search for releases installations    :    HOME
         OR (for linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
@@ -101,8 +98,7 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
 
 
 def set_environment(prefix):
-    """
-    Set environment variables (before OTB import), check for evey path and raise error if anything is wrong
+    """Set environment variables (before OTB import), raise error if anything is wrong.
 
     Args:
         prefix: path to OTB root directory
@@ -154,8 +150,7 @@ def set_environment(prefix):
 
 
 def __find_lib(prefix=None, otb_module=None):
-    """
-    Try to find OTB external libraries directory
+    """Try to find OTB external libraries directory.
 
     Args:
         prefix: try with OTB root directory
@@ -186,8 +181,7 @@ def __find_lib(prefix=None, otb_module=None):
 
 
 def __find_python_api(lib_dir):
-    """
-    Try to find the python path
+    """Try to find the python path.
 
     Args:
         prefix: prefix
@@ -206,8 +200,7 @@ def __find_python_api(lib_dir):
 
 
 def __find_apps_path(lib_dir):
-    """
-    Try to find the OTB applications path
+    """Try to find the OTB applications path.
 
     Args:
         lib_dir: library path
@@ -226,8 +219,7 @@ def __find_apps_path(lib_dir):
 
 
 def __find_otb_root(scan_userdir=False):
-    """
-    Search for OTB root directory in well known locations
+    """Search for OTB root directory in well known locations.
 
     Args:
         scan_userdir: search with glob in $HOME directory
@@ -273,6 +265,7 @@ def __find_otb_root(scan_userdir=False):
 
 
 def __suggest_fix_import(error_message, prefix):
+    """Help user to fix the OTB installation with appropriate log messages."""
     if error_message.startswith('libpython3.'):
         if sys.platform == "linux":
             logger.critical("It seems like you need to symlink or recompile python bindings")
