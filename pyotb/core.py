@@ -779,6 +779,7 @@ class App(otbObject):
         if pixel_type is None:
             logger.warning("%s: Could not propagate pixel type from inputs to output, no valid input found", self.name)
         else:
+            logger.debug('Output(s) will be written with type "%s"', self.app.ConvertPixelTypeToNumpy(pixel_type))
             for out_key in self.output_parameters_keys:
                 self.app.SetParameterOutputImagePixelType(out_key, pixel_type)
 
