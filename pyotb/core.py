@@ -45,6 +45,17 @@ class otbObject(ABC):
         image_bands = self.app.GetImageNbBands(self.output_param)
         return (*image_size, image_bands)
 
+    def execute(self):
+        """
+        Execute with appropriate and outputs to disk if any output parameter was set
+        """
+        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
+        try:
+            self.app.Execute()
+        except (RuntimeError, FileNotFoundError) as e:
+            raise Exception(f'{self.name}: error during during app execution') from e
+        logger.debug("%s: execution ended", self.name)
+
     def write(self, *args, filename_extension="", pixel_type=None, **kwargs):
         """
         Trigger execution (always), set output pixel type and write the output
@@ -62,10 +73,6 @@ class otbObject(ABC):
                                    Valid pixel types are uint8, uint16, uint32, int16, int32, float, double,
                                    cint16, cint32, cfloat, cdouble. (Default value = None)
             **kwargs: keyword arguments e.g. out='output.tif'
-
-        Returns:
-            boolean flag that indicate if command executed with success
-
         """
         # Gather all input arguments in kwargs dict
         for arg in args:
@@ -86,19 +93,21 @@ class otbObject(ABC):
             elif hasattr(self, 'output_parameter_key'):
                 dtypes = {self.output_parameter_key: typ}
 
-        # Case output parameter was set during App init
-        if not kwargs:
-            if isinstance(self, App):
-                if self.output_param in self.parameters:
-                    if dtypes:
-                        self.app.SetParameterOutputImagePixelType(self.output_param, dtypes[self.output_param])
-                    return self.execute()
-            raise ValueError(f'{self.app.GetName()}: Output parameter is missing.')
-
         if filename_extension:
             logger.debug('%s: Using extended filename for outputs: %s', self.name, filename_extension)
             if not filename_extension.startswith('?'):
                 filename_extension = "?" + filename_extension
+
+        # Case output parameter was set during App init
+        if not kwargs:
+                if self.output_param in self.parameters:
+                    if dtypes:
+                        self.app.SetParameterOutputImagePixelType(self.output_param, dtypes[self.output_param])
+                if filename_extension:
+                    new_val = self.parameters[self.output_param] + filename_extension
+                    self.app.SetParameterString(self.output_param, new_val)
+            else:
+            raise ValueError(f'{self.app.GetName()}: Output parameter is missing.')
 
         # Parse kwargs
         for key, output_filename in kwargs.items():
@@ -112,19 +121,14 @@ class otbObject(ABC):
                 output_filename += filename_extension
 
             logger.debug('%s: "%s" parameter is %s', self.name, key, output_filename)
-            if isinstance(self, App):
-                self.set_parameters({key: output_filename})
-            else:
                 self.app.SetParameterString(key, output_filename)
+            self.parameters[key] = output_filename
+
             if key in dtypes:
                 self.app.SetParameterOutputImagePixelType(key, dtypes[key])
 
-        if isinstance(self, App):
-            return self.execute()
-
-        self.app.Execute()
-        self.app.WriteOutput()
-        return True
+        logger.debug(f'{self.name}: flushing data to disk')
+        self.app.ExecuteAndWriteOutput()
 
     def to_numpy(self, propagate_pixel_type=True, copy=False):
         """
@@ -213,7 +217,7 @@ class otbObject(ABC):
             res = getattr(self.app, name)
             return res
         except AttributeError as e:
-            raise AttributeError(f'{self.name}: Could not find attribute `{name}`') from e
+            raise AttributeError(f'{self.name}: could not find attribute `{name}`') from e
 
     def __add__(self, other):
         """
@@ -649,26 +653,16 @@ class App(otbObject):
 
     def execute(self):
         """
-        Execute with appropriate and outputs to disk if any output parameter was set
+        Override base execute method in order to save objects as class attribute
 
         Returns:
-             boolean flag that indicate if command executed with success
+            list of files found on disk
 
         """
-        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
-        try:
-            self.app.Execute()
-            if self.__with_output():
-                self.app.ExecuteAndWriteOutput()
-            self.finished = True
-        except (RuntimeError, FileNotFoundError) as e:
-            raise Exception(f'{self.name}: error during during app execution') from e
+        super().execute()
+        if self.__with_output() or not self.output_param:
+            self.app.WriteOutput()
         self.__save_objects()
-        success = self.finished
-        if success:
-            logger.debug("%s: execution succeeded", self.name)
-
-        return success
 
     @property
     def name(self):
@@ -893,6 +887,7 @@ class Slicer(otbObject):
             spatial_slicing = True
         # Execute app
         app.set_parameters(**parameters)
+        app.execute()
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
@@ -1276,7 +1271,7 @@ def get_nbchannels(inp):
     else:
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, execute=True, otb_stdout=False)
+            info = App("ReadImageInfo", inp, otb_stdout=False)
             nb_channels = info.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
@@ -1297,7 +1292,7 @@ def get_pixel_type(inp):
     if isinstance(inp, str):
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, execute=True, otb_stdout=False)
+            info = App("ReadImageInfo", inp, otb_stdout=False)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath') from info_err
         datatype = info.GetParameterString("datatype")  # which is such as short, float...
