@@ -50,15 +50,6 @@ class otbObject(ABC):
         bands = self.app.GetImageNbBands(self.output_param)
         return (height, width, bands)
 
-    def execute(self):
-        """Execute with appropriate and outputs to disk if any output parameter was set."""
-        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
-        try:
-            self.app.Execute()
-        except (RuntimeError, FileNotFoundError) as e:
-            raise Exception(f'{self.name}: error during during app execution') from e
-        logger.debug("%s: execution ended", self.name)
-
     def write(self, *args, filename_extension="", pixel_type=None, **kwargs):
         """Trigger execution, set output pixel type and write the output.
 
@@ -547,8 +538,8 @@ class App(otbObject):
     """Class of an OTB app."""
     _name = ""
 
-    def __init__(self, appname, *args, image_dic=None, otb_stdout=False,
-                 propagate_pixel_type=False, frozen=False, **kwargs):
+    def __init__(self, appname, *args, frozen=False, image_dic=None,
+                 otb_stdout=False, propagate_pixel_type=False, **kwargs):
         """Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
 
         Args:
@@ -558,6 +549,7 @@ class App(otbObject):
                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
                            - string, App or Output, useful when the user wants to specify the input "in"
                            - list, useful when the user wants to specify the input list 'il'
+            frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             image_dic: optional. Enables to keep a reference to image_dic. image_dic is a dictionary, such as
                        the result of app.ExportImage(). Use it when the app takes a numpy array as input.
                        See this related issue for why it is necessary to keep reference of object:
@@ -565,7 +557,6 @@ class App(otbObject):
             otb_stdout: whether to print logs of the OTB app
             propagate_pixel_type: propagate the pixel type from inputs to output. If several inputs, the type of an
                                   arbitrary input is considered. If several outputs, all will have the same type.
-            frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             **kwargs: Used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
@@ -651,10 +642,15 @@ class App(otbObject):
             self.__propagate_pixel_type()
 
     def execute(self):
-        """Override base execute method in order to save objects as class attribute."""
-        super().execute()
+        """Execute and write to disk if any output parameter has been set during init."""
+        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
+        try:
+            self.app.Execute()
+        except (RuntimeError, FileNotFoundError) as e:
+            raise Exception(f'{self.name}: error during during app execution') from e
         self.frozen = False
-        if self.__with_output() or not self.output_param:
+        logger.debug("%s: execution ended", self.name)
+        if self.__with_output():
             logger.debug('%s: flushing data to disk', self.name)
             self.app.WriteOutput()
         self.__save_objects()
@@ -768,9 +764,11 @@ class App(otbObject):
 
     def __with_output(self):
         """Check if App has any output parameter key."""
+        if not self.output_param:
+            return True  # apps like ReadImageInfo don't a have filetype output param but stil need to WriteOutput
         types = (otb.ParameterType_OutputFilename, otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData)
-        params = [param for param in self.app.GetParametersKeys() if self.app.GetParameterType(param) in types]
-        return any(key in self.parameters for key in params)
+        outfile_params = [param for param in self.app.GetParametersKeys() if self.app.GetParameterType(param) in types]
+        return any(key in self.parameters for key in outfile_params)
 
     def __save_objects(self):
         """Saving app parameters and outputs as attributes, so that they can be accessed with `obj.key`.
@@ -875,7 +873,6 @@ class Slicer(otbObject):
         # Execute app
         app.set_parameters(**parameters)
         app.execute()
-
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
 
