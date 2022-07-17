@@ -958,6 +958,7 @@ class Slicer(otbObject):
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
+        self.parameters = app.parameters
 
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
         if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
@@ -979,10 +980,11 @@ class Input(otbObject):
         self.output_parameter_key = 'out'
         self.filepath = filepath
         self.name = f'Input from {filepath}'
-        app = App('ExtractROI', filepath, execute=True, propagate_pixel_type=True)
+        app = App('ExtractROI', filepath, propagate_pixel_type=True)
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
+        self.parameters = app.parameters
 
     def __str__(self):
         """
@@ -1094,6 +1096,7 @@ class Operation(otbObject):
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
+        self.parameters =  app.parameters
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """
