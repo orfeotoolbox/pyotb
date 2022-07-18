@@ -41,4 +41,6 @@ crs = osr.SpatialReference()
 crs.ImportFromEPSG(2154)
 dest_crs = osr.SpatialReference()
 dest_crs.ImportFromWkt(profile['crs'])
-assert crs.ExportToWkt() == dest_crs.ExportToWkt()
+wkt1, wkt2 = crs.ExportToWkt(), dest_crs.ExportToWkt()
+print(f"{wkt1=}, {wkt2=}")
+assert wkt1 == wkt2
