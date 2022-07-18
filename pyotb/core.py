@@ -521,7 +521,7 @@ class otbObject(ABC):
             result_dic['array'] = result_array
 
             # Importing back to OTB
-            app = App('ExtractROI', image_dic=result_dic)  # pass the result_dic just to keep reference
+            app = App('ExtractROI', frozen=True, image_dic=result_dic)  # pass the result_dic just to keep reference
             if result_array.shape[2] == 1:
                 app.ImportImage('in', result_dic)
             else:
@@ -536,26 +536,26 @@ class App(otbObject):
     """Class of an OTB app."""
     _name = ""
 
-    def __init__(self, appname, *args, frozen=False, image_dic=None,
-                 otb_stdout=False, propagate_pixel_type=False, **kwargs):
+    def __init__(self, appname, *args, frozen=False, otb_stdout=False,
+                 propagate_pixel_type=False, image_dic=None, **kwargs):
         """Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
 
         Args:
             appname: name of the app, e.g. 'Smoothing'
-            *args: Used for passing application parameters. Can be :
+            *args: used for passing application parameters. Can be :
                            - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
                            - string, App or Output, useful when the user wants to specify the input "in"
                            - list, useful when the user wants to specify the input list 'il'
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
-            image_dic: optional. Enables to keep a reference to image_dic. image_dic is a dictionary, such as
-                       the result of app.ExportImage(). Use it when the app takes a numpy array as input.
-                       See this related issue for why it is necessary to keep reference of object:
-                       https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
             otb_stdout: whether to print logs of the OTB app
             propagate_pixel_type: propagate the pixel type from inputs to output. If several inputs, the type of an
                                   arbitrary input is considered. If several outputs, all will have the same type.
-            **kwargs: Used for passing application parameters.
+            image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
+                       the result of app.ExportImage(). Use it when the app takes a numpy array as input.
+                       See this related issue for why it is necessary to keep reference of object:
+                       https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
+            **kwargs: used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
