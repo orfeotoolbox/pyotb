@@ -1,4 +1,4 @@
-## Export to  Numpy
+## Export to Numpy
 
 pyotb objects can be exported to numpy array.
 ```python
