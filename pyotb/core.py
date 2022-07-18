@@ -120,7 +120,7 @@ class otbObject(ABC):
                 self.app.SetParameterOutputImagePixelType(key, dtypes[key])
 
         logger.debug('%s: flushing data to disk', self.name)
-        self.app.ExecuteAndWriteOutput()
+        self.app.WriteOutput()
 
     def to_numpy(self, propagate_pixel_type=True, copy=False):
         """Export a pyotb object to numpy array.
