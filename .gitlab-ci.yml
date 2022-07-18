@@ -98,6 +98,7 @@ basic_tests:
 
 compute_ndvi:
   extends: .test_base
+  allow_failure: true
   script:
     - python3 ndvi_test.py
 
