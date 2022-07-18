@@ -81,15 +81,16 @@ pages:
   tags:
     - light
   allow_failure: false
-  before_script:
-    - pip install .
-    - cd tests
-    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false  -O image.tif
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
     PYOTB_LOGGER_LEVEL: DEBUG
     OTB_LOGGER_LEVEL: INFO
+    PIPELINE_TEST_INPUT_IMAGE: image.tif
+  before_script:
+    - pip install .
+    - cd tests
+    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false  -O $PIPELINE_TEST_INPUT_IMAGE
 
 basic_tests:
   extends: .test_base
