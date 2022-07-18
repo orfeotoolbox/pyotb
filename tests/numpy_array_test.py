@@ -1,7 +1,7 @@
 import numpy as np
 import pyotb
 
-filepath = 'Data/Input/QB_MUL_ROI_1000_100.tif'
+filepath = 'image.tif'
 
 # Test to_numpy array
 inp = pyotb.Input(filepath)

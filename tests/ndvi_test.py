@@ -1,6 +1,6 @@
 import pyotb
 
-filepath = 'Data/Input/QB_MUL_ROI_1000_100.tif'
+filepath = 'image.tif'
 inp = pyotb.Input(filepath)
 
 # Compute NDVI with bandmath
@@ -10,7 +10,7 @@ ndvi_bandmath.write('/tmp/ndvi_bandmath.tif', pixel_type='float')
 
 # Compute NDVI with RadiometricIndices app
 ndvi_indices = pyotb.RadiometricIndices({'in': inp, 'list': 'Vegetation:NDVI',
-                                         'channels.red': 3, 'channels.nir': 4})
+                                         'channels.red': 1, 'channels.nir': 4})
 ndvi_indices.write('/tmp/ndvi_indices.tif', pixel_type='float')
 
 compared = pyotb.CompareImages({'ref.in': ndvi_indices, 'meas.in': '/tmp/ndvi_bandmath.tif'})

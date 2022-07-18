@@ -84,6 +84,7 @@ pages:
   before_script:
     - pip install .
     - cd tests
+    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false  -O image.tif
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
