@@ -6,7 +6,7 @@ import pyotb
 # List of buildings blocks
 # We can add other pyotb objects here
 OTBAPPS_BLOCKS = [
-    #lambda inp: pyotb.ExtractROI({"in": inp, "startx": 10, "starty": 10, "sizex": 50, "sizey": 50}),
+    # lambda inp: pyotb.ExtractROI({"in": inp, "startx": 10, "starty": 10, "sizex": 50, "sizey": 50}),
     lambda inp: pyotb.ManageNoData({"in": inp, "mode": "changevalue"}),
     lambda inp: pyotb.DynamicConvert({"in": inp}),
     lambda inp: pyotb.Mosaic({"il": [inp]}),
@@ -21,16 +21,13 @@ PYOTB_BLOCKS = [
 
 ALL_BLOCKS = PYOTB_BLOCKS + OTBAPPS_BLOCKS
 
-# These apps are problematic when used in pipelines with intermediate outputs
-# (cf https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/2290)
-PROBLEMATIC_APPS = ['DynamicConvert', 'BandMath']
-
 
 def backward():
     """
     Return True if backward mode.
     In backward mode applications are tested from the end to the beginning of the pipeline.
     """
+
 
 def check_app_write(app, out):
     """
@@ -54,9 +51,10 @@ def check_app_write(app, out):
     return True
 
 
-filepath = 'image.tif'
+filepath = os.environ["PIPELINE_TEST_INPUT_IMAGE"]
 pyotb_input = pyotb.Input(filepath)
 args = [arg.lower() for arg in sys.argv[1:]] if len(sys.argv) > 1 else []
+
 
 def generate_pipeline(inp, building_blocks):
     """
@@ -183,12 +181,9 @@ for pipeline, errs in results.items():
         causes = [f"{section}: " + ", ".join([f"app{i}" for i in out_ids])
                   for section, out_ids in errs.items() if out_ids]
         msg += "\033[91mFAIL\033[0m (" + "; ".join(causes) + ")"
-        if any([app.name in PROBLEMATIC_APPS for app in pipeline]):
-            allowed_to_fail += 1
-        else:
-            nb_fails += 1
+        nb_fails += 1
     else:
         msg += "\033[92mPASS\033[0m"
     print(msg)
-print(f"End of summary ({nb_fails} error(s), {allowed_to_fail} 'allowed to fail' error(s))", flush=True)
+print(f"End of summary ({nb_fails} error(s))", flush=True)
 assert nb_fails == 0, "One of the pipelines have failed. Please read the report."
