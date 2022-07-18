@@ -91,10 +91,10 @@ pages:
     PYOTB_LOGGER_LEVEL: DEBUG
     OTB_LOGGER_LEVEL: INFO
 
-import_pyotb:
+basic_tests:
   extends: .test_base
   script:
-    - python3 -c "import pyotb"
+    - python3 basic_tests.py
 
 compute_ndvi:
   extends: .test_base
