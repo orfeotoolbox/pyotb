@@ -100,6 +100,11 @@ compute_ndvi:
   script:
     - python3 ndvi_test.py
 
+numpy_array:
+  extends: .test_base
+  script:
+    - python3 numpy_array_test.py
+
 pipeline_test_shape:
   extends: .test_base
   script:
