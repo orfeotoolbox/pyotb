@@ -54,7 +54,7 @@ def check_app_write(app, out):
     return True
 
 
-filepath = 'Data/Input/QB_MUL_ROI_1000_100.tif'
+filepath = 'image.tif'
 pyotb_input = pyotb.Input(filepath)
 args = [arg.lower() for arg in sys.argv[1:]] if len(sys.argv) > 1 else []
 
