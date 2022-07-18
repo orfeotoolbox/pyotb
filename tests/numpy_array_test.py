@@ -6,13 +6,13 @@ filepath = 'image.tif'
 # Test to_numpy array
 inp = pyotb.Input(filepath)
 array = inp.to_numpy()
-assert array.dtype == np.float64
-assert array.shape == (100, 100, 4)
+assert array.dtype == np.uint8
+assert array.shape == (304, 251, 4)
 
 # Test to_numpy array with slicer
 inp = pyotb.Input(filepath)[:50, :60, :3]
 array = inp.to_numpy()
-assert array.dtype == np.float64
+assert array.dtype == np.uint8
 assert array.shape == (50, 60, 3)
 
 # Test conversion to numpy array
@@ -30,12 +30,12 @@ assert noisy_image.shape == inp.shape
 array, profile = inp.to_rasterio()
 
 # Check data type and shape
-assert array.dtype == profile['dtype'] == np.float64
+assert array.dtype == profile['dtype'] == np.uint8
 assert array.shape == (3, 50, 60)
 
 # Check array statistics
-assert array.min() == 136.0
-assert array.max() == 591.0
+assert array.min() == 48
+assert array.max() == 248
 
 # Check rasterio profile
-assert profile['transform'] == (1.0, 0.0, 1000.0, 0.0, 1.0, 1000.0)
+assert profile['transform'] == (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
