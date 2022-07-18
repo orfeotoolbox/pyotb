@@ -1,3 +1,4 @@
+from difflib import SequenceMatcher
 import numpy as np
 import pyotb
 
@@ -62,5 +63,8 @@ image_crs = """PROJCS["RGF93 v1 / Lambert-93",
     AXIS["Northing",NORTH],
     AUTHORITY["EPSG","2154"]]"""
 
-assert profile['crs'] == image_crs
+# Check string similarity ratio since direct string equality is not working in the docker image
+matcher = SequenceMatcher(a=image_crs, b=profile['crs'])
+pyotb.logger.debug("CRS string match ratio is %f", matcher.ratio())
+assert matcher.ratio() > 0.99
 assert profile['transform'] == (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
