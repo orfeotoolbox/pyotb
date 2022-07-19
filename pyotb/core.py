@@ -122,8 +122,8 @@ class otbObject(ABC):
         logger.debug('%s: flushing data to disk', self.name)
         try:
             self.app.WriteOutput()
-        except RuntimeError as e:
-            logger.info('%s: Failed to simply write output, executing once again then writing', self.name)
+        except RuntimeError:
+            logger.info('%s: failed to simply write output, executing once again then writing', self.name)
             self.app.ExecuteAndWriteOutput()
 
     def to_numpy(self, propagate_pixel_type=True, copy=False):
