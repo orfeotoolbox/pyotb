@@ -540,7 +540,7 @@ class App(otbObject):
     """Class of an OTB app."""
     _name = ""
 
-    def __init__(self, appname, *args, frozen=False, otb_stdout=False,
+    def __init__(self, appname, *args, frozen=False, quiet=False,
                  propagate_pixel_type=False, image_dic=None, **kwargs):
         """Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
 
@@ -552,7 +552,7 @@ class App(otbObject):
                            - string, App or Output, useful when the user wants to specify the input "in"
                            - list, useful when the user wants to specify the input list 'il'
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
-            otb_stdout: whether to print logs of the OTB app
+            quiet: whether to print logs of the OTB app
             propagate_pixel_type: propagate the pixel type from inputs to output. If several inputs, the type of an
                                   arbitrary input is considered. If several outputs, all will have the same type.
             image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
@@ -564,17 +564,18 @@ class App(otbObject):
 
         """
         self.appname = appname
-        self.image_dic = image_dic
+        self.frozen = frozen
+        self.quiet = quiet
         self.preserve_dtype = propagate_pixel_type
-        if otb_stdout:
-            self.app = otb.Registry.CreateApplication(appname)
-        else:
+        self.image_dic = image_dic
+        if self.quiet:
             self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
+        else:
+            self.app = otb.Registry.CreateApplication(appname)
         self.output_parameters_keys = self.__get_output_parameters_keys()
         self._parameters = {}
         if (args or kwargs):
             self.set_parameters(*args, **kwargs)
-        self.frozen = frozen
         if not self.frozen:
             self.execute()
 
@@ -1238,7 +1239,7 @@ def get_nbchannels(inp):
     else:
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, otb_stdout=False)
+            info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
@@ -1259,7 +1260,7 @@ def get_pixel_type(inp):
     if isinstance(inp, str):
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, otb_stdout=False)
+            info = App("ReadImageInfo", inp, quiet=True)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath') from info_err
         datatype = info.GetParameterString("datatype")  # which is such as short, float...
