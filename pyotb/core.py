@@ -126,21 +126,21 @@ class otbObject(ABC):
             logger.info('%s: failed to simply write output, executing once again then writing', self.name)
             self.app.ExecuteAndWriteOutput()
 
-    def to_numpy(self, propagate_pixel_type=True, copy=False):
+    def to_numpy(self, preserve_dtype=True, copy=False):
         """Export a pyotb object to numpy array.
 
         Args:
-            propagate_pixel_type: when set to True, the numpy array is created with the same pixel type as
+            preserve_dtype: when set to True, the numpy array is created with the same pixel type as
                                   the otbObject first output. Default is True.
             copy: whether to copy the output array, default is False
-                  required to True if propagate_pixel_type is False and the source app reference is lost
+                  required to True if preserve_dtype is False and the source app reference is lost
 
         Returns:
           a numpy array
 
         """
         array = self.app.ExportImage(self.output_param)['array']
-        if propagate_pixel_type:
+        if preserve_dtype:
             otb_pixeltype = get_pixel_type(self)
             np_pixeltype = self.app.ConvertPixelTypeToNumpy(otb_pixeltype)
             return array.astype(np_pixeltype)
@@ -156,7 +156,7 @@ class otbObject(ABC):
           profile: a metadata dict required to write image using rasterio
 
         """
-        array = self.to_numpy(propagate_pixel_type=True, copy=False)
+        array = self.to_numpy(preserve_dtype=True, copy=False)
         array = np.moveaxis(array, 2, 0)
         proj = self.app.GetImageProjection(self.output_param)
         spacing_x, spacing_y = self.app.GetImageSpacing(self.output_param)
@@ -541,7 +541,7 @@ class App(otbObject):
     _name = ""
 
     def __init__(self, appname, *args, frozen=False, quiet=False,
-                 propagate_pixel_type=False, image_dic=None, **kwargs):
+                 preserve_dtype=False, image_dic=None, **kwargs):
         """Enables to init an OTB application as a oneliner. Handles in-memory connection between apps.
 
         Args:
@@ -553,7 +553,7 @@ class App(otbObject):
                            - list, useful when the user wants to specify the input list 'il'
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             quiet: whether to print logs of the OTB app
-            propagate_pixel_type: propagate the pixel type from inputs to output. If several inputs, the type of an
+            preserve_dtype: propagate the pixel type from inputs to output. If several inputs, the type of an
                                   arbitrary input is considered. If several outputs, all will have the same type.
             image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
                        the result of app.ExportImage(). Use it when the app takes a numpy array as input.
@@ -566,8 +566,9 @@ class App(otbObject):
         self.appname = appname
         self.frozen = frozen
         self.quiet = quiet
-        self.preserve_dtype = propagate_pixel_type
+        self.preserve_dtype = preserve_dtype
         self.image_dic = image_dic
+
         if self.quiet:
             self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
         else:
@@ -830,7 +831,7 @@ class Slicer(otbObject):
         # Initialize the app that will be used for writing the slicer
         self.name = 'Slicer'
         self.output_parameter_key = 'out'
-        app = App('ExtractROI', {'in': x, 'mode': 'extent'}, propagate_pixel_type=True, frozen=True)
+        app = App('ExtractROI', {'in': x, 'mode': 'extent'}, preserve_dtype=True, frozen=True)
         parameters = {}
         # Channel slicing
         if channels != slice(None, None, None):
@@ -898,7 +899,7 @@ class Input(otbObject):
         self.output_parameter_key = 'out'
         self.filepath = filepath
         self.name = f'Input from {filepath}'
-        app = App('ExtractROI', filepath, propagate_pixel_type=True)
+        app = App('ExtractROI', filepath, preserve_dtype=True)
 
         # Keeping the OTB app and the pyotb app
         self.pyotb_app, self.app = app, app.app
