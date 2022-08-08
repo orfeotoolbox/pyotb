@@ -3,7 +3,7 @@ workflow:
     - if: $CI_MERGE_REQUEST_ID            # Execute jobs in merge request context
     - if: $CI_COMMIT_BRANCH == 'develop'  # Execute jobs when a new commit is pushed to develop branch
 
-image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop:20.04
+image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
 
 stages:
   - Static Analysis
@@ -90,7 +90,7 @@ pages:
   before_script:
     - pip install .
     - cd tests
-    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false  -O $PIPELINE_TEST_INPUT_IMAGE
+    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false -O $PIPELINE_TEST_INPUT_IMAGE
 
 basic_tests:
   extends: .test_base
@@ -147,4 +147,3 @@ pipeline_test_write_backward_nointermediate:
   extends: .test_base
   script:
     - python3 pipeline_test.py write backward no-intermediate-result
-
