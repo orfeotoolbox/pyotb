@@ -2,11 +2,12 @@ import pyotb
 
 filepath = 'image.tif'
 inp = pyotb.Input(filepath)
-
+assert inp.dtype == 'uint8'
 assert inp.shape == (304, 251, 4)
 
 # Test slicer
 extract = inp[:50, :60, :3]
+assert extract.dtype == 'uint8'
 assert extract.shape == (50, 60, 3)
 
 # Test ReadImageInfo
@@ -16,7 +17,7 @@ assert info.sizey == 304
 assert info['numberbands'] == info.numberbands == 4
 
 # Test Statistics
-stats = pyotb.ComputeImagesStatistics(il=inp, quiet=True)
+stats = pyotb.ComputeImagesStatistics([inp], quiet=True)
 assert stats['out.min'] == "[33, 64, 91, 47]"
 
 # Test Statistics on a Slicer

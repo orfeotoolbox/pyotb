@@ -39,8 +39,22 @@ class otbObject(ABC):
         return self.output_parameters_keys[0]
 
     @property
+    def dtype(self):
+        """Expose the pixel type of an output image using numpy convention.
+
+        Returns:
+            dtype: pixel type of the output image
+
+        """
+        try:
+        enum = self.app.GetParameterOutputImagePixelType(self.output_param)
+        return self.app.ConvertPixelTypeToNumpy(enum)
+        except RuntimeError:
+            return None
+
+    @property
     def shape(self):
-        """Enables to retrieve the shape of a pyotb object.
+        """Enables to retrieve the shape of a pyotb object using numpy convention.
 
         Returns:
             shape: (height, width, bands)
@@ -141,9 +155,7 @@ class otbObject(ABC):
         """
         array = self.app.ExportImage(self.output_param)['array']
         if preserve_dtype:
-            otb_pixeltype = get_pixel_type(self)
-            np_pixeltype = self.app.ConvertPixelTypeToNumpy(otb_pixeltype)
-            return array.astype(np_pixeltype)
+            return array.astype(self.dtype)
         if copy:
             return array.copy()
         return array
