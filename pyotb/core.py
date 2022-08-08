@@ -47,8 +47,8 @@ class otbObject(ABC):
 
         """
         try:
-        enum = self.app.GetParameterOutputImagePixelType(self.output_param)
-        return self.app.ConvertPixelTypeToNumpy(enum)
+            enum = self.app.GetParameterOutputImagePixelType(self.output_param)
+            return self.app.ConvertPixelTypeToNumpy(enum)
         except RuntimeError:
             return None
 
@@ -765,11 +765,14 @@ class App(otbObject):
 
         """
         pixel_type = None
-        for param in self.parameters.values():
-            try:
-                pixel_type = get_pixel_type(param)
-            except TypeError:
-                pass
+        for key, param in self.parameters.items():
+            if key not in self.output_parameters_keys:
+                try:
+                    pixel_type = get_pixel_type(param)
+                except TypeError:
+                    pass
+                if isinstance(pixel_type, int):
+                    break
         if pixel_type is None:
             logger.warning("%s: could not propagate pixel type from inputs to output, no valid input found", self.name)
         else:
@@ -1266,8 +1269,8 @@ def get_pixel_type(inp):
         inp: can be filepath or pyotb object
 
     Returns:
-        pixel_type: format is like `otbApplication.ImagePixelType_uint8', which actually is an int. For an App
-                    with several outputs, only the pixel type of the first output is returned
+        pixel_type: OTB enum e.g. `otbApplication.ImagePixelType_uint8', which actually is an int.
+                    For an App with several outputs, only the pixel type of the first output is returned
 
     """
     if isinstance(inp, str):
