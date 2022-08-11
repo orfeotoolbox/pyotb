@@ -45,7 +45,7 @@ resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 
 
 calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa'}) 
 
-dilated = pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilatation', 
+dilated = pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilate', 
                                               'structype': 'ball', 'xradius': 3, 'yradius': 3})
 dilated.write('result.tif')
 ```

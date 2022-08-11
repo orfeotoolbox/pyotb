@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-This module provides a set of functions for pyotb
-"""
+"""This module provides a set of functions for pyotb."""
 import inspect
 import os
 import sys
@@ -14,8 +12,7 @@ from .helpers import logger
 
 
 def where(cond, x, y):
-    """
-    Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y
+    """Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y.
 
     Args:
         cond: condition, must be a raster (filepath, App, Operation...). If cond is monoband whereas x or y are
@@ -65,8 +62,7 @@ def where(cond, x, y):
 
 
 def clip(a, a_min, a_max):
-    """
-    Clip values of image in a range of values
+    """Clip values of image in a range of values.
 
     Args:
         a: input raster, can be filepath or any pyotb object
@@ -86,7 +82,8 @@ def clip(a, a_min, a_max):
 
 
 def all(*inputs):  # pylint: disable=redefined-builtin
-    """
+    """Check if value is different than 0 everywhere along the band axis.
+
     For only one image, this function checks that all bands of the image are True (i.e. !=0) and outputs
     a singleband boolean raster
     For several images, this function checks that all images are True (i.e. !=0) and outputs
@@ -109,7 +106,7 @@ def all(*inputs):  # pylint: disable=redefined-builtin
         inputs = list(inputs[0])
 
     # Transforming potential filepaths to pyotb objects
-    inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
+    inputs = [Input(inp) if isinstance(inp, str) else inp for inp in inputs]
 
     # Checking that all bands of the single image are True
     if len(inputs) == 1:
@@ -141,7 +138,8 @@ def all(*inputs):  # pylint: disable=redefined-builtin
 
 
 def any(*inputs):  # pylint: disable=redefined-builtin
-    """
+    """Check if value is different than 0 anywhere along the band axis.
+
     For only one image, this function checks that at least one band of the image is True (i.e. !=0) and outputs
     a single band boolean raster
     For several images, this function checks that at least one of the images is True (i.e. !=0) and outputs
@@ -163,7 +161,7 @@ def any(*inputs):  # pylint: disable=redefined-builtin
         inputs = list(inputs[0])
 
     # Transforming potential filepaths to pyotb objects
-    inputs = [Input(input) if isinstance(input, str) else input for input in inputs]
+    inputs = [Input(inp) if isinstance(inp, str) else inp for inp in inputs]
 
     # Checking that at least one band of the image is True
     if len(inputs) == 1:
@@ -195,8 +193,7 @@ def any(*inputs):  # pylint: disable=redefined-builtin
 
 
 def run_tf_function(func):
-    """
-    This function enables using a function that calls some TF operations, with pyotb object as inputs.
+    """This function enables using a function that calls some TF operations, with pyotb object as inputs.
 
     For example, you can write a function that uses TF operations like this :
         ```python
@@ -219,13 +216,12 @@ def run_tf_function(func):
     try:
         from .apps import TensorflowModelServe
     except ImportError:
-        logger.error('Could not run Tensorflow function: failed to import TensorflowModelServe. Check that you '
-                     'have OTBTF configured (https://github.com/remicres/otbtf#how-to-install)')
+        logger.error('Could not run Tensorflow function: failed to import TensorflowModelServe.'
+                     'Check that you have OTBTF configured (https://github.com/remicres/otbtf#how-to-install)')
         raise
 
     def get_tf_pycmd(output_dir, channels, scalar_inputs):
-        """
-        Create a string containing all python instructions necessary to create and save the Keras model
+        """Create a string containing all python instructions necessary to create and save the Keras model.
 
         Args:
             output_dir: directory under which to save the model
@@ -236,7 +232,6 @@ def run_tf_function(func):
             the whole string code for function definition + model saving
 
         """
-
         # Getting the string definition of the tf function (e.g. "def multiply(x1, x2):...")
         # TODO: maybe not entirely foolproof, maybe we should use dill instead? but it would add a dependency
         func_def_str = inspect.getsource(func)
@@ -270,8 +265,8 @@ def run_tf_function(func):
         return create_and_save_model_str
 
     def wrapper(*inputs, tmp_dir='/tmp'):
-        """
-        For the user point of view, this function simply applies some TensorFlow operations to some rasters.
+        """For the user point of view, this function simply applies some TensorFlow operations to some rasters.
+
         Implicitly, it saves a .pb model that describe the TF operations, then creates an OTB ModelServe application
         that applies this .pb model to the inputs.
 
@@ -314,11 +309,11 @@ def run_tf_function(func):
 
         # Initialize the OTBTF model serving application
         model_serve = TensorflowModelServe({'model.dir': out_savedmodel, 'optim.disabletiling': 'on',
-                                            'model.fullyconv': 'on'}, n_sources=len(raster_inputs), execute=False)
+                                            'model.fullyconv': 'on'}, n_sources=len(raster_inputs), frozen=True)
         # Set parameters and execute
         for i, inp in enumerate(raster_inputs):
             model_serve.set_parameters({f'source{i + 1}.il': [inp]})
-        model_serve.Execute()
+        model_serve.execute()
         # TODO: handle the deletion of the temporary model ?
 
         return model_serve
@@ -328,8 +323,8 @@ def run_tf_function(func):
 
 def define_processing_area(*args, window_rule='intersection', pixel_size_rule='minimal', interpolator='nn',
                            reference_window_input=None, reference_pixel_size_input=None):
-    """
-    Given several inputs, this function handles the potential resampling and cropping to same extent.
+    """Given several inputs, this function handles the potential resampling and cropping to same extent.
+
     WARNING: Not fully implemented / tested
 
     Args:
@@ -344,7 +339,6 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         list of in-memory pyotb objects with all the same resolution, shape and extent
 
     """
-
     # Flatten all args into one list
     inputs = []
     for arg in args:
@@ -418,7 +412,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
                     'mode.extent.ulx': ulx, 'mode.extent.uly': lry,  # bug in OTB <= 7.3 :
                     'mode.extent.lrx': lrx, 'mode.extent.lry': uly,  # ULY/LRY are inverted
                 }
-                new_input = App('ExtractROI', params, execute=True)
+                new_input = App('ExtractROI', params)
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
@@ -460,14 +454,13 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         for inp in inputs:
             if metadatas[inp]['GeoTransform'][1] != pixel_size:
                 superimposed = App('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
-                superimposed.execute()
                 new_inputs.append(superimposed)
             else:
                 new_inputs.append(inp)
         inputs = new_inputs
 
         # Update metadatas
-        metadatas = {input: input.GetImageMetaData('out') for input in inputs}
+        metadatas = {inp: inp.GetImageMetaData('out') for inp in inputs}
 
     # Final superimposition to be sure to have the exact same image sizes
     # Getting the sizes of images
@@ -479,14 +472,13 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
 
     # Selecting the most frequent image size. It will be used as reference.
     most_common_image_size, _ = Counter(image_sizes.values()).most_common(1)[0]
-    same_size_images = [input for input, image_size in image_sizes.items() if image_size == most_common_image_size]
+    same_size_images = [inp for inp, image_size in image_sizes.items() if image_size == most_common_image_size]
 
     # Superimposition for images that do not have the same size as the others
     new_inputs = []
     for inp in inputs:
         if image_sizes[inp] != most_common_image_size:
             superimposed = App('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
-            superimposed.execute()
             new_inputs.append(superimposed)
         else:
             new_inputs.append(inp)
