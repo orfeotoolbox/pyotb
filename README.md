@@ -194,6 +194,37 @@ Limitations :
 - The georeference can not be modified. Thus, numpy operations can not change the image or pixel size
 
 
+## Export to rasterio
+pyotb objects can also be exported in a format that is usable by rasterio.
+
+For example:
+
+```python
+import pyotb
+import rasterio
+from scipy import ndimage
+
+# Pansharpening + NDVI + creating bare soils mask
+pxs = pyotb.BundleToPerfectSensor(inp='panchromatic.tif', inxs='multispectral.tif')
+ndvi = pyotb.RadiometricIndices({'in': pxs, 'channels.red': 3, 'channels.nir': 4, 'list': 'Vegetation:NDVI'})
+bare_soil_mask = (ndvi < 0.3)
+
+# Exporting the result as array & profile usable by rasterio
+mask_array, profile = bare_soil_mask.to_rasterio()
+
+# Doing something in Python that is not possible with OTB, e.g. gathering the contiguous groups of pixels
+# with an integer index
+labeled_mask_array, nb_groups = ndimage.label(mask_array)
+
+# Writing the result to disk
+with rasterio.open('labeled_bare_soil.tif', 'w', **profile) as f:
+    f.write(labeled_mask_array)
+
+```
+This way of exporting pyotb objects is more flexible that exporting to numpy, as the user gets the `profile` dictionary. 
+If the georeference or pixel size is modified, the user can update the `profile` accordingly.
+
+
 ## Interaction with Tensorflow
 
 We saw that numpy operations had some limitations. To bypass those limitations, it is possible to use some Tensorflow operations on pyotb objects.
