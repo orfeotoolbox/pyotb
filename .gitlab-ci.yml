@@ -84,21 +84,27 @@ pages:
   before_script:
     - pip install .
     - cd tests
+    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false  -O image.tif
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
     PYOTB_LOGGER_LEVEL: DEBUG
     OTB_LOGGER_LEVEL: INFO
 
-import_pyotb:
+basic_tests:
   extends: .test_base
   script:
-    - python3 -c "import pyotb"
+    - python3 basic_tests.py
 
 compute_ndvi:
   extends: .test_base
   script:
     - python3 ndvi_test.py
+
+numpy_array:
+  extends: .test_base
+  script:
+    - python3 numpy_array_test.py
 
 pipeline_test_shape:
   extends: .test_base

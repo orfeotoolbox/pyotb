@@ -10,7 +10,7 @@ to make OTB more Python friendly.
 - [How to use pyotb](quickstart.md)
 - [Useful features](features.md)
 - [Functions](features.md)
-- [Interaction with other processing libraries](interaction.md)
+- [Interaction with Python libraries (numpy, rasterio, tensorflow)](interaction.md)
 
 ## Examples
 - [Pleiades data processing](examples/pleiades.md)

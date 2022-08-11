@@ -38,13 +38,13 @@ class otbObject(ABC):
         Enables to retrieve the shape of a pyotb object.
 
         Returns:
-            shape: (width, height, bands)
+            shape: (height, width, bands)
 
         """
         self.execute_if_needed()
-        image_size = self.app.GetImageSize(self.output_param)
-        image_bands = self.app.GetImageNbBands(self.output_param)
-        return (*image_size, image_bands)
+        width, height = self.app.GetImageSize(self.output_param)
+        bands = self.app.GetImageNbBands(self.output_param)
+        return (height, width, bands)
 
     def write(self, *args, filename_extension="", pixel_type=None, **kwargs):
         """
@@ -153,6 +153,29 @@ class otbObject(ABC):
             return array.copy()
         return array
 
+    def to_rasterio(self):
+        """
+        Export image as a numpy array and its metadata compatible with rasterio
+
+        Returns:
+          array : a numpy array in the (bands, height, width) order
+          profile: a metadata dict required to write image using rasterio
+
+        """
+        array = self.to_numpy(propagate_pixel_type=True, copy=False)
+        array = np.moveaxis(array, 2, 0)
+        proj = self.app.GetImageProjection(self.output_param)
+        spacing_x, spacing_y = self.app.GetImageSpacing(self.output_param)
+        origin_x, origin_y = self.app.GetImageOrigin(self.output_param)
+        # Shift image origin since OTB is giving coordinates of pixel center instead of corners
+        origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
+        profile = {
+            'crs': proj, 'dtype': array.dtype,
+            'count': array.shape[0], 'height': array.shape[1], 'width': array.shape[2],
+            'transform': (spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y)  # here we force pixel rotation to 0 !
+        }
+        return array, profile
+
     def __check_output_param(self, key):
         """
         Check param name to prevent strange behaviour in write() if kwarg key is not implemented
@@ -196,14 +219,13 @@ class otbObject(ABC):
         # Accessing string attributes
         if isinstance(key, str):
             return self.__dict__.get(key)
-
         # Slicing
         if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
             raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
         if isinstance(key, tuple) and len(key) == 2:
             # Adding a 3rd dimension
             key = key + (slice(None, None, None),)
-        (cols, rows, channels) = key
+        (rows, cols, channels) = key
         return Slicer(self, rows, cols, channels)
 
     def __getattr__(self, name):
@@ -901,8 +923,8 @@ class Slicer(otbObject):
 
         Args:
             x: input
-            rows: rows slicing (e.g. 100:2000)
-            cols: columns slicing (e.g. 100:2000)
+            rows: slice along Y / Latitude axis
+            cols: slice along X / Longitude axis
             channels: channels, can be slicing, list or int
 
         """
