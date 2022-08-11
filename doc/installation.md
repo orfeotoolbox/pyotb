@@ -8,4 +8,4 @@
 pip install pyotb --upgrade
 ```
 
-For Python>=3.6, latest version available is pyotb 1.4.1. For Python 3.5, latest version available is pyotb 1.2.2
+For Python>=3.6, latest version available is pyotb 1.5.0. For Python 3.5, latest version available is pyotb 1.2.2
