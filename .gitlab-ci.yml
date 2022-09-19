@@ -1,6 +1,6 @@
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 default:
   image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
@@ -14,11 +14,6 @@ stages:
 
 .static_analysis:
   stage: Static Analysis
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - pyotb/*.py
-        - tests/*.py
   tags:
     - light
   allow_failure: true
@@ -66,6 +61,8 @@ pylint:
 
 pages_test:
   extends: .docs
+  rules:
+    - if: $CI_PIPELINE_SOURCE != $CI_DEFAULT_BRANCH
   when: manual
   script:
     - mkdocs build --site-dir public_test
@@ -77,6 +74,7 @@ pages:
   extends: .docs
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+  #when: manual
   script:
     - mkdocs build --site-dir public
   artifacts:
@@ -87,11 +85,6 @@ pages:
 
 .tests:
   stage: Tests
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      changes:
-        - pyotb/*.py
-        - tests/*.py
   tags:
     - light
   allow_failure: false
@@ -120,6 +113,7 @@ test_numpy:
     - python3 -m pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
+  #when: manual
   extends: .tests
   script:
     - python3 -m pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
