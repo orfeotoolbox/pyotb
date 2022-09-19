@@ -60,8 +60,11 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
             set_environment(prefix)
             import otbApplication as otb  # pylint: disable=import-outside-toplevel
             return otb
-        except (ImportError, EnvironmentError) as e:
+        except EnvironmentError as e:
             raise SystemExit(f"Failed to import OTB with prefix={prefix}") from e
+        except ImportError as e:
+            __suggest_fix_import(str(e), prefix)
+            raise SystemExit("Failed to import OTB. Exiting.") from e
     # Else try import from actual Python path
     try:
         # Here, we can't properly set env variables before OTB import. We assume user did this before running python
@@ -91,8 +94,6 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
         raise SystemExit("Can't run without OTB installed. Exiting.") from e
     # Help user to fix this
     except ImportError as e:
-        logger.critical("An error occurred while importing OTB Python API")
-        logger.critical("OTB error message was '%s'", e)
         __suggest_fix_import(str(e), prefix)
         raise SystemExit("Failed to import OTB. Exiting.") from e
 
@@ -118,13 +119,16 @@ def set_environment(prefix):
         raise EnvironmentError("Can't find OTB external libraries")
     # This does not seems to work
     if sys.platform == "linux" and built_from_source:
-        os.environ["LD_LIBRARY_PATH"] = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
+        new_ld_path = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
+        os.environ["LD_LIBRARY_PATH"] = new_ld_path
     # Add python bindings directory first in PYTHONPATH
     otb_api = __find_python_api(lib_dir)
     if not otb_api:
         raise EnvironmentError("Can't find OTB Python API")
     if otb_api not in sys.path:
         sys.path.insert(0, otb_api)
+    # Add /bin first in PATH, in order to avoid conflicts with another GDAL install when using os.system()
+    os.environ["PATH"] = f"{prefix / 'bin'}{os.pathsep}{os.environ['PATH']}"
     # Applications path  (this can be tricky since OTB import will succeed even without apps)
     apps_path = __find_apps_path(lib_dir)
     if Path(apps_path).exists():
@@ -142,11 +146,14 @@ def set_environment(prefix):
         # If installed using apt or built from source with system deps
         gdal_data = "/usr/share/gdal"
         proj_lib = "/usr/share/proj"
-    if not Path(gdal_data).exists():
-        logger.warning("Can't find GDAL directory with prefix %s or in /usr", prefix)
+    elif sys.platform == "win32":
+        gdal_data = str(prefix / "share/data")
+        proj_lib = str(prefix / "share/proj")
     else:
-        os.environ["GDAL_DATA"] = gdal_data
-        os.environ["PROJ_LIB"] = proj_lib
+        raise EnvironmentError(f"Can't find GDAL location with current OTB prefix '{prefix}' or in /usr")
+
+    os.environ["GDAL_DATA"] = gdal_data
+    os.environ["PROJ_LIB"] = proj_lib
 
 
 def __find_lib(prefix=None, otb_module=None):
@@ -266,8 +273,10 @@ def __find_otb_root(scan_userdir=False):
 
 def __suggest_fix_import(error_message, prefix):
     """Help user to fix the OTB installation with appropriate log messages."""
-    if error_message.startswith('libpython3.'):
-        if sys.platform == "linux":
+    logger.critical("An error occurred while importing OTB Python API")
+    logger.critical("OTB error message was '%s'", error_message)
+    if sys.platform == "linux":
+        if error_message.startswith('libpython3.'):
             logger.critical("It seems like you need to symlink or recompile python bindings")
             if sys.executable.startswith('/usr/bin'):
                 lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
@@ -285,6 +294,16 @@ def __suggest_fix_import(error_message, prefix):
                     logger.critical("You may need to install cmake in order to recompile python bindings")
             else:
                 logger.critical("Unable to automatically locate python dynamic library of %s", sys.executable)
-        else:
-            docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
-            logger.critical("You can verify installation requirements for your OS at %s", docs_link)
+            return
+    elif sys.platform == "win32":
+        if error_message.startswith("DLL load failed"):
+            if sys.version_info.minor != 7:
+                logger.critical("You need Python 3.5 (OTB releases 6.4 to 7.4) or Python 3.7 (since OTB 8)")
+                issue_link = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/2010"
+                logger.critical("Another workaround is to recompile Python bindings with cmake, see %s", issue_link)
+            else:
+                logger.critical("It seems that your env variables aren't properly set,"
+                                " first use 'call otbenv.bat' then try to import pyotb once again")
+            return
+    docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
+    logger.critical("You can verify installation requirements for your OS at %s", docs_link)

@@ -7,7 +7,7 @@ import textwrap
 import uuid
 from collections import Counter
 
-from .core import (App, Input, Operation, logicalOperation, get_nbchannels)
+from .core import (otbObject, App, Input, Operation, logicalOperation, get_nbchannels)
 from .helpers import logger
 
 
@@ -352,10 +352,10 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     for inp in inputs:
         if isinstance(inp, str):  # this is for filepaths
             metadata = Input(inp).GetImageMetaData('out')
-        elif hasattr(inp, 'output_parameter_key'):  # this is for Output, Input, Operation
-            metadata = inp.GetImageMetaData(inp.output_parameter_key)
-        else:  # this is for App
-            metadata = inp.GetImageMetaData(inp.output_parameters_keys[0])
+        elif isinstance(inp, otbObject):
+            metadata = inp.GetImageMetaData(inp.output_param)
+        else:
+            raise TypeError(f"Wrong input : {inp}")
         metadatas[inp] = metadata
 
     # Get a metadata of an arbitrary image. This is just to compare later with other images
