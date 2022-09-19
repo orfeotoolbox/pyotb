@@ -1,50 +1,59 @@
 workflow:
   rules:
-    - if: $CI_MERGE_REQUEST_ID            # Execute jobs in merge request context
-    - if: $CI_COMMIT_BRANCH == 'develop'  # Execute jobs when a new commit is pushed to develop branch
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == "develop"
 
-image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+default:
+  image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
 
 stages:
   - Static Analysis
   - Documentation
-  - Test
+  - Tests
 
-# --------------------------------- Static analysis ---------------------------------
+#  -------------------------------- Static analysis --------------------------------
 
-.static_analysis_base:
+.static_analysis:
   stage: Static Analysis
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - pyotb/*.py
+        - tests/*.py
   tags:
     - light
   allow_failure: true
 
-flake8:
-  extends: .static_analysis_base
-  script:
-    - pip install flake8
-    - python3 -m flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
-
-pylint:
-  extends: .static_analysis_base
-  script:
-    - pip install pylint
-    - pylint --max-line-length=120 $PWD/pyotb --disable=too-many-nested-blocks,too-many-locals,too-many-statements,too-few-public-methods,too-many-instance-attributes,too-many-arguments,invalid-name,fixme,too-many-return-statements,too-many-lines,too-many-branches,import-outside-toplevel,wrong-import-position,wrong-import-order,import-error,missing-class-docstring
-
 codespell:
-  extends: .static_analysis_base
-  script:
+  extends: .static_analysis
+  before_script:
     - pip install codespell
-    - codespell --skip="*.png,*.jpg,*git/lfs*"
+  script:
+    - codespell {pyotb,tests}
+
+flake8:
+  extends: .static_analysis
+  before_script:
+    - pip install flake8
+  script:
+    - flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
 
 pydocstyle:
-  extends: .static_analysis_base
-  script:
+  extends: .static_analysis
+  before_script:
     - pip install pydocstyle
+  script:
     - pydocstyle $PWD/pyotb --convention=google
 
+pylint:
+  extends: .static_analysis
+  before_script:
+    - pip install pylint
+  script:
+    - pylint --max-line-length=120 $PWD/pyotb --disable=too-many-nested-blocks,too-many-locals,too-many-statements,too-few-public-methods,too-many-instance-attributes,too-many-arguments,invalid-name,fixme,too-many-return-statements,too-many-lines,too-many-branches,import-outside-toplevel,wrong-import-position,wrong-import-order,import-error,missing-class-docstring
 
-# ------------------------------------------------------- Doc ----------------------------------------------------------
-.doc_base:
+# ---------------------------------- Documentation  ----------------------------------
+
+.docs:
   stage: Documentation
   tags:
     - light
@@ -52,98 +61,70 @@ pydocstyle:
     - apt-get update && apt-get -y install virtualenv
     - virtualenv doc_env
     - source doc_env/bin/activate
-    - pip install --upgrade pip
-    - pip install mkdocstrings mkdocstrings[crystal,python] mkdocs-material mkdocs-gen-files mkdocs-section-index mkdocs-literate-nav mkdocs-mermaid2-plugin --upgrade
-  artifacts:
-    paths:
-      - public
-      - public_test
+    - pip install -U pip
+    - pip install -U -r doc/doc_requirements.txt
 
-test:
-  extends: .doc_base
-  rules:
-    - if: $CI_COMMIT_REF_NAME != $CI_DEFAULT_BRANCH
+pages_test:
+  extends: .docs
+  when: manual
   script:
     - mkdocs build --site-dir public_test
+  artifacts:
+    paths:
+      - public_test
 
 pages:
-  extends: .doc_base
+  extends: .docs
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
   script:
     - mkdocs build --site-dir public
+  artifacts:
+    paths:
+      - public
 
+# -------------------------------------- Tests -------------------------------------- 
 
-# --------------------------------- Test ---------------------------------
-
-.test_base:
-  stage: Test
+.tests:
+  stage: Tests
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - pyotb/*.py
+        - tests/*.py
   tags:
     - light
   allow_failure: false
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
-    PYOTB_LOGGER_LEVEL: DEBUG
     OTB_LOGGER_LEVEL: INFO
-    PIPELINE_TEST_INPUT_IMAGE: image.tif
+    PYOTB_LOGGER_LEVEL: DEBUG
+    IMAGE_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false
+    TEST_INPUT_IMAGE: tests/image.tif
+  artifacts:
+    reports:
+      junit: test-*.xml
   before_script:
-    - pip install .
-    - cd tests
-    - wget https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false -O $PIPELINE_TEST_INPUT_IMAGE
+    - wget $IMAGE_URL -O $TEST_INPUT_IMAGE
+    - pip install pytest
 
-basic_tests:
-  extends: .test_base
+test_core:
+  extends: .tests
   script:
-    - python3 basic_tests.py
+    - python3 -m pytest --color=yes --junitxml=test-core.xml tests/test_core.py
 
-compute_ndvi:
-  extends: .test_base
-  allow_failure: true
+test_numpy:
+  extends: .tests
   script:
-    - python3 ndvi_test.py
+    - python3 -m pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
-numpy_array:
-  extends: .test_base
+test_pipeline:
+  extends: .tests
   script:
-    - python3 numpy_array_test.py
+    - python3 -m pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
-pipeline_test_shape:
-  extends: .test_base
+test_serialization:
+  extends: .tests
   script:
-    - python3 pipeline_test.py shape
-
-pipeline_test_shape_backward:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py shape backward
-
-pipeline_test_shape_nointermediate:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py shape no-intermediate-result
-
-pipeline_test_shape_backward_nointermediate:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py shape backward no-intermediate-result
-
-pipeline_test_write:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py write
-
-pipeline_test_write_backward:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py write backward
-
-pipeline_test_write_nointermediate:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py write no-intermediate-result
-
-pipeline_test_write_backward_nointermediate:
-  extends: .test_base
-  script:
-    - python3 pipeline_test.py write backward no-intermediate-result
+    - python3 -m pytest --color=yes --junitxml=test-serialization.xml tests/test_serialization.py

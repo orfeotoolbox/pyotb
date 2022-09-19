@@ -47,7 +47,6 @@ nav:
       - functions: reference/pyotb/functions.md
       - helpers: reference/pyotb/helpers.md
 
-
 # Customization
 extra:
   feature:
@@ -69,7 +68,7 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
 
-# rest of the navigation..
+# Rest of the navigation..
 site_name: "pyotb documentation: a Python extension of OTB"
 repo_url: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 repo_name: pyotb
