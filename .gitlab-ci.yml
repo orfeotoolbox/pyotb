@@ -131,5 +131,4 @@ pypi:
    - python3 -m pip install --upgrade build twine
   script:
    - python3 -m build
-   - echo ".pypirc
    - python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
