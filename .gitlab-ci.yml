@@ -1,21 +1,22 @@
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_REF_NAME =~ /master/
 
 default:
   image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+  tags:
+    - light
 
 stages:
   - Static Analysis
-  - Documentation
+  - Documentation test
   - Tests
+  - Ship
 
 #  -------------------------------- Static analysis --------------------------------
 
 .static_analysis:
   stage: Static Analysis
-  tags:
-    - light
   allow_failure: true
 
 codespell:
@@ -49,9 +50,6 @@ pylint:
 # ---------------------------------- Documentation  ----------------------------------
 
 .docs:
-  stage: Documentation
-  tags:
-    - light
   before_script:
     - apt-get update && apt-get -y install virtualenv
     - virtualenv doc_env
@@ -60,9 +58,10 @@ pylint:
     - pip install -U -r doc/doc_requirements.txt
 
 pages_test:
+  stage: Documentation test
   extends: .docs
-  rules:
-    - if: $CI_PIPELINE_SOURCE != $CI_DEFAULT_BRANCH
+  except:
+    - master
   when: manual
   script:
     - mkdocs build --site-dir public_test
@@ -70,23 +69,10 @@ pages_test:
     paths:
       - public_test
 
-pages:
-  extends: .docs
-  rules:
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-  #when: manual
-  script:
-    - mkdocs build --site-dir public
-  artifacts:
-    paths:
-      - public
-
 # -------------------------------------- Tests -------------------------------------- 
 
 .tests:
   stage: Tests
-  tags:
-    - light
   allow_failure: false
   variables:
     OTB_ROOT: /opt/otb
@@ -122,3 +108,26 @@ test_serialization:
   extends: .tests
   script:
     - python3 -m pytest --color=yes --junitxml=test-serialization.xml tests/test_serialization.py
+
+# -------------------------------------- Ship --------------------------------------- 
+
+pages:
+  stage: Ship
+  extends: .docs
+  only:
+    - master
+  script:
+    - mkdocs build --site-dir public
+  artifacts:
+    paths:
+      - public
+
+pypi:
+  stage: Ship
+  only:
+   - master
+  before_script:
+   - python3 -m pip install --upgrade build twine
+  script:
+   - python3 -m build
+   - python3 -m twine upload --repository pyotb --non-interactive -u __token__ -p $pypi_token dist/*
