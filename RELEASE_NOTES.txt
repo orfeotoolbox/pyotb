@@ -1,0 +1,144 @@
+---------------------------------------------------------------------
+1.5.2 (Sep 28, 2022) - Changes since version 1.5.0
+
+- Update CI
+  - enforce gitflow with a master branch
+  - ship the release on pypi.org and gitlab pages update after merge on master branch
+  - Refactor tests with pytest
+- API change:
+  - add `core.otbObject.name` property
+  - remove `core.otbObject.output_param` property
+- Add `summarize()` function to `core.otbObject` + test. This returns a nested dictionary summarizing the otbObject.
+- Improve the auto env init. in helpers.py
+- Refactor `otbObject` based classes inheritance :
+  - Before
+```mermaid
+classDiagram
+otbObject <|-- Output
+otbObject <|-- App
+otbObject <|-- Input
+otbObject <|-- Operation
+otbObject <|-- Slicer
+```
+  - After
+```mermaid
+classDiagram
+otbObject <|-- Output
+otbObject <|-- App
+App <|-- Input
+App <|-- Operation
+App <|-- Slicer
+```
+
+---------------------------------------------------------------------
+1.5.0 (Aug 11, 2022) - Changes since version 1.4.1
+
+- add a `to_rasterio` function
+- change the shape convention from (width, height, bands) to (height, width, bands)
+- every otbObjects now expose app parameters as a property
+- removed App's finished property, and func clear()
+- replace App's execute argument with frozen=False by default
+- removed App's pixel_type init argument since this should be done using write() only
+- log (numpy name of) pixel type propagated to outputs, in debug mode
+- docstrings (pydocstyle google convention), now we need type hints !
+- make __get_output_parameters_keys() private since it is already exposed by App.output_parameters_keys
+- add App's `description` property to return the OTB App GetDocLongDescription (may be we could do the same with the app help ?)
+- renamed App parameter `otb_stdout=True` to `quiet=False`
+- renamed App parameter propagate_pixel_type to preserve_dtype
+- add new otbObject property 'dtype'
+
+---------------------------------------------------------------------
+1.4.1 (Jul 5, 2022) - Changes since version 1.4.0
+
+- Fix a regression (introduced in 1.4.0) for in-memory pipelines for several apps (non-exhaustive list: OpticalCalibration, BandMath, DynamicConvert).
+- Internally, we removed PropagateConnectMode(False) that was problematic
+- Fix unit tests
+- Add some doc about expected failures of pipelines in some situations
+
+---------------------------------------------------------------------
+1.4.0 (Jun 14, 2022) - Changes since version 1.3.3
+
+- Enhanced the documentation
+- Better handling of logger
+- Some  big changes about in-memory connections (pipelines):
+  - it is now possible to write pipelines without duplicated execution calls, to achieve that you may pass the output filename directly when creating the app, then just trigger the last app with execute() or write()
+  - App execute argument is now False by default, this affects oneliners, you may need to edit your scripts if they do not use write() or execute() functions (at least once at the end of a pipeline).
+
+---------------------------------------------------------------------
+1.3.3 (Apr 1, 2022) - Changes since version 1.3.1
+
+- it is now possible to access any parameter of an application:
+```python
+info = pyotb.ReadImageInfo('my_image.tif', otb_stdout=False)
+info.originy
+info['gcp.count']
+```
+- Bug fix: vector outputs were not written when running an application as a oneliner
+- OTBTF PatchesExtraction and TensorflowModelTrain now resolve the number of sources or this number can be set on application initialization
+
+---------------------------------------------------------------------
+1.3.1 (Mar 2, 2022) - Changes since version 1.3
+
+- fix warning when using propagate_pixel_type with uint8
+- make easier for the user to use the application TensorflowModelServe. For example, if using pyotb.TensorflowModelServe(sources=[source1, source2...]), the number of sources is inferred from the arguments. Also if needed, the number of sources can be specified like this: pyotb.TensorflowModelServe(n_sources=3)
+- remove the limitation that pyotb.run_tf_function could only  be executed once. Now the following code work:
+```python
+import pyotb
+
+def multiply(x, y):
+    return x * y
+def add(x, y):
+    return x + y
+
+multiplied = pyotb.run_tf_function(multiply)('image1.tif', 'image2.tif')
+res = pyotb.run_tf_function(add)(multiplied, 'image2.tif')
+res.write('output.tif')
+
+# NB: In this simple example, running several chained `run_tf_function` is not optimal. 
+# If possible, try to combine all operations into *one* single function.
+```
+
+---------------------------------------------------------------------
+1.3 (Feb 24, 2022) - Changes since version 1.1.1
+
+- add the ability to propagate pixel types for App, as optional argument propagate_pixel_type. Add propagation as default behavior for Slicer and Input
+- add a to_numpy(propagate_pixel_type=False) methods for all pyotb objects. This method is also called by np.asarray()
+- fix the order when using slicing for ROI selection. Before, pyotb was following numpy convention, i.e. obj[rows, cols]. Now, pyotb follow the obj[x, y] which is more adequate for geoghraphic selection
+- fix the pyotb.get_pixel_type function
+
+---------------------------------------------------------------------
+1.1.1 (Feb 17, 2022) - Changes since version 0.1 (Feb 10, 2022)
+
+Module
+
+- Encoding declaration
+- Add numpy requirement
+- Improve readability when possible (alias otbApplication to otb, return early to avoid deep loops or condition tree, etc...)
+- Fix bug with subprocess call to list apps, raise different Exceptions, do not try to subprocess if not in interactive mode since it will fail
+- Catch errors better, avoid bare Exception, warn user and exit if OTB can't be found
+- Logger should log any error message, while providing user with information regarding context
+- User can set its own logging.basicConfig, just need to configure it before importing pyotb then declare logger var
+- Add script to remove fstrings from python code
+
+apps.py
+
+- Edit code apps.py in order to avoid loading every functions and variables into pyotb namespace (use functions and _variable)
+- Apps created in apps.py are classes, not just constructor functions
+
+core.py
+
+- Add App argument to make OTB stdout go silent
+- Allow user to set_parameters after object instantiation
+- Allow user to set a custom name property that will be displayed in logs instead of appname bm = BandMath() ; bm.name = "MyBandMath"
+
+Break large function set_parameters into several, use class private methods
+
+- App set_parameters does not execute every time it is called (only if output parameter keys where passed to __init__)
+- Add App attribute parameters to store kwargs
+- Add App finished attribute to control if app has ran with success
+- Add App class functions to control workflow : execute, clear(memory, parameters), find_output
+
+tools.py
+
+- To store helpers / general functions like find_otb
+
