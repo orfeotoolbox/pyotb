@@ -2,6 +2,10 @@
 
 Full documentation is available at [pyotb.readthedocs.io](https://pyotb.readthedocs.io/)
 
+[![Latest Release](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/badges/release.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/releases)
+[![pipeline status](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/badges/master/pipeline.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/commits/master)
+
+
 ## Installation
 Requirements:
 - python>=3.5 and numpy
