@@ -846,7 +846,7 @@ class Slicer(App):
             elif isinstance(channels, slice):
                 channels_start = channels.start if channels.start is not None else 0
                 channels_start = channels_start if channels_start >= 0 else nb_channels + channels_start
-                channels_end = channels.stop if channels.stop is not None else 0
+                channels_end = channels.stop if channels.stop is not None else nb_channels
                 channels_end = channels_end if channels_end >= 0 else nb_channels + channels_end
                 channels_step = channels.step if channels.step is not None else 1
                 channels = range(channels_start, channels_end, channels_step)
