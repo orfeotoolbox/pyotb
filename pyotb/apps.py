@@ -4,9 +4,9 @@ import os
 import sys
 from pathlib import Path
 
-from .helpers import logger, find_otb
-
-otb = find_otb()
+import otbApplication as otb
+from .core import App
+from .helpers import logger
 
 
 def get_available_applications(as_subprocess=False):
@@ -55,25 +55,10 @@ def get_available_applications(as_subprocess=False):
     if not app_list:
         app_list = otb.Registry.GetAvailableApplications()
     if not app_list:
-        logger.warning("Unable to load applications. Set env variable OTB_APPLICATION_PATH then try again")
-        return ()
+        raise SystemExit("Unable to load applications. Set env variable OTB_APPLICATION_PATH and try again.")
 
     logger.info("Successfully loaded %s OTB applications", len(app_list))
     return app_list
-
-
-AVAILABLE_APPLICATIONS = get_available_applications(as_subprocess=True)
-
-# First core.py call (within __init__ scope)
-from .core import App  # pylint: disable=wrong-import-position
-
-# This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App("AppName", ...)`
-_CODE_TEMPLATE = """
-class {name}(App):
-    """ """
-    def __init__(self, *args, **kwargs):
-        super().__init__('{name}', *args, **kwargs)
-"""
 
 
 class OTBTFApp(App):
@@ -111,30 +96,21 @@ class OTBTFApp(App):
         super().__init__(app_name, *args, **kwargs)
 
 
+AVAILABLE_APPLICATIONS = get_available_applications(as_subprocess=True)
+
+# This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App("AppName", ...)`
+_CODE_TEMPLATE = """
+class {name}(App):
+    """ """
+    def __init__(self, *args, **kwargs):
+        super().__init__('{name}', *args, **kwargs)
+"""
+
 for _app in AVAILABLE_APPLICATIONS:
     # Customize the behavior for some OTBTF applications. The user doesn't need to set the env variable
     # `OTB_TF_NSOURCES`, it is handled in pyotb
-    if _app == 'TensorflowModelServe':
-        class TensorflowModelServe(OTBTFApp):
-            """Serve a Tensorflow model using OTBTF."""
-            def __init__(self, *args, n_sources=None, **kwargs):
-                """Constructor for a TensorflowModelServe object."""
-                super().__init__('TensorflowModelServe', *args, n_sources=n_sources, **kwargs)
-
-    elif _app == 'PatchesExtraction':
-        class PatchesExtraction(OTBTFApp):
-            """Extract patches using OTBTF."""
-            def __init__(self, *args, n_sources=None, **kwargs):
-                """Constructor for a PatchesExtraction object."""
-                super().__init__('PatchesExtraction', *args, n_sources=n_sources, **kwargs)
-
-    elif _app == 'TensorflowModelTrain':
-        class TensorflowModelTrain(OTBTFApp):
-            """Train a Tensorflow model using OTBTF."""
-            def __init__(self, *args, n_sources=None, **kwargs):
-                """Constructor for a TensorflowModelTrain object."""
-                super().__init__('TensorflowModelTrain', *args, n_sources=n_sources, **kwargs)
-
+    if _app in ("PatchesExtraction", "TensorflowModelTrain", "TensorflowModelServe"):
+        exec(_CODE_TEMPLATE.format(name=_app).replace("(App)", "(OTBTFApp)"))  # pylint: disable=exec-used
     # Default behavior for any OTB application
     else:
         exec(_CODE_TEMPLATE.format(name=_app))  # pylint: disable=exec-used
