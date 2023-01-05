@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """This module is the core of pyotb."""
 from pathlib import Path
+from ast import literal_eval
 
 import numpy as np
 import otbApplication as otb
@@ -55,7 +56,7 @@ class OTBObject:
     def key_input(self):
         """Get the name of first input parameter, raster > vector > file."""
         return self.key_input_image or key_input(self, "vector") or key_input(self, "file")
-    
+
     @property
     def key_input_image(self):
         """Get the name of first input image parameter."""
@@ -92,7 +93,7 @@ class OTBObject:
     @property
     def outputs(self):
         """List of application outputs."""
-        return [getattr(self, key) for key in self.out_param_keys if key in self.parameters]    
+        return [getattr(self, key) for key in self.out_param_keys if key in self.parameters]
 
     @property
     def dtype(self):
@@ -411,7 +412,7 @@ class OTBObject:
         return array, profile
 
     def xy_to_rowcol(self, x, y):
-        """Find (row, col) index using (x, y) projected coordinates - image CRS is exepcted.
+        """Find (row, col) index using (x, y) projected coordinates - image CRS is expected.
 
         Args:
             x: longitude or projected X
@@ -1357,7 +1358,9 @@ def is_key_list(pyotb_app, key):
 
 def is_key_images_list(pyotb_app, key):
     """Check if a key of the App is an input parameter image list."""
-    return pyotb_app.app.GetParameterType(key) in (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
+    return pyotb_app.app.GetParameterType(key) in (
+        otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList
+    )
 
 
 def get_out_param_types(pyotb_app):
