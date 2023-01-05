@@ -183,13 +183,7 @@ class OTBObject:
         self.save_objects()
 
     def flush(self):
-        """Flush data to disk, this is when WriteOutput is actually called.
-
-        Args:
-            parameters: key value pairs like {parameter: filename}
-            dtypes: optional dict to pass output data types (for rasters)
-
-        """
+        """Flush data to disk, this is when WriteOutput is actually called."""
         try:
             logger.debug("%s: flushing data to disk", self.name)
             self.app.WriteOutput()
