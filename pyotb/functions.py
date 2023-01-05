@@ -7,7 +7,7 @@ import textwrap
 import uuid
 from collections import Counter
 
-from .core import (otbObject, App, Input, Operation, logicalOperation, get_nbchannels)
+from .core import (OTBObject, App, Input, Operation, LogicalOperation, get_nbchannels)
 from .helpers import logger
 
 
@@ -111,25 +111,25 @@ def all(*inputs):  # pylint: disable=redefined-builtin
     # Checking that all bands of the single image are True
     if len(inputs) == 1:
         inp = inputs[0]
-        if isinstance(inp, logicalOperation):
+        if isinstance(inp, LogicalOperation):
             res = inp[:, :, 0]
         else:
             res = (inp[:, :, 0] != 0)
 
         for band in range(1, inp.shape[-1]):
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res & inp[:, :, band]
             else:
                 res = res & (inp[:, :, band] != 0)
 
     # Checking that all images are True
     else:
-        if isinstance(inputs[0], logicalOperation):
+        if isinstance(inputs[0], LogicalOperation):
             res = inputs[0]
         else:
             res = (inputs[0] != 0)
         for inp in inputs[1:]:
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res & inp
             else:
                 res = res & (inp != 0)
@@ -166,25 +166,25 @@ def any(*inputs):  # pylint: disable=redefined-builtin
     # Checking that at least one band of the image is True
     if len(inputs) == 1:
         inp = inputs[0]
-        if isinstance(inp, logicalOperation):
+        if isinstance(inp, LogicalOperation):
             res = inp[:, :, 0]
         else:
             res = (inp[:, :, 0] != 0)
 
         for band in range(1, inp.shape[-1]):
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res | inp[:, :, band]
             else:
                 res = res | (inp[:, :, band] != 0)
 
     # Checking that at least one image is True
     else:
-        if isinstance(inputs[0], logicalOperation):
+        if isinstance(inputs[0], LogicalOperation):
             res = inputs[0]
         else:
             res = (inputs[0] != 0)
         for inp in inputs[1:]:
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res | inp
             else:
                 res = res | (inp != 0)

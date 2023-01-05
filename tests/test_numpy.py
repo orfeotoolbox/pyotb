@@ -31,7 +31,7 @@ def test_convert_to_array():
 def test_add_noise_array():
     white_noise = np.random.normal(0, 50, size=INPUT.shape)
     noisy_image = INPUT + white_noise
-    assert isinstance(noisy_image, pyotb.otbObject)
+    assert isinstance(noisy_image, pyotb.core.OTBObject)
     assert noisy_image.shape == INPUT.shape
 
 
