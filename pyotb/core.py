@@ -865,35 +865,6 @@ class OTBObject:
         return NotImplemented
 
 
-class App(OTBObject):
-
-    def find_outputs(self):
-        """Find output files on disk using path found in parameters.
-
-        Returns:
-            list of files found on disk
-
-        """
-        files = []
-        missing = []
-        for param in self.outputs:
-            filename = self.parameters[param]
-            # Remove filename extension
-            if '?' in filename:
-                filename = filename.split('?')[0]
-            path = Path(filename)
-            if path.exists():
-                files.append(str(path.absolute()))
-            else:
-                missing.append(str(path.absolute()))
-        if missing:
-            missing = tuple(missing)
-            for filename in missing:
-                logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-
-        return files
-
-
 class Slicer(OTBObject):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
@@ -1317,7 +1288,7 @@ def get_nbchannels(inp):
     else:
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, quiet=True)
+            info = OTBObject("ReadImageInfo", inp, quiet=True)
             nb_channels = info.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
@@ -1338,7 +1309,7 @@ def get_pixel_type(inp):
     if isinstance(inp, str):
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, quiet=True)
+            info = OTBObject("ReadImageInfo", inp, quiet=True)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath') from info_err
         datatype = info.GetParameterString("datatype")  # which is such as short, float...

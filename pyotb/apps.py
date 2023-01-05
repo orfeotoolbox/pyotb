@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 import otbApplication as otb
-from .core import App
 from .helpers import logger
+from .core import OTBObject
 
 
 def get_available_applications(as_subprocess=False):
@@ -59,6 +59,35 @@ def get_available_applications(as_subprocess=False):
 
     logger.info("Successfully loaded %s OTB applications", len(app_list))
     return app_list
+
+
+class App(OTBObject):
+
+    def find_outputs(self):
+        """Find output files on disk using path found in parameters.
+
+        Returns:
+            list of files found on disk
+
+        """
+        files = []
+        missing = []
+        for param in self.outputs:
+            filename = self.parameters[param]
+            # Remove filename extension
+            if '?' in filename:
+                filename = filename.split('?')[0]
+            path = Path(filename)
+            if path.exists():
+                files.append(str(path.absolute()))
+            else:
+                missing.append(str(path.absolute()))
+        if missing:
+            missing = tuple(missing)
+            for filename in missing:
+                logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
+
+        return files
 
 
 class OTBTFApp(App):

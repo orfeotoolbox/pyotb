@@ -9,7 +9,6 @@ otb = find_otb()
 from .apps import *
 
 from .core import (
-    App,
     Input,
     Output,
     get_nbchannels,
