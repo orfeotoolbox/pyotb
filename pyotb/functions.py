@@ -352,7 +352,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     for inp in inputs:
         if isinstance(inp, str):  # this is for filepaths
             metadata = Input(inp).GetImageMetaData('out')
-        elif isinstance(inp, otbObject):
+        elif isinstance(inp, OTBObject):
             metadata = inp.GetImageMetaData(inp.output_param)
         else:
             raise TypeError(f"Wrong input : {inp}")

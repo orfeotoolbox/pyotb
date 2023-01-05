@@ -24,6 +24,11 @@ class OTBObject:
                            - list, useful when the user wants to specify the input list 'il'
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             quiet: whether to print logs of the OTB app
+            image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
+                       the result of app.ExportImage(). Use it when the app takes a numpy array as input.
+                       See this related issue for why it is necessary to keep reference of object:
+                       https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
+
             **kwargs: used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
@@ -53,12 +58,12 @@ class OTBObject:
     
     @property
     def key_input_image(self):
-        """Get the name of first output image parameter"""
+        """Get the name of first input image parameter."""
         return key_input(self, "raster")
 
     @property
     def key_output_image(self):
-        """Get the name of first output image parameter"""
+        """Get the name of first output image parameter."""
         return key_output(self, "raster")
 
     @property
@@ -117,7 +122,7 @@ class OTBObject:
 
     @property
     def transform(self):
-        """Get image affine transform, rasterio style (see https://www.perrygeo.com/python-affine-transforms.html)
+        """Get image affine transform, rasterio style (see https://www.perrygeo.com/python-affine-transforms.html).
 
         Returns:
             transform: (X spacing, X offset, X origin, Y offset, Y spacing, Y origin)
@@ -406,7 +411,7 @@ class OTBObject:
         return array, profile
 
     def xy_to_rowcol(self, x, y):
-        """Find (row, col) index using (x, y) projected coordinates, expect image CRS
+        """Find (row, col) index using (x, y) projected coordinates - image CRS is exepcted.
 
         Args:
             x: longitude or projected X

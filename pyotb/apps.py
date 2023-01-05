@@ -62,6 +62,7 @@ def get_available_applications(as_subprocess=False):
 
 
 class App(OTBObject):
+    """Base class for UI related functions, will be subclassed using app name as class name, see CODE_TEMPLATE."""
 
     def find_outputs(self):
         """Find output files on disk using path found in parameters.
@@ -120,6 +121,7 @@ class OTBTFApp(App):
             n_sources: number of sources. Default is None (resolves the number of sources based on the
                        content of the dict passed in args, where some 'source' str is found)
             **kwargs: kwargs
+
         """
         self.set_nb_sources(*args, n_sources=n_sources)
         super().__init__(app_name, *args, **kwargs)
