@@ -926,15 +926,15 @@ class Slicer(OTBObject):
         if cols.stop is not None and cols.stop != -1:
             parameters.update({"mode.extent.lrx": cols.stop - 1})  # subtract 1 to respect python convention
             spatial_slicing = True
-
-        # Execute app
-        self.set_parameters(parameters)
-        self.execute()
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
         if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
             self.one_band_sliced = channels[0] + 1  # OTB convention: channels start at 1
             self.input = obj
+
+        # Execute app
+        self.set_parameters(parameters)
         self.propagate_dtype()
+        self.execute()
 
 
 class Operation(OTBObject):
@@ -1237,10 +1237,11 @@ class Input(OTBObject, FileIO):
             filepath: the path of an input image
 
         """
-        super().__init__("ExtractROI", {"in": str(filepath)})
+        super().__init__("ExtractROI", {"in": str(filepath)}, frozen=True)
         self._name = f"Input from {filepath}"
         self.filepath = Path(filepath)
         self.propagate_dtype()
+        self.execute()
 
     def __str__(self):
         """Return a nice string representation with file path."""
