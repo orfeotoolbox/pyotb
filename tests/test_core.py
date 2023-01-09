@@ -8,7 +8,26 @@ FILEPATH = os.environ["TEST_INPUT_IMAGE"]
 INPUT = pyotb.Input(FILEPATH)
 
 
-# Basic tests
+# Test ExtractROI app's parameters were set for the Input object
+def test_parameters():
+    assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
+
+
+# Test OTB objects properties
+def test_name():
+    assert INPUT.name == "Input from tests/image.tif"
+    INPUT.name = "Test input"
+    assert INPUT.name == "Test input"
+
+
+def test_key_input():
+    assert INPUT.key_input == INPUT.key_input_image == "in"
+
+
+def test_key_output():
+    assert INPUT.key_output_image == "out"
+
+
 def test_dtype():
     assert INPUT.dtype == "uint8"
 
@@ -17,9 +36,14 @@ def test_shape():
     assert INPUT.shape == (304, 251, 4)
 
 
+def test_transform():
+    assert INPUT.transform == (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
+
+
 def test_slicer_shape():
     extract = INPUT[:50, :60, :3]
     assert extract.shape == (50, 60, 3)
+    assert extract.parameters["cl"] == ("Channel1", "Channel2", "Channel3")
 
 
 def test_slicer_preserve_dtype():
@@ -27,10 +51,18 @@ def test_slicer_preserve_dtype():
     assert extract.dtype == "uint8"
 
 
-# More complex tests
+# Arithmetic tests
 def test_operation():
     op = INPUT / 255 * 128
-    assert op.exp == "((im1b1 / 255) * 128);((im1b2 / 255) * 128);((im1b3 / 255) * 128);((im1b4 / 255) * 128)"
+    assert (
+        op.exp
+        == "((im1b1 / 255) * 128);((im1b2 / 255) * 128);((im1b3 / 255) * 128);((im1b4 / 255) * 128)"
+    )
+    assert op.dtype == "float32"
+
+
+def test_func_abs_expression():
+    assert abs(INPUT).exp == "(abs(im1b1));(abs(im1b2));(abs(im1b3));(abs(im1b4))"
 
 
 def test_sum_bands():
@@ -43,7 +75,10 @@ def test_binary_mask_where():
     # Create binary mask based on several possible values
     values = [1, 2, 3, 4]
     res = pyotb.where(pyotb.any(INPUT[:, :, 0] == value for value in values), 255, 0)
-    assert res.exp == "(((((im1b1 == 1) || (im1b1 == 2)) || (im1b1 == 3)) || (im1b1 == 4)) ? 255 : 0)"
+    assert (
+        res.exp
+        == "(((((im1b1 == 1) || (im1b1 == 2)) || (im1b1 == 3)) || (im1b1 == 4)) ? 255 : 0)"
+    )
 
 
 # Apps
@@ -64,9 +99,11 @@ def test_app_computeimagestats_sliced():
     assert slicer_stats["out.min"] == "[180]"
 
 
-# NDVI
+# BandMath NDVI == RadiometricIndices NDVI ?
 def test_ndvi_comparison():
-    ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (INPUT[:, :, -1] + INPUT[:, :, 0])
+    ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (
+        INPUT[:, :, -1] + INPUT[:, :, 0]
+    )
     ndvi_indices = pyotb.RadiometricIndices(
         {"in": INPUT, "list": "Vegetation:NDVI", "channels.red": 1, "channels.nir": 4}
     )
@@ -77,7 +114,9 @@ def test_ndvi_comparison():
     ndvi_indices.write("/tmp/ndvi_indices.tif", pixel_type="float")
     assert Path("/tmp/ndvi_indices.tif").exists()
 
-    compared = pyotb.CompareImages({"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"})
+    compared = pyotb.CompareImages(
+        {"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"}
+    )
     assert compared.count == 0
     assert compared.mse == 0
 
@@ -85,4 +124,12 @@ def test_ndvi_comparison():
     assert thresholded_indices.exp == "((im1b1 >= 0.3) ? 1 : 0)"
 
     thresholded_bandmath = pyotb.where(ndvi_bandmath >= 0.3, 1, 0)
-    assert thresholded_bandmath.exp == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
+    assert (
+        thresholded_bandmath.exp
+        == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
+    )
+
+
+# XY => RowCol
+def test_xy_to_rowcol():
+    assert INPUT.xy_to_rowcol(760100, 6946210) == (19, 7)

@@ -17,7 +17,7 @@ OTBAPPS_BLOCKS = [
 ]
 
 PYOTB_BLOCKS = [
-    lambda inp: 1 + abs(inp) * 2,
+    lambda inp: 1 / (1 + abs(inp) * 2),
     lambda inp: inp[:80, 10:60, :],
 ]
 PIPELINES_LENGTH = [1, 2, 3]
