@@ -79,10 +79,8 @@ class App(OTBObject):
             if '?' in filename:
                 filename = filename.split('?')[0]
             path = Path(filename)
-            if path.exists():
-                files.append(str(path.absolute()))
-            else:
-                missing.append(str(path.absolute()))
+            dest = files if path.exists() else missing
+            dest.append(str(path.absolute()))
         if missing:
             missing = tuple(missing)
             for filename in missing:

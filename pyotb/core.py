@@ -441,9 +441,7 @@ class OTBObject:
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, OTBObject)):
-                kwargs.update({self.key_input: arg})
-            elif isinstance(arg, list) and is_key_list(self, self.key_input):
+            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and is_key_list(self, self.key_input):
                 kwargs.update({self.key_input: arg})
         return kwargs
 
@@ -453,7 +451,7 @@ class OTBObject:
             self.app.ClearValue(key)
             return
         if key not in self.parameters_keys:
-            raise Exception(
+            raise KeyError(
                 f"{self.name}: parameter '{key}' was not recognized. " f"Available keys are {self.parameters_keys}"
             )
         # Single-parameter cases
@@ -1027,7 +1025,7 @@ class Operation(OTBObject):
                 # check that all inputs have the same nb of bands
                 if len(nb_bands_list) > 1:
                     if not all(x == nb_bands_list[0] for x in nb_bands_list):
-                        raise Exception("All images do not have the same number of bands")
+                        raise ValueError("All images do not have the same number of bands")
                 nb_bands = nb_bands_list[0]
 
         # Create a list of fake expressions, each item of the list corresponding to one band
@@ -1127,7 +1125,7 @@ class Operation(OTBObject):
                 nb_channels = x.input.nb_channels
             else:
                 # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                fake_exp = str(x.input) + f"b{x.one_band_sliced}"
+                fake_exp = f"{x.input}b{x.one_band_sliced}"
                 inputs = [x.input]
                 nb_channels = {x.input: 1}
         # For LogicalOperation, we save almost the same attributes as an Operation
@@ -1149,7 +1147,7 @@ class Operation(OTBObject):
             nb_channels = {x: get_nbchannels(x)}
             inputs = [x]
             # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-            fake_exp = str(x) + f"b{band}"
+            fake_exp = f"{x}b{band}"
 
         return fake_exp, inputs, nb_channels
 
@@ -1197,7 +1195,7 @@ class LogicalOperation(Operation):
             # check that all inputs have the same nb of bands
             if len(nb_bands_list) > 1:
                 if not all(x == nb_bands_list[0] for x in nb_bands_list):
-                    raise Exception("All images do not have the same number of bands")
+                    raise ValueError("All images do not have the same number of bands")
             nb_bands = nb_bands_list[0]
 
         # Create a list of fake exp, each item of the list corresponding to one band
