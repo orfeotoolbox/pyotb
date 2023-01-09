@@ -38,6 +38,7 @@ class OTBObject:
         self.appname = appname
         self.quiet = quiet
         self.image_dic = image_dic
+        self.exports_dic = {}
         if quiet:
             self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
         else:
@@ -45,7 +46,6 @@ class OTBObject:
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self.out_param_types = dict(get_out_param_types(self))
         self.out_param_keys = tuple(self.out_param_types.keys())
-        self.exports_dict = {}
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         self.frozen = frozen
@@ -356,7 +356,7 @@ class OTBObject:
         return {"name": self.name, "parameters": params}
 
     def export(self, key=None):
-        """Export a specific output image as numpy array and store it in object's exports_dict.
+        """Export a specific output image as numpy array and store it in object's exports_dic.
 
         Args:
             key: parameter key to export, if None then the default one will be used
@@ -367,9 +367,9 @@ class OTBObject:
         """
         if key is None:
             key = key_output(self, "raster")
-        if key not in self.exports_dict:
-            self.exports_dict[key] = self.app.ExportImage(key)
-        return self.exports_dict[key]
+        if key not in self.exports_dic:
+            self.exports_dic[key] = self.app.ExportImage(key)
+        return self.exports_dic[key]
 
     def to_numpy(self, key=None, preserve_dtype=True, copy=False):
         """Export a pyotb object to numpy array.
@@ -839,9 +839,9 @@ class OTBObject:
                 if isinstance(inp, (float, int, np.ndarray, np.generic)):
                     arrays.append(inp)
                 elif isinstance(inp, OTBObject):
-                    if not inp.exports_dict:
+                    if not inp.exports_dic:
                         inp.export()
-                    image_dic = inp.exports_dict[inp.key_output_image]
+                    image_dic = inp.exports_dic[inp.key_output_image]
                     array = image_dic["array"]
                     arrays.append(array)
                 else:
