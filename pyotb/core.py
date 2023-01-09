@@ -355,7 +355,7 @@ class OTBObject:
 
         return {"name": self.name, "parameters": params}
 
-    def export(self, key=None):
+    def export(self, key=None, preserve_dtype=True):
         """Export a specific output image as numpy array and store it in object's exports_dic.
 
         Args:
@@ -366,9 +366,11 @@ class OTBObject:
 
         """
         if key is None:
-            key = key_output(self, "raster")
+            key = self.key_output_image
         if key not in self.exports_dic:
             self.exports_dic[key] = self.app.ExportImage(key)
+        if preserve_dtype:
+            self.exports_dic[key]["array"] = self.exports_dic[key]["array"].astype(self.dtype)
         return self.exports_dic[key]
 
     def to_numpy(self, key=None, preserve_dtype=True, copy=False):
@@ -376,7 +378,7 @@ class OTBObject:
 
         Args:
             key: the output parameter name to export as numpy array
-            preserve_dtype: when set to True, the numpy array is created with the same pixel type as
+            preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
                             the OTBObject first output. Default is True.
             copy: whether to copy the output array, default is False
                   required to True if preserve_dtype is False and the source app reference is lost
@@ -385,10 +387,8 @@ class OTBObject:
             a numpy array
 
         """
-        data = self.export(key)
+        data = self.export(key, preserve_dtype)
         array = data["array"]
-        if preserve_dtype:
-            return array.astype(self.dtype)
         if copy:
             return array.copy()
         return array
