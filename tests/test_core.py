@@ -3,6 +3,8 @@ import pyotb
 from ast import literal_eval
 from pathlib import Path
 
+import pytest
+
 
 FILEPATH = os.environ["TEST_INPUT_IMAGE"]
 INPUT = pyotb.Input(FILEPATH)
@@ -100,6 +102,7 @@ def test_app_computeimagestats_sliced():
 
 
 # BandMath NDVI == RadiometricIndices NDVI ?
+@pytest.mark.xfail(reason="Regression in OTB 8.2, waiting for Rémi's patch to be merged.")
 def test_ndvi_comparison():
     ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (
         INPUT[:, :, -1] + INPUT[:, :, 0]
