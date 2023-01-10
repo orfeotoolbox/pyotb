@@ -301,7 +301,7 @@ class OTBObject:
                     bands = self.shape[2] + bands
                 channels = [bands]
             elif isinstance(bands, slice):
-                channels = self.__channels_list_from_slice(bands)
+                channels = self.channels_list_from_slice(bands)
             elif not isinstance(bands, list):
                 raise TypeError(f"{self.name}: type '{type(bands)}' cannot be interpreted as a valid slicing")
             if channels:
@@ -312,6 +312,22 @@ class OTBObject:
         if len(channels) == 1:
             return data[0]
         return data
+
+    def channels_list_from_slice(self, bands):
+        """Get list of channels to read values at, from a slice."""
+        channels = None
+        start, stop, step = bands.start, bands.stop, bands.step
+        if step is None:
+            step = 1
+        if start is not None and stop is not None:
+            channels = list(range(start, stop, step))
+        elif start is not None and stop is None:
+            channels = list(range(start, self.shape[2], step))
+        elif start is None and stop is not None:
+            channels = list(range(0, stop, step))
+        elif start is None and stop is None:
+            channels = list(range(0, self.shape[2], step))
+        return channels
 
     def summarize(self):
         """Serialize an object and its pipeline into a dictionary.
@@ -451,22 +467,6 @@ class OTBObject:
         # List of any other types (str, int...)
         else:
             self.app.SetParameterValue(key, obj)
-
-    def __channels_list_from_slice(self, bands):
-        """Get list of channels to read values at, from a slice."""
-        channels = None
-        start, stop, step = bands.start, bands.stop, bands.step
-        if step is None:
-            step = 1
-        if start is not None and stop is not None:
-            channels = list(range(start, stop, step))
-        elif start is not None and stop is None:
-            channels = list(range(start, self.shape[2], step))
-        elif start is None and stop is not None:
-            channels = list(range(0, stop, step))
-        elif start is None and stop is None:
-            channels = list(range(0, self.shape[2], step))
-        return channels
 
     # Special functions
     def __hash__(self):
@@ -869,12 +869,7 @@ class Slicer(OTBObject):
                 channels = [channels]
             # if needed, converting slice to list
             elif isinstance(channels, slice):
-                channels_start = channels.start if channels.start is not None else 0
-                channels_start = channels_start if channels_start >= 0 else nb_channels + channels_start
-                channels_end = channels.stop if channels.stop is not None else nb_channels
-                channels_end = channels_end if channels_end >= 0 else nb_channels + channels_end
-                channels_step = channels.step if channels.step is not None else 1
-                channels = range(channels_start, channels_end, channels_step)
+                channels = self.channels_list_from_slice(channels)
             elif isinstance(channels, tuple):
                 channels = list(channels)
             elif not isinstance(channels, list):
