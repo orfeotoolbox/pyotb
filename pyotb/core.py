@@ -278,12 +278,12 @@ class OTBObject:
             # Set output pixel type
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
-    def read_values_at_coords(self, col, row, bands=None):
+    def read_values_at_coords(self, row, col, bands=None):
         """Get pixel value(s) at a given YX coordinates.
 
         Args:
-            col: index along X / longitude axis
             row: index along Y / latitude axis
+            col: index along X / longitude axis
             bands: band number, list or slice to fetch values from
 
         Returns:
@@ -395,7 +395,7 @@ class OTBObject:
         """
         spacing_x, _, origin_x, _, spacing_y, origin_y = self.transform
         row, col = (origin_y - y) / spacing_y, (x - origin_x) / spacing_x
-        return (int(row), int(col))
+        return (abs(int(row)), int(col))
 
     # Private functions
     def __parse_args(self, args):

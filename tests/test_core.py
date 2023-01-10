@@ -102,12 +102,16 @@ def test_app_computeimagestats_sliced():
 
 def test_read_values_at_coords():
     assert INPUT[0, 0, 0] == 180
-    assert INPUT[10, 20, :] == [196, 188, 172, 255]
+    assert INPUT[10, 20, :] == [207, 192, 172, 255]
 
 
 # XY => RowCol
 def test_xy_to_rowcol():
-    assert INPUT.xy_to_rowcol(760100, 6946210) == (19, 7)
+    assert INPUT.xy_to_rowcol(760101, 6945977) == (19, 7)
+
+
+def test_pixel_coords_numpy_equals_otb():
+    assert INPUT[19,7] == list(INPUT.to_numpy()[19,7])
 
 
 # Create dir before write
