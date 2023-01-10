@@ -63,6 +63,40 @@ def get_available_applications(as_subprocess=False):
 
 class App(OTBObject):
     """Base class for UI related functions, will be subclassed using app name as class name, see CODE_TEMPLATE."""
+    _name = ""
+
+    def __init__(self, *args, **kwargs):
+        """Default App constructor, adds UI specific attributes and functions."""
+        super().__init__(*args, **kwargs)
+        self.description = self.app.GetDocLongDescription()
+
+    @property
+    def name(self):
+        """Application name that will be printed in logs.
+
+        Returns:
+            user's defined name or appname
+
+        """
+        return self._name or self.appname
+
+    @name.setter
+    def name(self, name):
+        """Set custom name.
+
+        Args:
+          name: new name
+
+        """
+        if isinstance(name, str):
+            self._name = name
+        else:
+            raise TypeError(f"{self.name}: bad type ({type(name)}) for application name, only str is allowed")
+
+    @property
+    def outputs(self):
+        """List of application outputs."""
+        return [getattr(self, key) for key in self.out_param_keys if key in self.parameters]
 
     def find_outputs(self):
         """Find output files on disk using path found in parameters.

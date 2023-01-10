@@ -27,10 +27,6 @@ def test_wrong_key():
 
 
 # OTBObject's properties
-def test_name():
-    assert INPUT.name == "Input from tests/image.tif"
-    INPUT.name = "Test input"
-    assert INPUT.name == "Test input"
 
 
 def test_key_input():

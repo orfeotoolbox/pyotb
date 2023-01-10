@@ -11,7 +11,6 @@ from .helpers import logger
 
 class OTBObject:
     """Base class that gathers common operations for any OTB application."""
-    _name = ""
 
     def __init__(self, appname, *args, frozen=False, quiet=False, image_dic=None, **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
@@ -35,7 +34,7 @@ class OTBObject:
 
         """
         self.parameters = {}
-        self.appname = appname
+        self.name = self.appname = appname
         self.quiet = quiet
         self.image_dic = image_dic
         self.exports_dic = {}
@@ -46,6 +45,7 @@ class OTBObject:
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self.out_param_types = dict(get_out_param_types(self))
         self.out_param_keys = tuple(self.out_param_types.keys())
+
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         self.frozen = frozen
@@ -66,34 +66,6 @@ class OTBObject:
     def key_output_image(self):
         """Get the name of first output image parameter."""
         return key_output(self, "raster")
-
-    @property
-    def name(self):
-        """Application name that will be printed in logs.
-
-        Returns:
-            user's defined name or appname
-
-        """
-        return self._name or self.appname
-
-    @name.setter
-    def name(self, name):
-        """Set custom name.
-
-        Args:
-          name: new name
-
-        """
-        if isinstance(name, str):
-            self._name = name
-        else:
-            raise TypeError(f"{self.name}: bad type ({type(name)}) for application name, only str is allowed")
-
-    @property
-    def outputs(self):
-        """List of application outputs."""
-        return [getattr(self, key) for key in self.out_param_keys if key in self.parameters]
 
     @property
     def dtype(self):
@@ -176,35 +148,13 @@ class OTBObject:
         self.parameters.update({**parameters, **otb_params})
         self.save_objects()
 
-    def execute(self):
-        """Execute and write to disk if any output parameter has been set during init."""
-        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
-        try:
-            self.app.Execute()
-        except (RuntimeError, FileNotFoundError) as e:
-            raise Exception(f"{self.name}: error during during app execution") from e
-        self.frozen = False
-        logger.debug("%s: execution ended", self.name)
-        if any(key in self.parameters for key in self.out_param_keys):
-            self.flush()
-        self.save_objects()
-
-    def flush(self):
-        """Flush data to disk, this is when WriteOutput is actually called."""
-        try:
-            logger.debug("%s: flushing data to disk", self.name)
-            self.app.WriteOutput()
-        except RuntimeError:
-            logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
-            self.app.ExecuteAndWriteOutput()
-
     def save_objects(self):
         """Saving app parameters and outputs as attributes, so that they can be accessed with `obj.key`.
 
         This is useful when the key contains reserved characters such as a point eg "io.out"
         """
         for key in self.parameters_keys:
-            if key in dir(OTBObject):
+            if key in dir(self.__class__):
                 continue  # skip forbidden attribute since it is already used by the class
             value = self.parameters.get(key)  # basic parameters
             if value is None:
@@ -217,6 +167,28 @@ class OTBObject:
                 value = Output(self, key, value)
             # Save attribute
             setattr(self, key, value)
+
+    def execute(self):
+        """Execute and write to disk if any output parameter has been set during init."""
+        logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
+        try:
+            self.app.Execute()
+        except (RuntimeError, FileNotFoundError) as e:
+            raise Exception(f"{self.name}: error during during app execution") from e
+        self.frozen = False
+        logger.debug("%s: execution ended", self.name)
+        self.save_objects()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
+        if any(key in self.parameters for key in self.out_param_keys):
+            self.flush()  # auto flush if any output param was provided during app init
+
+    def flush(self):
+        """Flush data to disk, this is when WriteOutput is actually called."""
+        try:
+            logger.debug("%s: flushing data to disk", self.name)
+            self.app.WriteOutput()
+        except RuntimeError:
+            logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
+            self.app.ExecuteAndWriteOutput()
 
     def write(self, *args, filename_extension="", pixel_type=None, preserve_dtype=False, **kwargs):
         """Set output pixel type and write the output raster files.
@@ -328,7 +300,7 @@ class OTBObject:
             elif isinstance(bands, slice):
                 channels = self.__channels_list_from_slice(bands)
             elif not isinstance(bands, list):
-                raise TypeError(f"{self.name}: type '{bands}' cannot be interpreted as a valid slicing")
+                raise TypeError(f"{self.name}: type '{type(bands)}' cannot be interpreted as a valid slicing")
             if channels:
                 app.app.Execute()
                 app.set_parameters({"cl": [f"Channel{n+1}" for n in channels]})
@@ -422,9 +394,8 @@ class OTBObject:
             pixel index: (row, col)
         """
         spacing_x, _, origin_x, _, spacing_y, origin_y = self.transform
-        col = int((x - origin_x) / spacing_x)
-        row = int((origin_y - y) / spacing_y)
-        return (row, col)
+        row, col = (origin_y - y) / spacing_y, (x - origin_x) / spacing_x
+        return (int(row), int(col))
 
     # Private functions
     def __parse_args(self, args):
@@ -494,6 +465,7 @@ class OTBObject:
             channels = list(range(0, self.shape[2], step))
         return channels
 
+    # Special functions
     def __hash__(self):
         """Override the default behaviour of the hash function.
 
@@ -994,9 +966,9 @@ class Operation(OTBObject):
         # Computing the BandMath or BandMathX app
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         # Init app
-        self.name = f'Operation exp="{self.exp}"'
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
+        self.name = f'Operation exp="{self.exp}"'
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
         """Create a 'fake' expression.
@@ -1234,7 +1206,7 @@ class Input(OTBObject):
         if not self.filepath.exists():
             raise FileNotFoundError(filepath)
         super().__init__("ExtractROI", {"in": str(filepath)}, frozen=True)
-        self._name = f"Input from {filepath}"
+        self.name = f"Input from {filepath}"
         self.propagate_dtype()
         self.execute()
 
