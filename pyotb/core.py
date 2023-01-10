@@ -315,19 +315,19 @@ class OTBObject:
 
     def channels_list_from_slice(self, bands):
         """Get list of channels to read values at, from a slice."""
-        channels = None
+        channels, nb_channels = None, self.shape[2]
         start, stop, step = bands.start, bands.stop, bands.step
-        if step is None:
-            step = 1
+        start = nb_channels + start if isinstance(start, int) and start < 0 else start
+        stop = nb_channels + stop if isinstance(stop, int) and stop < 0 else stop
+        step = 1 if step is None else step
         if start is not None and stop is not None:
-            channels = list(range(start, stop, step))
-        elif start is not None and stop is None:
-            channels = list(range(start, self.shape[2], step))
-        elif start is None and stop is not None:
-            channels = list(range(0, stop, step))
-        elif start is None and stop is None:
-            channels = list(range(0, self.shape[2], step))
-        return channels
+            return list(range(start, stop, step))
+        if start is not None and stop is None:
+            return list(range(start, nb_channels, step))
+        if start is None and stop is not None:
+            return list(range(0, stop, step))
+        if start is None and stop is None:
+            return list(range(0, nb_channels, step))
 
     def summarize(self):
         """Serialize an object and its pipeline into a dictionary.

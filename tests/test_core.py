@@ -64,6 +64,10 @@ def test_slicer_preserve_dtype():
     assert extract.dtype == "uint8"
 
 
+def test_slicer_negative_band_index():
+    assert INPUT[:50, :60, :-2].shape == (50, 60, 2)
+
+
 # Arithmetic
 def test_operation():
     op = INPUT / 255 * 128
