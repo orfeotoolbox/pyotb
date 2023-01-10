@@ -23,13 +23,7 @@ def test_missing_input_file():
 
 def test_wrong_key():
     with pytest.raises(KeyError):
-        app = pyotb.BandMath(INPUT, expression="im1b1")
-
-
-# Create dir before write
-def test_write():
-    INPUT.write("/tmp/missing_dir/test_write.tif")
-    assert INPUT.out.filepath.exists()
+        pyotb.BandMath(INPUT, expression="im1b1")
 
 
 # OTBObject's properties
@@ -70,7 +64,7 @@ def test_slicer_preserve_dtype():
     assert extract.dtype == "uint8"
 
 
-# Arithmetics
+# Arithmetic
 def test_operation():
     op = INPUT / 255 * 128
     assert op.exp == "((im1b1 / 255) * 128);((im1b2 / 255) * 128);((im1b3 / 255) * 128);((im1b4 / 255) * 128)"
@@ -118,6 +112,12 @@ def test_read_values_at_coords():
 # XY => RowCol
 def test_xy_to_rowcol():
     assert INPUT.xy_to_rowcol(760100, 6946210) == (19, 7)
+
+
+# Create dir before write
+def test_write():
+    INPUT.write("/tmp/missing_dir/test_write.tif")
+    assert INPUT.out.filepath.exists()
 
 
 # BandMath NDVI == RadiometricIndices NDVI ?

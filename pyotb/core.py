@@ -1253,12 +1253,13 @@ class Output:
             source_app: The pyotb App to store reference from
             param_key: Output parameter key of the target app
             filepath: path of the output file (if not in memory)
+            mkdir: create missing parent directories
 
         """
         self.source_app = source_app
         self.param_key = param_key
         self.filepath = None
-        if filepath is not None:
+        if filepath:
             if '?' in filepath:
                 filepath = filepath.split('?')[0]
             self.filepath = Path(filepath)
@@ -1266,7 +1267,12 @@ class Output:
                 self.make_parent_dirs()
         self.name = f"Output {param_key} from {self.source_app.name}"
 
+    def exists(self):
+        """Check file exist."""
+        return self.filepath.exists()
+
     def make_parent_dirs(self):
+        """Create missing parent directories."""
         if not self.filepath.parent.exists():
             self.filepath.parent.mkdir(parents=True)
 
