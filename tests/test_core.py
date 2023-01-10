@@ -27,8 +27,6 @@ def test_wrong_key():
 
 
 # OTBObject's properties
-
-
 def test_key_input():
     assert INPUT.key_input == INPUT.key_input_image == "in"
 
@@ -49,6 +47,12 @@ def test_transform():
     assert INPUT.transform == (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
 
 
+def test_nonraster_property():
+    with pytest.raises(TypeError):
+        pyotb.ReadImageInfo(INPUT).dtype
+
+
+# Slicer
 def test_slicer_shape():
     extract = INPUT[:50, :60, :3]
     assert extract.shape == (50, 60, 3)

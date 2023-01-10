@@ -55,7 +55,7 @@ class OTBObject:
     @property
     def key_input(self):
         """Get the name of first input parameter, raster > vector > file."""
-        return self.key_input_image or key_input(self, "vector") or key_input(self, "file")
+        return key_input(self, "raster") or key_input(self, "vector") or key_input(self, "file")
 
     @property
     def key_input_image(self):
@@ -75,11 +75,10 @@ class OTBObject:
             dtype: pixel type of the output image
 
         """
-        try:
-            enum = self.app.GetParameterOutputImagePixelType(self.key_output_image)
-            return self.app.ConvertPixelTypeToNumpy(enum)
-        except RuntimeError:
-            return None
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        enum = self.app.GetParameterOutputImagePixelType(self.key_output_image)
+        return self.app.ConvertPixelTypeToNumpy(enum)
 
     @property
     def shape(self):
@@ -89,6 +88,8 @@ class OTBObject:
             shape: (height, width, bands)
 
         """
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
         width, height = self.app.GetImageSize(self.key_output_image)
         bands = self.app.GetImageNbBands(self.key_output_image)
         return (height, width, bands)
@@ -100,6 +101,8 @@ class OTBObject:
         Returns:
             transform: (X spacing, X offset, X origin, Y offset, Y spacing, Y origin)
         """
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
         spacing_x, spacing_y = self.app.GetImageSpacing(self.key_output_image)
         origin_x, origin_y = self.app.GetImageOrigin(self.key_output_image)
         # Shift image origin since OTB is giving coordinates of pixel center instead of corners
@@ -1303,7 +1306,7 @@ def get_pixel_type(inp):
     elif isinstance(inp, (OTBObject)):
         pixel_type = inp.GetParameterOutputImagePixelType(inp.key_output_image)
     else:
-        raise TypeError(f'Could not get the pixel type. Not supported type: {inp}')
+        raise TypeError(f'Could not get the pixel type of {type(inp)} object {inp}')
 
     return pixel_type
 
