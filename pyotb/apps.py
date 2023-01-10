@@ -73,20 +73,13 @@ class App(OTBObject):
         """
         files = []
         missing = []
-        for param in self.outputs:
-            filename = self.parameters[param]
-            # Remove filename extension
-            if '?' in filename:
-                filename = filename.split('?')[0]
-            path = Path(filename)
-            dest = files if path.exists() else missing
-            dest.append(str(path.absolute()))
-        if missing:
-            missing = tuple(missing)
-            for filename in missing:
-                logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
+        for out in self.outputs:
+            dest = files if out.exists() else missing
+            dest.append(str(out.filepath.absolute()))
+        for filename in missing:
+            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
 
-        return files
+        return tuple(files)
 
 
 class OTBTFApp(App):
@@ -136,8 +129,7 @@ class {name}(App):
 """
 
 for _app in AVAILABLE_APPLICATIONS:
-    # Customize the behavior for some OTBTF applications. The user doesn't need to set the env variable
-    # `OTB_TF_NSOURCES`, it is handled in pyotb
+    # Customize the behavior for some OTBTF applications. `OTB_TF_NSOURCES` is now handled by pyotb
     if _app in ("PatchesExtraction", "TensorflowModelTrain", "TensorflowModelServe"):
         exec(_CODE_TEMPLATE.format(name=_app).replace("(App)", "(OTBTFApp)"))  # pylint: disable=exec-used
     # Default behavior for any OTB application
