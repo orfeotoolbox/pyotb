@@ -172,8 +172,9 @@ class OTBObject:
         # Update _parameters using values from OtbApplication object
         otb_params = self.app.GetParameters().items()
         otb_params = {k: str(v) if isinstance(v, otb.ApplicationProxy) else v for k, v in otb_params}
-        # Save parameters keys, and values as object attributes
+        # Update param dict and save values as object attributes
         self.parameters.update({**parameters, **otb_params})
+        self.save_objects()
 
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
@@ -272,7 +273,6 @@ class OTBObject:
             self.set_parameters({key: output_filename})
 
         self.flush()
-        self.save_objects()
 
     def propagate_dtype(self, target_key=None, dtype=None):
         """Propagate a pixel type from main input to every outputs, or to a target output key only.
@@ -1220,12 +1220,7 @@ class LogicalOperation(Operation):
             self.fake_exp_bands.append(fake_exp)
 
 
-class FileIO:
-    """Base class of an IO file object."""
-    # TODO: check file exists, create missing directories, ..?
-
-
-class Input(OTBObject, FileIO):
+class Input(OTBObject):
     """Class for transforming a filepath to pyOTB object."""
 
     def __init__(self, filepath):
@@ -1235,9 +1230,11 @@ class Input(OTBObject, FileIO):
             filepath: the path of an input image
 
         """
+        self.filepath = Path(filepath)
+        if not self.filepath.exists():
+            raise FileNotFoundError(filepath)
         super().__init__("ExtractROI", {"in": str(filepath)}, frozen=True)
         self._name = f"Input from {filepath}"
-        self.filepath = Path(filepath)
         self.propagate_dtype()
         self.execute()
 
@@ -1246,10 +1243,10 @@ class Input(OTBObject, FileIO):
         return f"<pyotb.Input object from {self.filepath}>"
 
 
-class Output(FileIO):
+class Output:
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, source_app, param_key, filepath=None):
+    def __init__(self, source_app, param_key, filepath=None, mkdir=True):
         """Constructor for an Output object.
 
         Args:
@@ -1261,11 +1258,17 @@ class Output(FileIO):
         self.source_app = source_app
         self.param_key = param_key
         self.filepath = None
-        if filepath:
+        if filepath is not None:
             if '?' in filepath:
                 filepath = filepath.split('?')[0]
             self.filepath = Path(filepath)
+            if mkdir:
+                self.make_parent_dirs()
         self.name = f"Output {param_key} from {self.source_app.name}"
+
+    def make_parent_dirs(self):
+        if not self.filepath.parent.exists():
+            self.filepath.parent.mkdir(parents=True)
 
     def __str__(self):
         """Return a nice string representation with source app name and object id."""
