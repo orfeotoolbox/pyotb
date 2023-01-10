@@ -315,7 +315,7 @@ class OTBObject:
 
     def channels_list_from_slice(self, bands):
         """Get list of channels to read values at, from a slice."""
-        channels, nb_channels = None, self.shape[2]
+        nb_channels = self.shape[2]
         start, stop, step = bands.start, bands.stop, bands.step
         start = nb_channels + start if isinstance(start, int) and start < 0 else start
         stop = nb_channels + stop if isinstance(stop, int) and stop < 0 else stop
@@ -328,6 +328,7 @@ class OTBObject:
             return list(range(0, stop, step))
         if start is None and stop is None:
             return list(range(0, nb_channels, step))
+        raise ValueError(f"{self.name}: '{bands}' cannot be interpreted as valid slicing.")
 
     def summarize(self):
         """Serialize an object and its pipeline into a dictionary.
