@@ -39,8 +39,8 @@ class OTBObject:
         self.quiet = quiet
         self.image_dic = image_dic
         self.exports_dic = {}
-        self.app = otb.Registry.CreateApplicationWithoutLogger(name) if quiet \
-            else otb.Registry.CreateApplication(name)
+        create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
+        self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self.out_param_types = dict(get_out_param_types(self))
         self.out_param_keys = tuple(self.out_param_types.keys())
@@ -68,7 +68,7 @@ class OTBObject:
 
     @property
     def dtype(self):
-        """Expose the pixel type of an output image using numpy convention.
+        """Expose the pixel type of output image using numpy convention.
 
         Returns:
             dtype: pixel type of the output image
@@ -91,7 +91,7 @@ class OTBObject:
             raise TypeError(f"{self.name}: this application has no raster output")
         width, height = self.app.GetImageSize(self.key_output_image)
         bands = self.app.GetImageNbBands(self.key_output_image)
-        return (height, width, bands)
+        return height, width, bands
 
     @property
     def transform(self):
@@ -106,7 +106,7 @@ class OTBObject:
         origin_x, origin_y = self.app.GetImageOrigin(self.key_output_image)
         # Shift image origin since OTB is giving coordinates of pixel center instead of corners
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
-        return (spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y)
+        return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -344,10 +344,12 @@ class OTBObject:
         return {"name": self.name, "parameters": params}
 
     def export(self, key=None, preserve_dtype=True):
-        """Export a specific output image as numpy array and store it in object's exports_dic.
+        """Export a specific output image as numpy array and store it in object exports_dic.
 
         Args:
             key: parameter key to export, if None then the default one will be used
+            preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
+                            the OTBObject first output. Default is True
 
         Returns:
             the exported numpy array
@@ -367,7 +369,7 @@ class OTBObject:
         Args:
             key: the output parameter name to export as numpy array
             preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
-                            the OTBObject first output. Default is True.
+                            the OTBObject first output. Default is True
             copy: whether to copy the output array, default is False
                   required to True if preserve_dtype is False and the source app reference is lost
 
@@ -1178,24 +1180,22 @@ class LogicalOperation(Operation):
 class Input(OTBObject):
     """Class for transforming a filepath to pyOTB object."""
 
-    def __init__(self, filepath):
+    def __init__(self, path):
         """Default constructor.
 
         Args:
-            filepath: the path of an input image
+            path: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
 
         """
-        self.filepath = Path(filepath)
-        if not self.filepath.exists():
-            raise FileNotFoundError(filepath)
-        super().__init__("ExtractROI", {"in": str(filepath)}, frozen=True)
-        self.name = f"Input from {filepath}"
+        self.path = path
+        super().__init__("ExtractROI", {"in": path}, frozen=True)
+        self.name = f"Input from {path}"
         self.propagate_dtype()
         self.execute()
 
     def __str__(self):
         """Return a nice string representation with file path."""
-        return f"<pyotb.Input object from {self.filepath}>"
+        return f"<pyotb.Input object from {self.path}>"
 
 
 class Output:
