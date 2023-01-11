@@ -12,11 +12,11 @@ from .helpers import logger
 class OTBObject:
     """Base class that gathers common operations for any OTB application."""
 
-    def __init__(self, appname, *args, frozen=False, quiet=False, image_dic=None, **kwargs):
+    def __init__(self, name, *args, frozen=False, quiet=False, image_dic=None, **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
-            appname: name of the app, e.g. 'BandMath'
+            name: name of the app, e.g. 'BandMath'
             *args: used for passing application parameters. Can be :
                            - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
@@ -34,43 +34,57 @@ class OTBObject:
 
         """
         self.parameters = {}
-        self.name = self.appname = appname
+        self.name = name
         self.frozen = frozen
         self.quiet = quiet
         self.image_dic = image_dic
         self.exports_dic = {}
-        if quiet:
-            self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
-        else:
-            self.app = otb.Registry.CreateApplication(appname)
+        create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
+        self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
-        self.out_param_types = dict(get_out_param_types(self))
-        self.out_param_keys = tuple(self.out_param_types.keys())
+        # Output parameters types
+        self.all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
+        self.out_param_types = {k: v for k, v in self.all_param_types.items()
+                                if v in (otb.ParameterType_OutputImage,
+                                         otb.ParameterType_OutputVectorData,
+                                         otb.ParameterType_OutputFilename)}
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
             self.execute()
-            if any(key in self.parameters for key in self.out_param_keys):
+            if any(key in self.parameters for key in self.out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
+
+    def get_first_key(self, param_types):
+        """Get the first output param key for specific file types."""
+        for key, param_type in sorted(self.all_param_types.items()):
+            if param_type in param_types:
+                return key
+        return None
 
     @property
     def key_input(self):
         """Get the name of first input parameter, raster > vector > file."""
-        return key_input(self, "raster") or key_input(self, "vector") or key_input(self, "file")
+        return self.get_first_key(param_types=[otb.ParameterType_InputImage,
+                                               otb.ParameterType_InputImageList]) \
+            or self.get_first_key(param_types=[otb.ParameterType_InputVectorData,
+                                               otb.ParameterType_InputVectorDataList]) \
+            or self.get_first_key(param_types=[otb.ParameterType_InputFilename,
+                                               otb.ParameterType_InputFilenameList])
 
     @property
     def key_input_image(self):
         """Get the name of first input image parameter."""
-        return key_input(self, "raster")
+        return self.get_first_key(param_types=[otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
 
     @property
     def key_output_image(self):
         """Get the name of first output image parameter."""
-        return key_output(self, "raster")
+        return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
 
     @property
     def dtype(self):
-        """Expose the pixel type of an output image using numpy convention.
+        """Expose the pixel type of output image using numpy convention.
 
         Returns:
             dtype: pixel type of the output image
@@ -93,7 +107,7 @@ class OTBObject:
             raise TypeError(f"{self.name}: this application has no raster output")
         width, height = self.app.GetImageSize(self.key_output_image)
         bands = self.app.GetImageNbBands(self.key_output_image)
-        return (height, width, bands)
+        return height, width, bands
 
     @property
     def transform(self):
@@ -108,7 +122,7 @@ class OTBObject:
         origin_x, origin_y = self.app.GetImageOrigin(self.key_output_image)
         # Shift image origin since OTB is giving coordinates of pixel center instead of corners
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
-        return (spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y)
+        return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -167,7 +181,7 @@ class OTBObject:
                 except RuntimeError:
                     continue  # this is when there is no value for key
             # Convert output param path to Output object
-            if key in self.out_param_keys:
+            if key in self.out_param_types:
                 value = Output(self, key, value)
             # Save attribute
             setattr(self, key, value)
@@ -226,7 +240,7 @@ class OTBObject:
             if not filename_extension.startswith("?"):
                 filename_extension = "?" + filename_extension
             for key, value in kwargs.items():
-                if self.out_param_types[key] == 'raster' and '?' not in value:
+                if self.out_param_types[key] == otb.ParameterType_OutputImage and '?' not in value:
                     kwargs[key] = value + filename_extension
 
         # Manage output pixel types
@@ -236,7 +250,7 @@ class OTBObject:
                 type_name = self.app.ConvertPixelTypeToNumpy(parse_pixel_type(pixel_type))
                 logger.debug('%s: output(s) will be written with type "%s"', self.name, type_name)
                 for key in kwargs:
-                    if self.out_param_types.get(key) == "raster":
+                    if self.out_param_types[key] == otb.ParameterType_OutputImage:
                         dtypes[key] = parse_pixel_type(pixel_type)
             elif isinstance(pixel_type, dict):
                 dtypes = {k: parse_pixel_type(v) for k, v in pixel_type.items()}
@@ -276,7 +290,7 @@ class OTBObject:
         if target_key:
             keys = [target_key]
         else:
-            keys = [k for k in self.out_param_keys if self.out_param_types[k] == "raster"]
+            keys = [k for k, v in self.out_param_types.items() if v == otb.ParameterType_OutputImage]
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
@@ -305,7 +319,7 @@ class OTBObject:
                 raise TypeError(f"{self.name}: type '{type(bands)}' cannot be interpreted as a valid slicing")
             if channels:
                 app.app.Execute()
-                app.set_parameters({"cl": [f"Channel{n+1}" for n in channels]})
+                app.set_parameters({"cl": [f"Channel{n + 1}" for n in channels]})
         app.execute()
         data = literal_eval(app.app.GetParameterString("value"))
         if len(channels) == 1:
@@ -346,10 +360,12 @@ class OTBObject:
         return {"name": self.name, "parameters": params}
 
     def export(self, key=None, preserve_dtype=True):
-        """Export a specific output image as numpy array and store it in object's exports_dic.
+        """Export a specific output image as numpy array and store it in object exports_dic.
 
         Args:
             key: parameter key to export, if None then the default one will be used
+            preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
+                            the OTBObject first output. Default is True
 
         Returns:
             the exported numpy array
@@ -369,7 +385,7 @@ class OTBObject:
         Args:
             key: the output parameter name to export as numpy array
             preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
-                            the OTBObject first output. Default is True.
+                            the OTBObject first output. Default is True
             copy: whether to copy the output array, default is False
                   required to True if preserve_dtype is False and the source app reference is lost
 
@@ -413,7 +429,7 @@ class OTBObject:
         """
         spacing_x, _, origin_x, _, spacing_y, origin_y = self.transform
         row, col = (origin_y - y) / spacing_y, (x - origin_x) / spacing_x
-        return (abs(int(row)), int(col))
+        return abs(int(row)), int(col)
 
     # Private functions
     def __parse_args(self, args):
@@ -479,7 +495,7 @@ class OTBObject:
 
     def __str__(self):
         """Return a nice string representation with object id."""
-        return f"<pyotb.App {self.appname} object id {id(self)}>"
+        return f"<pyotb.App {self.name} object id {id(self)}>"
 
     def __getattr__(self, name):
         """This method is called when the default attribute access fails.
@@ -958,8 +974,8 @@ class Operation(OTBObject):
         self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         # Execute app
-        appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
-        super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
+        name = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
+        super().__init__(name, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = f'Operation exp="{self.exp}"'
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):
@@ -1122,6 +1138,7 @@ class LogicalOperation(Operation):
     logical expression (e.g. "im1b1 > 0")
 
     """
+
     def __init__(self, operator, *inputs, nb_bands=None):
         """Constructor for a LogicalOperation object.
 
@@ -1180,24 +1197,22 @@ class LogicalOperation(Operation):
 class Input(OTBObject):
     """Class for transforming a filepath to pyOTB object."""
 
-    def __init__(self, filepath):
+    def __init__(self, path):
         """Default constructor.
 
         Args:
-            filepath: the path of an input image
+            path: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
 
         """
-        self.filepath = Path(filepath)
-        if not self.filepath.exists():
-            raise FileNotFoundError(filepath)
-        super().__init__("ExtractROI", {"in": str(filepath)}, frozen=True)
-        self.name = f"Input from {filepath}"
+        self.path = path
+        super().__init__("ExtractROI", {"in": path}, frozen=True)
+        self.name = f"Input from {path}"
         self.propagate_dtype()
         self.execute()
 
     def __str__(self):
         """Return a nice string representation with file path."""
-        return f"<pyotb.Input object from {self.filepath}>"
+        return f"<pyotb.Input object from {self.path}>"
 
 
 class Output:
@@ -1275,16 +1290,25 @@ def get_pixel_type(inp):
         try:
             info = OTBObject("ReadImageInfo", inp, quiet=True)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f'Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath') from info_err
+            raise TypeError(f"Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath") from info_err
         datatype = info.GetParameterString("datatype")  # which is such as short, float...
         if not datatype:
-            raise Exception(f'Unable to read pixel type of image {inp}')
-        datatype_to_pixeltype = {'unsigned_char': 'uint8', 'short': 'int16', 'unsigned_short': 'uint16',
-                                 'int': 'int32', 'unsigned_int': 'uint32', 'long': 'int32', 'ulong': 'uint32',
-                                 'float': 'float', 'double': 'double'}
-        pixel_type = datatype_to_pixeltype[datatype]
-        pixel_type = getattr(otb, f'ImagePixelType_{pixel_type}')
-    elif isinstance(inp, (OTBObject)):
+            raise TypeError(f"Unable to read pixel type of image {inp}")
+        datatype_to_pixeltype = {
+            'unsigned_char': 'uint8',
+            'short': 'int16',
+            'unsigned_short': 'uint16',
+            'int': 'int32',
+            'unsigned_int': 'uint32',
+            'long': 'int32',
+            'ulong': 'uint32',
+            'float': 'float',
+            'double': 'double'
+        }
+        if datatype not in datatype_to_pixeltype:
+            raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
+        pixel_type = getattr(otb, f'ImagePixelType_{datatype_to_pixeltype[datatype]}')
+    elif isinstance(inp, OTBObject):
         pixel_type = inp.GetParameterOutputImagePixelType(inp.key_output_image)
     else:
         raise TypeError(f'Could not get the pixel type of {type(inp)} object {inp}')
@@ -1326,45 +1350,6 @@ def is_key_images_list(pyotb_app, key):
     )
 
 
-def get_out_param_types(pyotb_app):
-    """Get output parameter data type (raster, vector, file)."""
-    outfile_types = {
-        otb.ParameterType_OutputImage: "raster",
-        otb.ParameterType_OutputVectorData: "vector",
-        otb.ParameterType_OutputFilename: "file",
-    }
-    for k in pyotb_app.parameters_keys:
-        t = pyotb_app.app.GetParameterType(k)
-        if t in outfile_types:
-            yield k, outfile_types[t]
-
-
 def get_out_images_param_keys(app):
     """Return every output parameter keys of an OTB app."""
     return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]
-
-
-def key_input(pyotb_app, file_type):
-    """Get the first input param key for a specific file type."""
-    types = {
-        "raster": (otb.ParameterType_InputImage, otb.ParameterType_InputImageList),
-        "vector": (otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList),
-        "file": (otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList)
-    }
-    for key in pyotb_app.parameters_keys:
-        if pyotb_app.app.GetParameterType(key) in types[file_type]:
-            return key
-    return None
-
-
-def key_output(pyotb_app, file_type):
-    """Get the first output param key for a specific file type."""
-    types = {
-        "raster": otb.ParameterType_OutputImage,
-        "vector": otb.ParameterType_OutputVectorData,
-        "file": otb.ParameterType_OutputFilename
-    }
-    for key in pyotb_app.parameters_keys:
-        if pyotb_app.app.GetParameterType(key) == types[file_type]:
-            return key
-    return None

@@ -12,7 +12,7 @@ def test_pipeline_simple():
     summary = app3.summarize()
     reference = {'name': 'ManageNoData', 'parameters': {'in': {
                     'name': 'OrthoRectification', 'parameters': {'io.in': {
-                        'name': 'BandMath', 'parameters': {'il': ('tests/image.tif',), 'exp': 'im1b1'}},
+                        'name': 'BandMath', 'parameters': {'il': (filepath,), 'exp': 'im1b1'}},
                     'map': 'utm',
                     'outputs.isotropic': True}},
                 'mode': 'buildmask'}}
@@ -28,12 +28,12 @@ def test_pipeline_diamond():
     summary = app4.summarize()
     reference = {'name': 'BandMathX', 'parameters': {'il': [
                     {'name': 'OrthoRectification', 'parameters': {'io.in': {
-                        'name': 'BandMath', 'parameters': {'il': ('tests/image.tif',), 'exp': 'im1b1'}},
+                        'name': 'BandMath', 'parameters': {'il': (filepath,), 'exp': 'im1b1'}},
                     'map': 'utm',
                     'outputs.isotropic': True}},
                     {'name': 'ManageNoData', 'parameters': {'in': {
                         'name': 'OrthoRectification', 'parameters': {
-                            'io.in': {'name': 'BandMath', 'parameters': {'il': ('tests/image.tif',), 'exp': 'im1b1'}},
+                            'io.in': {'name': 'BandMath', 'parameters': {'il': (filepath,), 'exp': 'im1b1'}},
                             'map': 'utm',
                             'outputs.isotropic': True}},
                     'mode': 'buildmask'}}
