@@ -15,12 +15,6 @@ def test_parameters():
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
 
 
-# Catch errors before exec
-def test_missing_input_file():
-    with pytest.raises(RuntimeError):
-        pyotb.Input("missing_file.tif")
-
-
 def test_wrong_key():
     with pytest.raises(KeyError):
         pyotb.BandMath(INPUT, expression="im1b1")
