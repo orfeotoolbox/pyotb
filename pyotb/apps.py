@@ -68,9 +68,9 @@ class App(OTBObject):
         self.description = self.app.GetDocLongDescription()
 
     @property
-    def outputs(self):
-        """List of application outputs."""
-        return [getattr(self, key) for key in self.out_param_keys if key in self.parameters]
+    def used_outputs(self):
+        """List of used application outputs."""
+        return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
 
     def find_outputs(self):
         """Find output files on disk using path found in parameters.
@@ -80,7 +80,7 @@ class App(OTBObject):
 
         """
         files, missing = [], []
-        for out in self.outputs:
+        for out in self.used_outputs:
             dest = files if out.exists() else missing
             dest.append(str(out.filepath.absolute()))
         for filename in missing:
