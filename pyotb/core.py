@@ -12,11 +12,11 @@ from .helpers import logger
 class OTBObject:
     """Base class that gathers common operations for any OTB application."""
 
-    def __init__(self, appname, *args, frozen=False, quiet=False, image_dic=None, **kwargs):
+    def __init__(self, name, *args, frozen=False, quiet=False, image_dic=None, **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
-            appname: name of the app, e.g. 'BandMath'
+            name: name of the app, e.g. 'BandMath'
             *args: used for passing application parameters. Can be :
                            - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
@@ -34,15 +34,13 @@ class OTBObject:
 
         """
         self.parameters = {}
-        self.name = self.appname = appname
+        self.name = name
         self.frozen = frozen
         self.quiet = quiet
         self.image_dic = image_dic
         self.exports_dic = {}
-        if quiet:
-            self.app = otb.Registry.CreateApplicationWithoutLogger(appname)
-        else:
-            self.app = otb.Registry.CreateApplication(appname)
+        self.app = otb.Registry.CreateApplicationWithoutLogger(name) if quiet \
+            else otb.Registry.CreateApplication(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self.out_param_types = dict(get_out_param_types(self))
         self.out_param_keys = tuple(self.out_param_types.keys())
@@ -479,7 +477,7 @@ class OTBObject:
 
     def __str__(self):
         """Return a nice string representation with object id."""
-        return f"<pyotb.App {self.appname} object id {id(self)}>"
+        return f"<pyotb.App {self.name} object id {id(self)}>"
 
     def __getattr__(self, name):
         """This method is called when the default attribute access fails.
@@ -958,8 +956,8 @@ class Operation(OTBObject):
         self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         # Execute app
-        appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
-        super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
+        name = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
+        super().__init__(name, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = f'Operation exp="{self.exp}"'
 
     def create_fake_exp(self, operator, inputs, nb_bands=None):

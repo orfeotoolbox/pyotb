@@ -68,28 +68,6 @@ class App(OTBObject):
         self.description = self.app.GetDocLongDescription()
 
     @property
-    def name(self):
-        """Application name that will be printed in logs.
-
-        Returns:
-            user's defined name or appname
-
-        """
-        return self._name or self.appname
-
-    @name.setter
-    def name(self, name):
-        """Set custom name.
-
-        Args:
-          name: new name
-
-        """
-        if not isinstance(name, str):
-            raise TypeError(f"{self.name}: bad type ({type(name)}) for application name, only str is allowed")
-        self._name = name
-
-    @property
     def outputs(self):
         """List of application outputs."""
         return [getattr(self, key) for key in self.out_param_keys if key in self.parameters]
