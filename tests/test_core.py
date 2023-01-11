@@ -17,7 +17,7 @@ def test_parameters():
 
 # Catch errors before exec
 def test_missing_input_file():
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(RuntimeError):
         pyotb.Input("missing_file.tif")
 
 
@@ -129,7 +129,6 @@ def test_write():
 
 
 # BandMath NDVI == RadiometricIndices NDVI ?
-@pytest.mark.xfail(reason="Regression in OTB 8.2, waiting for Rémi's patch to be merged.")
 def test_ndvi_comparison():
     ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (INPUT[:, :, -1] + INPUT[:, :, 0])
     ndvi_indices = pyotb.RadiometricIndices(INPUT, {"list": "Vegetation:NDVI", "channels.red": 1, "channels.nir": 4})
