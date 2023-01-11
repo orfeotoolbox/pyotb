@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 import otbApplication as otb
-from .helpers import logger
 from .core import OTBObject
+from .helpers import logger
 
 
 def get_available_applications(as_subprocess=False):
@@ -32,7 +32,6 @@ def get_available_applications(as_subprocess=False):
         env["OTB_LOGGER_LEVEL"] = "CRITICAL"  # in order to suppress warnings while listing applications
         pycmd = "import otbApplication; print(otbApplication.Registry.GetAvailableApplications())"
         cmd_args = [sys.executable, "-c", pycmd]
-
         try:
             import subprocess  # pylint: disable=import-outside-toplevel
             params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
@@ -48,7 +47,6 @@ def get_available_applications(as_subprocess=False):
             logger.debug("Failed to call subprocess")
         except (ValueError, SyntaxError, AssertionError):
             logger.debug("Failed to decode output or convert to tuple:\nstdout=%s\nstderr=%s", stdout, stderr)
-
         if not app_list:
             logger.info("Failed to list applications in an independent process. Falling back to local python import")
     # Find applications using the normal way
@@ -56,7 +54,6 @@ def get_available_applications(as_subprocess=False):
         app_list = otb.Registry.GetAvailableApplications()
     if not app_list:
         raise SystemExit("Unable to load applications. Set env variable OTB_APPLICATION_PATH and try again.")
-
     logger.info("Successfully loaded %s OTB applications", len(app_list))
     return app_list
 
@@ -88,10 +85,9 @@ class App(OTBObject):
           name: new name
 
         """
-        if isinstance(name, str):
-            self._name = name
-        else:
+        if not isinstance(name, str):
             raise TypeError(f"{self.name}: bad type ({type(name)}) for application name, only str is allowed")
+        self._name = name
 
     @property
     def outputs(self):
@@ -105,14 +101,12 @@ class App(OTBObject):
             list of files found on disk
 
         """
-        files = []
-        missing = []
+        files, missing = [], []
         for out in self.outputs:
             dest = files if out.exists() else missing
             dest.append(str(out.filepath.absolute()))
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-
         return tuple(files)
 
 
