@@ -7,6 +7,14 @@ FILEPATH = os.environ["TEST_INPUT_IMAGE"]
 INPUT = pyotb.Input(FILEPATH)
 
 
+def test_export():
+    INPUT.export()
+    assert "out" in INPUT.exports_dic
+    array = INPUT.exports_dic["out"]["array"]
+    assert isinstance(array, np.ndarray)
+    assert array.dtype == "uint8"
+
+
 def test_to_numpy():
     array = INPUT.to_numpy()
     assert array.dtype == np.uint8
@@ -31,7 +39,7 @@ def test_convert_to_array():
 def test_add_noise_array():
     white_noise = np.random.normal(0, 50, size=INPUT.shape)
     noisy_image = INPUT + white_noise
-    assert isinstance(noisy_image, pyotb.otbObject)
+    assert isinstance(noisy_image, pyotb.core.OTBObject)
     assert noisy_image.shape == INPUT.shape
 
 
@@ -42,8 +50,9 @@ def test_to_rasterio():
     assert profile["transform"] == (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
 
     # CRS test requires GDAL python bindings
-    try:        
+    try:
         from osgeo import osr
+
         crs = osr.SpatialReference()
         crs.ImportFromEPSG(2154)
         dest_crs = osr.SpatialReference()

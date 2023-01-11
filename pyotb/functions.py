@@ -7,7 +7,7 @@ import textwrap
 import uuid
 from collections import Counter
 
-from .core import (otbObject, App, Input, Operation, logicalOperation, get_nbchannels)
+from .core import (OTBObject, Input, Operation, LogicalOperation, get_nbchannels)
 from .helpers import logger
 
 
@@ -111,25 +111,25 @@ def all(*inputs):  # pylint: disable=redefined-builtin
     # Checking that all bands of the single image are True
     if len(inputs) == 1:
         inp = inputs[0]
-        if isinstance(inp, logicalOperation):
+        if isinstance(inp, LogicalOperation):
             res = inp[:, :, 0]
         else:
             res = (inp[:, :, 0] != 0)
 
         for band in range(1, inp.shape[-1]):
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res & inp[:, :, band]
             else:
                 res = res & (inp[:, :, band] != 0)
 
     # Checking that all images are True
     else:
-        if isinstance(inputs[0], logicalOperation):
+        if isinstance(inputs[0], LogicalOperation):
             res = inputs[0]
         else:
             res = (inputs[0] != 0)
         for inp in inputs[1:]:
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res & inp
             else:
                 res = res & (inp != 0)
@@ -166,25 +166,25 @@ def any(*inputs):  # pylint: disable=redefined-builtin
     # Checking that at least one band of the image is True
     if len(inputs) == 1:
         inp = inputs[0]
-        if isinstance(inp, logicalOperation):
+        if isinstance(inp, LogicalOperation):
             res = inp[:, :, 0]
         else:
             res = (inp[:, :, 0] != 0)
 
         for band in range(1, inp.shape[-1]):
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res | inp[:, :, band]
             else:
                 res = res | (inp[:, :, band] != 0)
 
     # Checking that at least one image is True
     else:
-        if isinstance(inputs[0], logicalOperation):
+        if isinstance(inputs[0], LogicalOperation):
             res = inputs[0]
         else:
             res = (inputs[0] != 0)
         for inp in inputs[1:]:
-            if isinstance(inp, logicalOperation):
+            if isinstance(inp, LogicalOperation):
                 res = res | inp
             else:
                 res = res | (inp != 0)
@@ -352,7 +352,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     for inp in inputs:
         if isinstance(inp, str):  # this is for filepaths
             metadata = Input(inp).GetImageMetaData('out')
-        elif isinstance(inp, otbObject):
+        elif isinstance(inp, OTBObject):
             metadata = inp.GetImageMetaData(inp.output_param)
         else:
             raise TypeError(f"Wrong input : {inp}")
@@ -412,7 +412,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
                     'mode.extent.ulx': ulx, 'mode.extent.uly': lry,  # bug in OTB <= 7.3 :
                     'mode.extent.lrx': lrx, 'mode.extent.lry': uly,  # ULY/LRY are inverted
                 }
-                new_input = App('ExtractROI', params)
+                new_input = OTBObject('ExtractROI', params)
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
@@ -453,7 +453,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
         new_inputs = []
         for inp in inputs:
             if metadatas[inp]['GeoTransform'][1] != pixel_size:
-                superimposed = App('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
+                superimposed = OTBObject('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
                 new_inputs.append(superimposed)
             else:
                 new_inputs.append(inp)
@@ -478,7 +478,7 @@ def define_processing_area(*args, window_rule='intersection', pixel_size_rule='m
     new_inputs = []
     for inp in inputs:
         if image_sizes[inp] != most_common_image_size:
-            superimposed = App('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
+            superimposed = OTBObject('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
             new_inputs.append(superimposed)
         else:
             new_inputs.append(inp)
