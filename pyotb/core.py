@@ -52,7 +52,7 @@ class OTBObject:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
             self.execute()
-            if any(key in self.parameters for key in self.parameters_keys):
+            if any(key in self.parameters for key in self.out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
 
     def get_first_key(self, param_types):
