@@ -35,6 +35,7 @@ class OTBObject:
         """
         self.parameters = {}
         self.name = self.appname = appname
+        self.frozen = frozen
         self.quiet = quiet
         self.image_dic = image_dic
         self.exports_dic = {}
@@ -45,12 +46,12 @@ class OTBObject:
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self.out_param_types = dict(get_out_param_types(self))
         self.out_param_keys = tuple(self.out_param_types.keys())
-
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
-        self.frozen = frozen
-        if not frozen:
+        if not self.frozen:
             self.execute()
+            if any(key in self.parameters for key in self.out_param_keys):
+                self.flush()  # auto flush if any output param was provided during app init
 
     @property
     def key_input(self):
@@ -181,8 +182,6 @@ class OTBObject:
         self.frozen = False
         logger.debug("%s: execution ended", self.name)
         self.save_objects()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
-        if any(key in self.parameters for key in self.out_param_keys):
-            self.flush()  # auto flush if any output param was provided during app init
 
     def flush(self):
         """Flush data to disk, this is when WriteOutput is actually called."""
@@ -246,7 +245,6 @@ class OTBObject:
             if key in dtypes:
                 self.propagate_dtype(key, dtypes[key])
             self.set_parameters({key: output_filename})
-
         self.flush()
 
     def propagate_dtype(self, target_key=None, dtype=None):
