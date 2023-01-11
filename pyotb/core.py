@@ -219,6 +219,7 @@ class OTBObject:
                 logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
             elif isinstance(arg, str) and self.key_output_image:
                 kwargs.update({self.key_output_image: arg})
+
         # Append filename extension to filenames
         if filename_extension:
             logger.debug("%s: using extended filename for outputs: %s", self.name, filename_extension)
@@ -227,6 +228,7 @@ class OTBObject:
             for key, value in kwargs.items():
                 if self.out_param_types[key] == 'raster' and '?' not in value:
                     kwargs[key] = value + filename_extension
+
         # Manage output pixel types
         dtypes = {}
         if pixel_type:
@@ -240,7 +242,8 @@ class OTBObject:
                 dtypes = {k: parse_pixel_type(v) for k, v in pixel_type.items()}
         elif preserve_dtype:
             self.propagate_dtype()  # all outputs will have the same type as the main input raster
-        # Apply parameters
+
+        # Set parameters and flush to disk
         for key, output_filename in kwargs.items():
             if key in dtypes:
                 self.propagate_dtype(key, dtypes[key])
@@ -270,13 +273,11 @@ class OTBObject:
             except (TypeError, RuntimeError):
                 logger.warning('%s: unable to identify pixel type of key "%s"', self.name, param)
                 return
-
         if target_key:
             keys = [target_key]
         else:
             keys = [k for k in self.out_param_keys if self.out_param_types[k] == "raster"]
         for key in keys:
-            # Set output pixel type
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
     def read_values_at_coords(self, row, col, bands=None):
@@ -292,7 +293,7 @@ class OTBObject:
 
         """
         channels = []
-        app = OTBObject("PixelValue", self, coordx=col, coordy=row, frozen=False, quiet=True)
+        app = OTBObject("PixelValue", self, coordx=col, coordy=row, frozen=True, quiet=True)
         if bands is not None:
             if isinstance(bands, int):
                 if bands < 0:
@@ -342,7 +343,6 @@ class OTBObject:
                 params[k] = p.summarize()
             elif isinstance(p, list):  # parameter list
                 params[k] = [pi.summarize() if isinstance(pi, OTBObject) else pi for pi in p]
-
         return {"name": self.name, "parameters": params}
 
     def export(self, key=None, preserve_dtype=True):
@@ -441,7 +441,7 @@ class OTBObject:
             return
         if key not in self.parameters_keys:
             raise KeyError(
-                f"{self.name}: parameter '{key}' was not recognized. " f"Available keys are {self.parameters_keys}"
+                f"{self.name}: parameter '{key}' was not recognized. Available keys are {self.parameters_keys}"
             )
         # Single-parameter cases
         if isinstance(obj, OTBObject):
@@ -819,12 +819,10 @@ class OTBObject:
                 else:
                     logger.debug(type(self))
                     return NotImplemented
-
             # Performing the numpy operation
             result_array = ufunc(*arrays, **kwargs)
             result_dic = image_dic
             result_dic["array"] = result_array
-
             # Importing back to OTB, pass the result_dic just to keep reference
             app = OTBObject("ExtractROI", image_dic=result_dic, frozen=True, quiet=True)
             if result_array.shape[2] == 1:
@@ -833,7 +831,6 @@ class OTBObject:
                 app.ImportVectorImage("in", result_dic)
             app.execute()
             return app
-
         return NotImplemented
 
 
@@ -858,6 +855,7 @@ class Slicer(OTBObject):
         self.name = "Slicer"
         self.rows, self.cols = rows, cols
         parameters = {}
+
         # Channel slicing
         if channels != slice(None, None, None):
             # Trigger source app execution if needed
@@ -873,7 +871,6 @@ class Slicer(OTBObject):
                 channels = list(channels)
             elif not isinstance(channels, list):
                 raise ValueError(f"Invalid type for channels, should be int, slice or list of bands. : {channels}")
-
             # Change the potential negative index values to reverse index
             channels = [c if c >= 0 else nb_channels + c for c in channels]
             parameters.update({"cl": [f"Channel{i + 1}" for i in channels]})
@@ -957,12 +954,10 @@ class Operation(OTBObject):
                     self.im_dic[str(inp)] = f"im{self.im_count}"
                     mapping_str_to_input[str(inp)] = inp
                     self.im_count += 1
-
         # Getting unique image inputs, in the order im1, im2, im3 ...
         self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
-        # Computing the BandMath or BandMathX app
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
-        # Init app
+        # Execute app
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = f'Operation exp="{self.exp}"'
@@ -980,9 +975,8 @@ class Operation(OTBObject):
         """
         self.inputs.clear()
         self.nb_channels.clear()
-
         logger.debug("%s, %s", operator, inputs)
-        # this is when we use the ternary operator with `pyotb.where` function. The output nb of bands is already known
+        # This is when we use the ternary operator with `pyotb.where` function. The output nb of bands is already known
         if operator == "?" and nb_bands:
             pass
         # For any other operations, the output number of bands is the same as inputs
@@ -1002,10 +996,10 @@ class Operation(OTBObject):
         for i, band in enumerate(range(1, nb_bands + 1)):
             fake_exps = []
             for k, inp in enumerate(inputs):
-                # Generating the fake expression of the current input
+                # Generating the fake expression of the current input,
                 # this is a special case for the condition of the ternary operator `cond ? x : y`
                 if len(inputs) == 3 and k == 0:
-                    # when cond is monoband whereas the result is multiband, we expand the cond to multiband
+                    # When cond is monoband whereas the result is multiband, we expand the cond to multiband
                     if nb_bands != inp.shape[2]:
                         cond_band = 1
                     else:
@@ -1013,8 +1007,8 @@ class Operation(OTBObject):
                     fake_exp, corresponding_inputs, nb_channels = self.create_one_input_fake_exp(
                         inp, cond_band, keep_logical=True
                     )
-                # any other input
                 else:
+                    # Any other input
                     fake_exp, corresponding_inputs, nb_channels = self.create_one_input_fake_exp(
                         inp, band, keep_logical=False
                     )
@@ -1033,7 +1027,6 @@ class Operation(OTBObject):
                 fake_exp = f"({fake_exps[0]} {operator} {fake_exps[1]})"
             elif len(inputs) == 3 and operator == "?":  # this is only for ternary expression
                 fake_exp = f"({fake_exps[0]} ? {fake_exps[1]} : {fake_exps[2]})"
-
             self.fake_exp_bands.append(fake_exp)
 
     def get_real_exp(self, fake_exp_bands):
@@ -1052,13 +1045,11 @@ class Operation(OTBObject):
         for one_band_fake_exp in fake_exp_bands:
             one_band_exp = one_band_fake_exp
             for inp in self.inputs:
-                # replace the name of in-memory object (e.g. '<pyotb.App object>b1' by 'im1b1')
+                # Replace the name of in-memory object (e.g. '<pyotb.App object>b1' by 'im1b1')
                 one_band_exp = one_band_exp.replace(str(inp), self.im_dic[str(inp)])
             exp_bands.append(one_band_exp)
-
         # Form the final expression (e.g. 'im1b1 + 1; im1b2 + 1')
         exp = ";".join(exp_bands)
-
         return exp_bands, exp
 
     @staticmethod
@@ -1088,7 +1079,7 @@ class Operation(OTBObject):
                 inputs = x.input.inputs
                 nb_channels = x.input.nb_channels
             elif isinstance(x.input, Operation):
-                # keep only one band of the expression
+                # Keep only one band of the expression
                 fake_exp = x.input.fake_exp_bands[x.one_band_sliced - 1]
                 inputs = x.input.inputs
                 nb_channels = x.input.nb_channels
@@ -1117,7 +1108,6 @@ class Operation(OTBObject):
             inputs = [x]
             # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
             fake_exp = f"{x}b{band}"
-
         return fake_exp, inputs, nb_channels
 
     def __str__(self):
@@ -1177,11 +1167,9 @@ class LogicalOperation(Operation):
                 if i == 0 and corresp_inputs and nb_channels:
                     self.inputs.extend(corresp_inputs)
                     self.nb_channels.update(nb_channels)
-
             # We create here the "fake" expression. For example, for a BandMathX expression such as 'im1 > im2',
             # the logical fake expression stores the expression "str(input1) > str(input2)"
             logical_fake_exp = f"({fake_exps[0]} {operator} {fake_exps[1]})"
-
             # We keep the logical expression, useful if later combined with other logical operations
             self.logical_fake_exp_bands.append(logical_fake_exp)
             # We create a valid BandMath expression, e.g. "str(input1) > str(input2) ? 1 : 0"
@@ -1284,7 +1272,6 @@ def get_pixel_type(inp):
 
     """
     if isinstance(inp, str):
-        # Executing the app, without printing its log
         try:
             info = OTBObject("ReadImageInfo", inp, quiet=True)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
@@ -1301,7 +1288,6 @@ def get_pixel_type(inp):
         pixel_type = inp.GetParameterOutputImagePixelType(inp.key_output_image)
     else:
         raise TypeError(f'Could not get the pixel type of {type(inp)} object {inp}')
-
     return pixel_type
 
 
