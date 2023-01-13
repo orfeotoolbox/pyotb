@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 from pathlib import Path
 from ast import literal_eval
+from time import perf_counter
 
 import numpy as np
 import otbApplication as otb
@@ -44,7 +45,7 @@ class OTBObject:
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
-        # Output parameters types
+        self.time_start, self.time_end = 0, 0
         self.all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         self.out_param_types = {k: v for k, v in self.all_param_types.items()
                                 if v in (otb.ParameterType_OutputImage,
@@ -191,11 +192,13 @@ class OTBObject:
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
+        self.time_start = perf_counter()
         try:
             self.app.Execute()
         except (RuntimeError, FileNotFoundError) as e:
             raise Exception(f"{self.name}: error during during app execution") from e
         self.frozen = False
+        self.time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
         self.save_objects()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
 
@@ -207,6 +210,7 @@ class OTBObject:
         except RuntimeError:
             logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
             self.app.ExecuteAndWriteOutput()
+        self.time_end = perf_counter()
 
     def write(self, *args, filename_extension: str = "", pixel_type: dict[str, str] | str = None,
               preserve_dtype: bool = False, **kwargs):
