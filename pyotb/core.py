@@ -90,16 +90,17 @@ class OTBObject:
         """Expose app's output data values in a dictionary."""
         skip_keys = tuple(self.out_param_types) + tuple(self.parameters) + ("ram", "elev.default")
         keys = (k for k in self.parameters_keys if k not in skip_keys)
+
         def _check(v):
             return not isinstance(v, otb.ApplicationProxy) and v not in ("", None, [], ())
         return {str(k): self[k] for k in keys if _check(self[k])}
 
     @property
     def metadata(self):
+        """Return first output image metadata dictionary"""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
         return dict(self.app.GetMetadataDictionary(self.key_output_image))
-
 
     @property
     def dtype(self) -> np.dtype:
@@ -323,11 +324,13 @@ class OTBObject:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
     def get_infos(self):
+        """Return a dict output of ReadImageInfo for the first image output"""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
         return OTBObject("ReadImageInfo", self, quiet=True).data
 
     def get_statistics(self):
+        """Return a dict output of ComputeImagesStatistics for the first image output"""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
         return OTBObject("ComputeImagesStatistics", self, quiet=True).data
