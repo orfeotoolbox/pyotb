@@ -86,6 +86,22 @@ class OTBObject:
         return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
 
     @property
+    def data(self):
+        """Expose app's output data values in a dictionary."""
+        skip_keys = tuple(self.out_param_types) + tuple(self.parameters) + ("ram", "elev.default")
+        keys = (k for k in self.parameters_keys if k not in skip_keys)
+        def _check(v):
+            return not isinstance(v, otb.ApplicationProxy) and v not in ("", None, [], ())
+        return {str(k): self[k] for k in keys if _check(self[k])}
+
+    @property
+    def metadata(self):
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        return dict(self.app.GetMetadataDictionary(self.key_output_image))
+
+
+    @property
     def dtype(self) -> np.dtype:
         """Expose the pixel type of output image using numpy convention.
 
@@ -186,6 +202,11 @@ class OTBObject:
             # Convert output param path to Output object
             if key in self.out_param_types:
                 value = Output(self, key, value)
+            elif isinstance(key, str):
+                try:
+                    value = literal_eval(value)
+                except (ValueError, SyntaxError):
+                    pass
             # Save attribute
             setattr(self, key, value)
 
