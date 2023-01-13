@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """This module is the core of pyotb."""
+from __future__ import annotations
+from typing import Any
 from pathlib import Path
 from ast import literal_eval
 
@@ -12,7 +14,7 @@ from .helpers import logger
 class OTBObject:
     """Base class that gathers common operations for any OTB application."""
 
-    def __init__(self, name, *args, frozen=False, quiet=False, image_dic=None, **kwargs):
+    def __init__(self, name: str, *args, frozen: bool = False, quiet: bool = False, image_dic: dict = None, **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
@@ -55,7 +57,7 @@ class OTBObject:
             if any(key in self.parameters for key in self.out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
 
-    def get_first_key(self, param_types):
+    def get_first_key(self, param_types: list[str]) -> str:
         """Get the first output param key for specific file types."""
         for key, param_type in sorted(self.all_param_types.items()):
             if param_type in param_types:
@@ -63,7 +65,7 @@ class OTBObject:
         return None
 
     @property
-    def key_input(self):
+    def key_input(self) -> str:
         """Get the name of first input parameter, raster > vector > file."""
         return self.get_first_key(param_types=[otb.ParameterType_InputImage,
                                                otb.ParameterType_InputImageList]) \
@@ -73,17 +75,17 @@ class OTBObject:
                                                otb.ParameterType_InputFilenameList])
 
     @property
-    def key_input_image(self):
+    def key_input_image(self) -> str:
         """Get the name of first input image parameter."""
         return self.get_first_key(param_types=[otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
 
     @property
-    def key_output_image(self):
+    def key_output_image(self) -> str:
         """Get the name of first output image parameter."""
         return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
 
     @property
-    def dtype(self):
+    def dtype(self) -> np.dtype:
         """Expose the pixel type of output image using numpy convention.
 
         Returns:
@@ -96,7 +98,7 @@ class OTBObject:
         return self.app.ConvertPixelTypeToNumpy(enum)
 
     @property
-    def shape(self):
+    def shape(self) -> tuple(int):
         """Enables to retrieve the shape of a pyotb object using numpy convention.
 
         Returns:
@@ -110,7 +112,7 @@ class OTBObject:
         return height, width, bands
 
     @property
-    def transform(self):
+    def transform(self) -> tuple(int):
         """Get image affine transform, rasterio style (see https://www.perrygeo.com/python-affine-transforms.html).
 
         Returns:
@@ -206,7 +208,8 @@ class OTBObject:
             logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
             self.app.ExecuteAndWriteOutput()
 
-    def write(self, *args, filename_extension="", pixel_type=None, preserve_dtype=False, **kwargs):
+    def write(self, *args, filename_extension: str = "", pixel_type: dict[str, str] | str = None,
+              preserve_dtype: bool = False, **kwargs):
         """Set output pixel type and write the output raster files.
 
         Args:
@@ -264,7 +267,7 @@ class OTBObject:
             self.set_parameters({key: output_filename})
         self.flush()
 
-    def propagate_dtype(self, target_key=None, dtype=None):
+    def propagate_dtype(self, target_key: str = None, dtype: int = None):
         """Propagate a pixel type from main input to every outputs, or to a target output key only.
 
         With multiple inputs (if dtype is not provided), the type of the first input is considered.
@@ -294,7 +297,7 @@ class OTBObject:
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
-    def read_values_at_coords(self, row, col, bands=None):
+    def read_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
         """Get pixel value(s) at a given YX coordinates.
 
         Args:
@@ -326,7 +329,7 @@ class OTBObject:
             return data[0]
         return data
 
-    def channels_list_from_slice(self, bands):
+    def channels_list_from_slice(self, bands: int) -> list[int]:
         """Get list of channels to read values at, from a slice."""
         nb_channels = self.shape[2]
         start, stop, step = bands.start, bands.stop, bands.step
@@ -343,7 +346,7 @@ class OTBObject:
             return list(range(0, nb_channels, step))
         raise ValueError(f"{self.name}: '{bands}' cannot be interpreted as valid slicing.")
 
-    def summarize(self):
+    def summarize(self) -> dict:
         """Serialize an object and its pipeline into a dictionary.
 
         Returns:
@@ -359,7 +362,7 @@ class OTBObject:
                 params[k] = [pi.summarize() if isinstance(pi, OTBObject) else pi for pi in p]
         return {"name": self.name, "parameters": params}
 
-    def export(self, key=None, preserve_dtype=True):
+    def export(self, key: str = None, preserve_dtype: bool = True) -> dict[str, dict[str, np.ndarray]]:
         """Export a specific output image as numpy array and store it in object exports_dic.
 
         Args:
@@ -379,7 +382,7 @@ class OTBObject:
             self.exports_dic[key]["array"] = self.exports_dic[key]["array"].astype(self.dtype)
         return self.exports_dic[key]
 
-    def to_numpy(self, key=None, preserve_dtype=True, copy=False):
+    def to_numpy(self, key: str = None, preserve_dtype: bool = True, copy: bool = False) -> np.ndarray:
         """Export a pyotb object to numpy array.
 
         Args:
@@ -399,7 +402,7 @@ class OTBObject:
             return array.copy()
         return array
 
-    def to_rasterio(self):
+    def to_rasterio(self) -> tuple[np.ndarray, dict[str, Any]]:
         """Export image as a numpy array and its metadata compatible with rasterio.
 
         Returns:
@@ -417,7 +420,7 @@ class OTBObject:
         }
         return array, profile
 
-    def xy_to_rowcol(self, x, y):
+    def xy_to_rowcol(self, x: float, y: float) -> tuple[int, int]:
         """Find (row, col) index using (x, y) projected coordinates - image CRS is expected.
 
         Args:
@@ -432,7 +435,7 @@ class OTBObject:
         return abs(int(row)), int(col)
 
     # Private functions
-    def __parse_args(self, args):
+    def __parse_args(self, args: list[str | OTBObject | dict | list]) -> dict[str, Any]:
         """Gather all input arguments in kwargs dict.
 
         Args:
@@ -450,7 +453,7 @@ class OTBObject:
                 kwargs.update({self.key_input: arg})
         return kwargs
 
-    def __set_param(self, key, obj):
+    def __set_param(self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]):
         """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
             self.app.ClearValue(key)
@@ -558,7 +561,7 @@ class OTBObject:
             key = key + (slice(None, None, None),)
         return Slicer(self, *key)
 
-    def __add__(self, other):
+    def __add__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default addition and flavours it with BandMathX.
 
         Args:
@@ -572,7 +575,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("+", self, other)
 
-    def __sub__(self, other):
+    def __sub__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
@@ -586,7 +589,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("-", self, other)
 
-    def __mul__(self, other):
+    def __mul__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
@@ -600,7 +603,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("*", self, other)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
@@ -614,7 +617,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("/", self, other)
 
-    def __radd__(self, other):
+    def __radd__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default reverse addition and flavours it with BandMathX.
 
         Args:
@@ -628,7 +631,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("+", other, self)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default subtraction and flavours it with BandMathX.
 
         Args:
@@ -642,7 +645,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("-", other, self)
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default multiplication and flavours it with BandMathX.
 
         Args:
@@ -656,7 +659,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("*", other, self)
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default division and flavours it with BandMathX.
 
         Args:
@@ -670,7 +673,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return Operation("/", other, self)
 
-    def __abs__(self):
+    def __abs__(self) -> Operation:
         """Overrides the default abs operator and flavours it with BandMathX.
 
         Returns:
@@ -679,7 +682,7 @@ class OTBObject:
         """
         return Operation("abs", self)
 
-    def __ge__(self, other):
+    def __ge__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default greater or equal and flavours it with BandMathX.
 
         Args:
@@ -693,7 +696,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation(">=", self, other)
 
-    def __le__(self, other):
+    def __le__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default less or equal and flavours it with BandMathX.
 
         Args:
@@ -707,7 +710,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation("<=", self, other)
 
-    def __gt__(self, other):
+    def __gt__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default greater operator and flavours it with BandMathX.
 
         Args:
@@ -721,7 +724,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation(">", self, other)
 
-    def __lt__(self, other):
+    def __lt__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default less operator and flavours it with BandMathX.
 
         Args:
@@ -735,7 +738,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation("<", self, other)
 
-    def __eq__(self, other):
+    def __eq__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default eq operator and flavours it with BandMathX.
 
         Args:
@@ -749,7 +752,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation("==", self, other)
 
-    def __ne__(self, other):
+    def __ne__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default different operator and flavours it with BandMathX.
 
         Args:
@@ -763,7 +766,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation("!=", self, other)
 
-    def __or__(self, other):
+    def __or__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default or operator and flavours it with BandMathX.
 
         Args:
@@ -777,7 +780,7 @@ class OTBObject:
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return LogicalOperation("||", self, other)
 
-    def __and__(self, other):
+    def __and__(self, other: OTBObject | Output | str | int | float) -> Operation:
         """Overrides the default and operator and flavours it with BandMathX.
 
         Args:
@@ -794,7 +797,7 @@ class OTBObject:
     # TODO: other operations ?
     #  e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
 
-    def __array__(self):
+    def __array__(self) -> np.ndarray:
         """This is called when running np.asarray(pyotb_object).
 
         Returns:
@@ -803,7 +806,7 @@ class OTBObject:
         """
         return self.to_numpy()
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> OTBObject:
         """This is called whenever a numpy function is called on a pyotb object.
 
         Operation is performed in numpy, then imported back to pyotb with the same georeference as input.
@@ -853,7 +856,7 @@ class OTBObject:
 class Slicer(OTBObject):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
-    def __init__(self, obj, rows, cols, channels):
+    def __init__(self, obj: OTBObject | Output | str, rows: int, cols: int, channels: int):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
 
         It contains :
@@ -938,7 +941,7 @@ class Operation(OTBObject):
 
     """
 
-    def __init__(self, operator, *inputs, nb_bands=None):
+    def __init__(self, operator: str, *inputs, nb_bands: int = None):
         """Given some inputs and an operator, this function enables to transform this into an OTB application.
 
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
@@ -978,7 +981,8 @@ class Operation(OTBObject):
         super().__init__(name, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = f'Operation exp="{self.exp}"'
 
-    def create_fake_exp(self, operator, inputs, nb_bands=None):
+    def create_fake_exp(self, operator: str, inputs: list[OTBObject | Output | str | int | float],
+                        nb_bands: int = None):
         """Create a 'fake' expression.
 
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
@@ -1045,7 +1049,7 @@ class Operation(OTBObject):
                 fake_exp = f"({fake_exps[0]} ? {fake_exps[1]} : {fake_exps[2]})"
             self.fake_exp_bands.append(fake_exp)
 
-    def get_real_exp(self, fake_exp_bands):
+    def get_real_exp(self, fake_exp_bands: str) -> tuple(list[str], str):
         """Generates the BandMathX expression.
 
         Args:
@@ -1069,7 +1073,8 @@ class Operation(OTBObject):
         return exp_bands, exp
 
     @staticmethod
-    def create_one_input_fake_exp(x, band, keep_logical=False):
+    def create_one_input_fake_exp(x: OTBObject | Output | str,
+                                  band: int, keep_logical: bool = False) -> tuple(str, list[OTBObject], int):
         """This an internal function, only to be used by `create_fake_exp`.
 
         Enable to create a fake expression just for one input and one band.
@@ -1126,7 +1131,7 @@ class Operation(OTBObject):
             fake_exp = f"{x}b{band}"
         return fake_exp, inputs, nb_channels
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a nice string representation with operator and object id."""
         return f"<pyotb.Operation `{self.operator}` object, id {id(self)}>"
 
@@ -1139,7 +1144,7 @@ class LogicalOperation(Operation):
 
     """
 
-    def __init__(self, operator, *inputs, nb_bands=None):
+    def __init__(self, operator: str, *inputs, nb_bands: int = None):
         """Constructor for a LogicalOperation object.
 
         Args:
@@ -1151,7 +1156,8 @@ class LogicalOperation(Operation):
         super().__init__(operator, *inputs, nb_bands=nb_bands)
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def create_fake_exp(self, operator, inputs, nb_bands=None):
+    def create_fake_exp(self, operator: str, inputs: list[OTBObject | Output | str | int | float],
+                        nb_bands: int = None):
         """Create a 'fake' expression.
 
         E.g for the operation input1 > input2, we create a fake expression that is like
@@ -1197,7 +1203,7 @@ class LogicalOperation(Operation):
 class Input(OTBObject):
     """Class for transforming a filepath to pyOTB object."""
 
-    def __init__(self, path):
+    def __init__(self, path: str):
         """Default constructor.
 
         Args:
@@ -1210,7 +1216,7 @@ class Input(OTBObject):
         self.propagate_dtype()
         self.execute()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a nice string representation with file path."""
         return f"<pyotb.Input object from {self.path}>"
 
@@ -1218,7 +1224,7 @@ class Input(OTBObject):
 class Output:
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, source_app, param_key, filepath=None, mkdir=True):
+    def __init__(self, source_app: OTBObject, param_key: str, filepath: str = None, mkdir: bool = True):
         """Constructor for an Output object.
 
         Args:
@@ -1239,7 +1245,7 @@ class Output:
                 self.make_parent_dirs()
         self.name = f"Output {param_key} from {self.source_app.name}"
 
-    def exists(self):
+    def exists(self) -> bool:
         """Check file exist."""
         return self.filepath.exists()
 
@@ -1248,12 +1254,12 @@ class Output:
         if not self.filepath.parent.exists():
             self.filepath.parent.mkdir(parents=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a nice string representation with source app name and object id."""
         return f"<pyotb.Output {self.source_app.name} object, id {id(self)}>"
 
 
-def get_nbchannels(inp):
+def get_nbchannels(inp: str | OTBObject) -> int:
     """Get the nb of bands of input image.
 
     Args:
@@ -1275,7 +1281,7 @@ def get_nbchannels(inp):
     return nb_channels
 
 
-def get_pixel_type(inp):
+def get_pixel_type(inp: str | OTBObject) -> str:
     """Get the encoding of input image pixels.
 
     Args:
@@ -1315,7 +1321,7 @@ def get_pixel_type(inp):
     return pixel_type
 
 
-def parse_pixel_type(pixel_type):
+def parse_pixel_type(pixel_type: str | int) -> int:
     """Convert one str pixel type to OTB integer enum if necessary.
 
     Args:
@@ -1332,7 +1338,7 @@ def parse_pixel_type(pixel_type):
     raise ValueError(f'Bad pixel type specification ({pixel_type})')
 
 
-def is_key_list(pyotb_app, key):
+def is_key_list(pyotb_app: OTBObject, key: str) -> bool:
     """Check if a key of the App is an input parameter list."""
     return pyotb_app.app.GetParameterType(key) in (
         otb.ParameterType_InputImageList,
@@ -1343,13 +1349,14 @@ def is_key_list(pyotb_app, key):
     )
 
 
-def is_key_images_list(pyotb_app, key):
+def is_key_images_list(pyotb_app: OTBObject, key: str) -> bool:
     """Check if a key of the App is an input parameter image list."""
     return pyotb_app.app.GetParameterType(key) in (
-        otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList
+        otb.ParameterType_InputImageList,
+        otb.ParameterType_InputFilenameList
     )
 
 
-def get_out_images_param_keys(app):
+def get_out_images_param_keys(app: OTBObject) -> list[str]:
     """Return every output parameter keys of an OTB app."""
     return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]

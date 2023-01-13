@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """This module provides a set of functions for pyotb."""
+from __future__ import annotations
 import inspect
 import os
 import sys
@@ -7,18 +8,19 @@ import textwrap
 import uuid
 from collections import Counter
 
-from .core import (OTBObject, Input, Operation, LogicalOperation, get_nbchannels)
+from .core import OTBObject, Input, Operation, LogicalOperation, get_nbchannels, Output
 from .helpers import logger
 
 
-def where(cond, x, y):
+def where(cond: OTBObject | Output | str, x: OTBObject | Output | str | int | float,
+          y: OTBObject | Output | str | int | float) -> Operation:
     """Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y.
 
     Args:
         cond: condition, must be a raster (filepath, App, Operation...). If cond is monoband whereas x or y are
               multiband, cond channels are expanded to match x & y ones.
-        x: value if cond is True. Can be float, int, App, filepath, Operation...
-        y: value if cond is False. Can be float, int, App, filepath, Operation...
+        x: value if cond is True. Can be: float, int, App, filepath, Operation...
+        y: value if cond is False. Can be: float, int, App, filepath, Operation...
 
     Returns:
         an output where pixels are x if cond is True, else y
@@ -61,7 +63,8 @@ def where(cond, x, y):
     return operation
 
 
-def clip(a, a_min, a_max):
+def clip(a: OTBObject | Output | str, a_min: OTBObject | Output | str | int | float,
+         a_max: OTBObject | Output | str | int | float):
     """Clip values of image in a range of values.
 
     Args:
@@ -321,8 +324,9 @@ def run_tf_function(func):
     return wrapper
 
 
-def define_processing_area(*args, window_rule='intersection', pixel_size_rule='minimal', interpolator='nn',
-                           reference_window_input=None, reference_pixel_size_input=None):
+def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_rule: str = 'minimal',
+                           interpolator: str = 'nn', reference_window_input: dict = None,
+                           reference_pixel_size_input: str = None) -> list[OTBObject]:
     """Given several inputs, this function handles the potential resampling and cropping to same extent.
 
     WARNING: Not fully implemented / tested

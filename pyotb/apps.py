@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Search for OTB (set env if necessary), subclass core.App for each available application."""
+from __future__ import annotations
 import os
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ from .core import OTBObject
 from .helpers import logger
 
 
-def get_available_applications(as_subprocess=False):
+def get_available_applications(as_subprocess: bool = False) -> list[str]:
     """Find available OTB applications.
 
     Args:
@@ -68,11 +69,11 @@ class App(OTBObject):
         self.description = self.app.GetDocLongDescription()
 
     @property
-    def used_outputs(self):
+    def used_outputs(self) -> list[str]:
         """List of used application outputs."""
         return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
 
-    def find_outputs(self):
+    def find_outputs(self) -> tuple[str]:
         """Find output files on disk using path found in parameters.
 
         Returns:
@@ -91,7 +92,7 @@ class App(OTBObject):
 class OTBTFApp(App):
     """Helper for OTBTF."""
     @staticmethod
-    def set_nb_sources(*args, n_sources=None):
+    def set_nb_sources(*args, n_sources: int = None):
         """Set the number of sources of TensorflowModelServe. Can be either user-defined or deduced from the args.
 
         Args:
@@ -109,11 +110,11 @@ class OTBTFApp(App):
             if n_sources >= 1:
                 os.environ['OTB_TF_NSOURCES'] = str(n_sources)
 
-    def __init__(self, app_name, *args, n_sources=None, **kwargs):
+    def __init__(self, name: str, *args, n_sources: int = None, **kwargs):
         """Constructor for an OTBTFApp object.
 
         Args:
-            app_name: name of the OTBTF app
+            name: name of the OTBTF app
             *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
             n_sources: number of sources. Default is None (resolves the number of sources based on the
                        content of the dict passed in args, where some 'source' str is found)
@@ -121,7 +122,7 @@ class OTBTFApp(App):
 
         """
         self.set_nb_sources(*args, n_sources=n_sources)
-        super().__init__(app_name, *args, **kwargs)
+        super().__init__(name, *args, **kwargs)
 
 
 AVAILABLE_APPLICATIONS = get_available_applications(as_subprocess=True)

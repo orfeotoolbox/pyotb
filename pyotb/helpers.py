@@ -26,7 +26,7 @@ logger_handler.setLevel(getattr(logging, LOG_LEVEL))
 logger.addHandler(logger_handler)
 
 
-def set_logger_level(level):
+def set_logger_level(level: str):
     """Allow user to change the current logging level.
 
     Args:
@@ -36,7 +36,7 @@ def set_logger_level(level):
     logger_handler.setLevel(getattr(logging, level))
 
 
-def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
+def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = True):
     """Try to load OTB bindings or scan system, help user in case of failure, set env variables.
 
     Path precedence :                                OTB_ROOT > python bindings directory
@@ -98,7 +98,7 @@ def find_otb(prefix=OTB_ROOT, scan=True, scan_userdir=True):
         raise SystemExit("Failed to import OTB. Exiting.") from e
 
 
-def set_environment(prefix):
+def set_environment(prefix: str):
     """Set environment variables (before OTB import), raise error if anything is wrong.
 
     Args:
@@ -156,7 +156,7 @@ def set_environment(prefix):
     os.environ["PROJ_LIB"] = proj_lib
 
 
-def __find_lib(prefix=None, otb_module=None):
+def __find_lib(prefix: str = None, otb_module=None):
     """Try to find OTB external libraries directory.
 
     Args:
@@ -187,7 +187,7 @@ def __find_lib(prefix=None, otb_module=None):
     return None
 
 
-def __find_python_api(lib_dir):
+def __find_python_api(lib_dir: Path):
     """Try to find the python path.
 
     Args:
@@ -206,7 +206,7 @@ def __find_python_api(lib_dir):
     return None
 
 
-def __find_apps_path(lib_dir):
+def __find_apps_path(lib_dir: Path):
     """Try to find the OTB applications path.
 
     Args:
@@ -225,7 +225,7 @@ def __find_apps_path(lib_dir):
     return ""
 
 
-def __find_otb_root(scan_userdir=False):
+def __find_otb_root(scan_userdir: bool = False):
     """Search for OTB root directory in well known locations.
 
     Args:
@@ -271,7 +271,7 @@ def __find_otb_root(scan_userdir=False):
     return prefix
 
 
-def __suggest_fix_import(error_message, prefix):
+def __suggest_fix_import(error_message: str, prefix: str):
     """Help user to fix the OTB installation with appropriate log messages."""
     logger.critical("An error occurred while importing OTB Python API")
     logger.critical("OTB error message was '%s'", error_message)
