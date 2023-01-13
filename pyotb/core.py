@@ -97,7 +97,7 @@ class OTBObject:
 
     @property
     def metadata(self):
-        """Return first output image metadata dictionary"""
+        """Return first output image metadata dictionary."""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
         return dict(self.app.GetMetadataDictionary(self.key_output_image))
@@ -324,13 +324,13 @@ class OTBObject:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
     def get_infos(self):
-        """Return a dict output of ReadImageInfo for the first image output"""
+        """Return a dict output of ReadImageInfo for the first image output."""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
         return OTBObject("ReadImageInfo", self, quiet=True).data
 
     def get_statistics(self):
-        """Return a dict output of ComputeImagesStatistics for the first image output"""
+        """Return a dict output of ComputeImagesStatistics for the first image output."""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
         return OTBObject("ComputeImagesStatistics", self, quiet=True).data
