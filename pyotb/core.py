@@ -322,6 +322,16 @@ class OTBObject:
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
+    def get_infos(self):
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        return OTBObject("ReadImageInfo", self, quiet=True).data
+
+    def get_statistics(self):
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        return OTBObject("ComputeImagesStatistics", self, quiet=True).data
+
     def read_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
         """Get pixel value(s) at a given YX coordinates.
 
