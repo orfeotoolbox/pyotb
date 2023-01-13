@@ -68,6 +68,7 @@ class App(OTBObject):
         super().__init__(*args, **kwargs)
         self.description = self.app.GetDocLongDescription()
 
+    @property
     def elapsed_time(self):
         """Get elapsed time between app init and end of exec or file writing."""
         return self.time_end - self.time_start
