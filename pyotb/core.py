@@ -203,7 +203,7 @@ class OTBObject:
             # Convert output param path to Output object
             if key in self.out_param_types:
                 value = Output(self, key, value)
-            elif isinstance(key, str):
+            elif isinstance(value, str):
                 try:
                     value = literal_eval(value)
                 except (ValueError, SyntaxError):
