@@ -88,7 +88,8 @@ class OTBObject:
     @property
     def data(self):
         """Expose app's output data values in a dictionary."""
-        skip_keys = tuple(self.out_param_types) + tuple(self.parameters) + ("ram", "elev.default")
+        skip_keys = ("ram", "elev.default", "mapproj.utm.zone", "mapproj.utm.northhem")
+        skip_keys = skip_keys + tuple(self.out_param_types) + tuple(self.parameters)
         keys = (k for k in self.parameters_keys if k not in skip_keys)
 
         def _check(v):
