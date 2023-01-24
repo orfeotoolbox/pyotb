@@ -1267,7 +1267,7 @@ class Output(OTBObject):
 
         Args:
             pyotb_app: The pyotb App to store reference from
-            param_key: Output parameter key of the target app 
+            param_key: Output parameter key of the target app
             filepath: path of the output file (if not in memory)
             mkdir: create missing parent directories
 
