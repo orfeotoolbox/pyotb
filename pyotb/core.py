@@ -1261,13 +1261,13 @@ class Input(OTBObject):
 class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, pyotb_app: OTBObject, param_key: str,
-                 filepath: str = None, mkdir: bool = True):  # pylint: disable=super-init-not-called
+    def __init__(self, pyotb_app: OTBObject,  # pylint: disable=super-init-not-called
+                 param_key: str, filepath: str = None, mkdir: bool = True):
         """Constructor for an Output object.
 
         Args:
             pyotb_app: The pyotb App to store reference from
-            param_key: Output parameter key of the target app
+            param_key: Output parameter key of the target app 
             filepath: path of the output file (if not in memory)
             mkdir: create missing parent directories
 
