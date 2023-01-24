@@ -1261,7 +1261,8 @@ class Input(OTBObject):
 class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, pyotb_app: OTBObject, param_key: str, filepath: str = None, mkdir: bool = True):  # pylint: disable=super-init-not-called
+    def __init__(self, pyotb_app: OTBObject, param_key: str,
+                 filepath: str = None, mkdir: bool = True):  # pylint: disable=super-init-not-called
         """Constructor for an Output object.
 
         Args:
