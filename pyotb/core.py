@@ -556,11 +556,9 @@ class OTBObject:
             AttributeError: when `name` is not an attribute of self.app
 
         """
-        try:
-            res = getattr(self.app, name)
-            return res
-        except AttributeError as e:
-            raise AttributeError(f"{self.name}: could not find attribute `{name}`") from e
+        if name in dir(self.app):
+            return getattr(self.app, name)
+        raise AttributeError(f"{self.name}: could not find attribute `{name}`")
 
     def __getitem__(self, key):
         """Override the default __getitem__ behaviour.
@@ -1260,20 +1258,21 @@ class Input(OTBObject):
         return f"<pyotb.Input object from {self.path}>"
 
 
-class Output:
+class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, source_app: OTBObject, param_key: str, filepath: str = None, mkdir: bool = True):
+    def __init__(self, pyotb_app: OTBObject, param_key: str, filepath: str = None, mkdir: bool = True):  # pylint: disable=super-init-not-called
         """Constructor for an Output object.
 
         Args:
-            source_app: The pyotb App to store reference from
+            pyotb_app: The pyotb App to store reference from
             param_key: Output parameter key of the target app
             filepath: path of the output file (if not in memory)
             mkdir: create missing parent directories
 
         """
-        self.source_app = source_app
+        self.pyotb_app, self.app = pyotb_app, pyotb_app.app
+        self.parameters = pyotb_app.parameters
         self.param_key = param_key
         self.filepath = None
         if filepath:
@@ -1282,7 +1281,12 @@ class Output:
             self.filepath = Path(filepath)
             if mkdir:
                 self.make_parent_dirs()
-        self.name = f"Output {param_key} from {self.source_app.name}"
+        self.name = f"Output {param_key} from {self.pyotb_app.name}"
+
+    @property
+    def key_output_image(self):
+        """Overwrite OTBObject prop, in order to use Operation special methods with the right Output param_key."""
+        return self.param_key
 
     def exists(self) -> bool:
         """Check file exist."""
