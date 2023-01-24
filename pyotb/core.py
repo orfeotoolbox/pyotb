@@ -7,7 +7,7 @@ from ast import literal_eval
 from time import perf_counter
 
 import numpy as np
-import otbApplication as otb
+import otbApplication as otb  # pylint: disable=import-error
 
 from .helpers import logger
 

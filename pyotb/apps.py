@@ -3,9 +3,10 @@
 from __future__ import annotations
 import os
 import sys
+import subprocess
 from pathlib import Path
 
-import otbApplication as otb
+import otbApplication as otb  # pylint: disable=import-error
 from .core import OTBObject
 from .helpers import logger
 
@@ -34,7 +35,6 @@ def get_available_applications(as_subprocess: bool = False) -> list[str]:
         pycmd = "import otbApplication; print(otbApplication.Registry.GetAvailableApplications())"
         cmd_args = [sys.executable, "-c", pycmd]
         try:
-            import subprocess  # pylint: disable=import-outside-toplevel
             params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
             with subprocess.Popen(cmd_args, **params) as p:
                 logger.debug('Exec "%s \'%s\'"', ' '.join(cmd_args[:-1]), pycmd)

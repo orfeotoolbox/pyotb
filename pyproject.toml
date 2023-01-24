@@ -26,7 +26,7 @@ classifiers=[
 ]
 
 [project.optional-dependencies]
-dev = ["pytest",  "pylint", "codespell", "pydocstyle", "tomli"]
+dev = ["pytest", "pylint", "codespell", "pydocstyle", "tomli"]
 
 [project.urls]
 documentation = "https://pyotb.readthedocs.io"
@@ -43,20 +43,14 @@ version = {attr = "pyotb.__version__"}
 max-line-length = 120
 disable = [
     "fixme",
-    "import-error",
-    "import-outside-toplevel",
-    "wrong-import-position",
-    "wrong-import-order",
     "invalid-name",
-    "too-many-nested-blocks",
-    "too-many-locals",
-    "too-many-statements",
-    "too-many-instance-attributes",
-    "too-many-arguments",
-    "too-many-return-statements",
-    "too-many-public-methods",
     "too-many-lines",
+    "too-many-locals",
     "too-many-branches",
+    "too-many-statements",
+    "too-many-public-methods",
+    "too-many-instance-attributes",
+    "wrong-import-position",
 ]
 
 [tool.pydocstyle]
