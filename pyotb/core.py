@@ -14,20 +14,18 @@ from .helpers import logger
 
 
 class OTBObject:
-    """
-    Base class for all pyotb objects
-    """
+    """Base class for all pyotb objects."""
 
     def __init__(self, name: str, app: otb.Application, image_dic: dict = None):
         """Constructor for an OTBObject.
 
+        Args:
             name: name of the object (e.g. "Slicer")
             app: OTB application instance
             image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
                        the result of self.app.ExportImage(). Use it when the app takes a numpy array as input.
                        See this related issue for why it is necessary to keep reference of object:
                        https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
-
 
         """
         self.name = name
