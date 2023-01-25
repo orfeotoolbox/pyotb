@@ -94,7 +94,7 @@ class OTBObject:
 
         """
         if not self.key_output_image:
-            raise TypeError(f"{self.name}: this application has no raster output")
+            raise TypeError(f"\"{self.name}\" has no raster output")
         width, height = self.app.GetImageSize(self.key_output_image)
         bands = self.app.GetImageNbBands(self.key_output_image)
         return height, width, bands
@@ -189,7 +189,7 @@ class OTBObject:
                 params[k] = p.summarize()
             elif isinstance(p, list):  # parameter list
                 params[k] = [pi.summarize() if isinstance(pi, OTBObject) else pi for pi in p]
-        return {"name": self.name, "parameters": params}
+        return {"name": self.app.GetName(), "parameters": params}
 
     def export(self, key: str = None, preserve_dtype: bool = True) -> dict[str, dict[str, np.ndarray]]:
         """Export a specific output image as numpy array and store it in object exports_dic.
@@ -619,13 +619,13 @@ class OTBObject:
             result_dic = image_dic
             result_dic["array"] = result_array
             # Importing back to OTB, pass the result_dic just to keep reference
-            app = App("ExtractROI", image_dic=result_dic, frozen=True, quiet=True)
+            pyotb_app = App("ExtractROI", image_dic=result_dic, frozen=True, quiet=True)
             if result_array.shape[2] == 1:
-                app.ImportImage("in", result_dic)
+                pyotb_app.app.ImportImage("in", result_dic)
             else:
-                app.ImportVectorImage("in", result_dic)
-            app.execute()
-            return app
+                pyotb_app.app.ImportVectorImage("in", result_dic)
+            pyotb_app.execute()
+            return pyotb_app
         return NotImplemented
 
 
