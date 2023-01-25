@@ -1389,7 +1389,7 @@ def get_pixel_type(inp: str | OTBObject) -> str:
     """
     if isinstance(inp, str):
         try:
-            info = OTBObject("ReadImageInfo", inp, quiet=True)
+            info = App("ReadImageInfo", inp, quiet=True)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath") from info_err
         datatype = info.GetParameterString("datatype")  # which is such as short, float...
