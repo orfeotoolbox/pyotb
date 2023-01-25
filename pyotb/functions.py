@@ -355,9 +355,9 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
     metadatas = {}
     for inp in inputs:
         if isinstance(inp, str):  # this is for filepaths
-            metadata = Input(inp).GetImageMetaData('out')
+            metadata = Input(inp).app.GetImageMetaData('out')
         elif isinstance(inp, OTBObject):
-            metadata = inp.GetImageMetaData(inp.output_param)
+            metadata = inp.app.GetImageMetaData(inp.output_param)
         else:
             raise TypeError(f"Wrong input : {inp}")
         metadatas[inp] = metadata
@@ -429,7 +429,7 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
         inputs = new_inputs
 
         # Update metadatas
-        metadatas = {input: input.GetImageMetaData('out') for input in inputs}
+        metadatas = {input: input.app.GetImageMetaData('out') for input in inputs}
 
     # Get a metadata of an arbitrary image. This is just to compare later with other images
     any_metadata = next(iter(metadatas.values()))
@@ -464,7 +464,7 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
         inputs = new_inputs
 
         # Update metadatas
-        metadatas = {inp: inp.GetImageMetaData('out') for inp in inputs}
+        metadatas = {inp: inp.app.GetImageMetaData('out') for inp in inputs}
 
     # Final superimposition to be sure to have the exact same image sizes
     # Getting the sizes of images

@@ -178,22 +178,6 @@ class OTBObject:
             return list(range(0, nb_channels, step))
         raise ValueError(f"{self.name}: '{bands}' cannot be interpreted as valid slicing.")
 
-    def summarize(self) -> dict:
-        """Serialize an object and its pipeline into a dictionary.
-
-        Returns:
-            nested dictionary summarizing the pipeline
-
-        """
-        params = self.parameters
-        for k, p in params.items():
-            # In the following, we replace each parameter which is an OTBObject, with its summary.
-            if isinstance(p, OTBObject):  # single parameter
-                params[k] = p.summarize()
-            elif isinstance(p, list):  # parameter list
-                params[k] = [pi.summarize() if isinstance(pi, OTBObject) else pi for pi in p]
-        return {"name": self.app.GetName(), "parameters": params}
-
     def export(self, key: str = None, preserve_dtype: bool = True) -> dict[str, dict[str, np.ndarray]]:
         """Export a specific output image as numpy array and store it in object exports_dic.
 
@@ -1330,7 +1314,7 @@ class Output(OTBObject):
 
     def __str__(self) -> str:
         """Return a nice string representation with source app name and object id."""
-        return f"<pyotb.Output {self.source_app.name} object, id {id(self)}>"
+        return f"<pyotb.Output {self.name} object, id {id(self)}>"
 
 
 def get_nbchannels(inp: str | OTBObject) -> int:
