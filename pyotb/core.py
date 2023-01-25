@@ -958,8 +958,7 @@ class Slicer(App):
             channels: channels, can be slicing, list or int
 
         """
-        super().__init__(otb_app_name="ExtractROI", args={"in": obj, "mode": "extent"}, quiet=True, frozen=True,
-                         name="Slicer")
+        super().__init__("ExtractROI", {"in": obj, "mode": "extent"}, quiet=True, frozen=True, name="Slicer")
         self.rows, self.cols = rows, cols
         parameters = {}
 
@@ -1066,7 +1065,7 @@ class Operation(App):
         self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         # Execute app
-        super().__init__(otb_app_name="BandMath" if len(self.exp_bands) == 1 else "BandMathX", il=self.unique_inputs,
+        super().__init__("BandMath" if len(self.exp_bands) == 1 else "BandMathX", il=self.unique_inputs,
                          exp=self.exp, quiet=True, name=name or f'Operation exp="{self.exp}"')
 
     def create_fake_exp(self, operator: str, inputs: list[OTBObject | str | int | float],
@@ -1298,7 +1297,7 @@ class Input(App):
 
         """
         self.path = path
-        super().__init__(otb_app_name="ExtractROI", args={"in": path}, frozen=True, name=f"Input from {path}")
+        super().__init__("ExtractROI", {"in": path}, frozen=True, name=f"Input from {path}")
         self.propagate_dtype()
         self.execute()
 
