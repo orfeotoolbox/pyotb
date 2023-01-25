@@ -14,12 +14,17 @@ from .helpers import logger
 
 
 class OTBObject:
+    """
+    Base class for all pyotb objects
+    """
+
     def __init__(self, name: str, app: otb.Application, image_dic: dict = None):
-        """
-            name:
-            app:
+        """Constructor for an OTBObject.
+
+            name: name of the object (e.g. "Slicer")
+            app: OTB application instance
             image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
-                       the result of app.ExportImage(). Use it when the app takes a numpy array as input.
+                       the result of self.app.ExportImage(). Use it when the app takes a numpy array as input.
                        See this related issue for why it is necessary to keep reference of object:
                        https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
 
@@ -272,32 +277,6 @@ class OTBObject:
 
         """
         return id(self)
-
-    # TODO: Remove completely this code? I think this is (1) dangerous, because it
-    #       can break things in otb.Application, just by setting some mutable attribute,
-    #       (2) harder to debug. And (3) I feel that this is the wrong design. The good
-    #       design would be to inherit from otb.Application.
-    #
-    # def __getattr__(self, name):
-    #     """This method is called when the default attribute access fails.
-    #
-    #     We choose to access the attribute `name` of self.app.
-    #     Thus, any method of otbApplication can be used transparently on OTBObject objects,
-    #     e.g. SetParameterOutputImagePixelType() or ExportImage() work
-    #
-    #     Args:
-    #         name: attribute name
-    #
-    #     Returns:
-    #         attribute
-    #
-    #     Raises:
-    #         AttributeError: when `name` is not an attribute of self.app
-    #
-    #     """
-    #     if name in dir(self.app):
-    #         return getattr(self.app, name)
-    #     raise AttributeError(f"{self.name}: could not find attribute `{name}`")
 
     def __getitem__(self, key):
         """Override the default __getitem__ behaviour.
@@ -654,7 +633,6 @@ class App(OTBObject):
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
-
         self.frozen = frozen
         self.quiet = quiet
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
