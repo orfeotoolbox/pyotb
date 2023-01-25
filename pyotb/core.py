@@ -36,7 +36,6 @@ class OTBObject:
                                          otb.ParameterType_OutputVectorData,
                                          otb.ParameterType_OutputFilename)}
 
-        self.transform = None  # TODO: value?
         self.exports_dic = {}
 
     def get_first_key(self, param_types: list[str]) -> str:
