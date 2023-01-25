@@ -118,13 +118,13 @@ class OTBObject:
         """Return a dict output of ReadImageInfo for the first image output."""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
-        return OTBObject("ReadImageInfo", self, quiet=True).data
+        return App("ReadImageInfo", self, quiet=True).data
 
     def get_statistics(self):
         """Return a dict output of ComputeImagesStatistics for the first image output."""
         if not self.key_output_image:
             raise TypeError(f"{self.name}: this application has no raster output")
-        return OTBObject("ComputeImagesStatistics", self, quiet=True).data
+        return App("ComputeImagesStatistics", self, quiet=True).data
 
     def read_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
         """Get pixel value(s) at a given YX coordinates.
@@ -139,7 +139,7 @@ class OTBObject:
 
         """
         channels = []
-        app = OTBObject("PixelValue", self, coordx=col, coordy=row, frozen=True, quiet=True)
+        app = App("PixelValue", self, coordx=col, coordy=row, frozen=True, quiet=True)
         if bands is not None:
             if isinstance(bands, int):
                 if bands < 0:
@@ -619,7 +619,7 @@ class OTBObject:
             result_dic = image_dic
             result_dic["array"] = result_array
             # Importing back to OTB, pass the result_dic just to keep reference
-            app = OTBObject("ExtractROI", image_dic=result_dic, frozen=True, quiet=True)
+            app = App("ExtractROI", image_dic=result_dic, frozen=True, quiet=True)
             if result_array.shape[2] == 1:
                 app.ImportImage("in", result_dic)
             else:
@@ -1245,7 +1245,7 @@ class LogicalOperation(Operation):
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
-        super().__init__(operator=operator, inputs=inputs, nb_bands=nb_bands, name="LogicalOperation")
+        super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
     def create_fake_exp(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
@@ -1315,7 +1315,7 @@ class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
     def __init__(self, pyotb_app: OTBObject,  # pylint: disable=super-init-not-called
-                 param_key: str, filepath: str = None, mkdir: bool = True):
+                 param_key: str = None, filepath: str = None, mkdir: bool = True):
         """Constructor for an Output object.
 
         Args:
@@ -1327,6 +1327,7 @@ class Output(OTBObject):
         """
         super().__init__(name=f"Output {param_key} from {pyotb_app.name}", app=pyotb_app.app)
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
+        self.param_key = param_key or super().key_output_image
         self.filepath = None
         if filepath:
             if '?' in filepath:
@@ -1342,10 +1343,12 @@ class Output(OTBObject):
 
     def exists(self) -> bool:
         """Check file exist."""
+        assert self.filepath, "Filepath not set"
         return self.filepath.exists()
 
     def make_parent_dirs(self):
         """Create missing parent directories."""
+        assert self.filepath, "Filepath not set"
         if not self.filepath.parent.exists():
             self.filepath.parent.mkdir(parents=True)
 
@@ -1369,7 +1372,7 @@ def get_nbchannels(inp: str | OTBObject) -> int:
     else:
         # Executing the app, without printing its log
         try:
-            info = OTBObject("ReadImageInfo", inp, quiet=True)
+            info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
@@ -1392,7 +1395,7 @@ def get_pixel_type(inp: str | OTBObject) -> str:
             info = App("ReadImageInfo", inp, quiet=True)
         except Exception as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath") from info_err
-        datatype = info.GetParameterString("datatype")  # which is such as short, float...
+        datatype = info.app.GetParameterString("datatype")  # which is such as short, float...
         if not datatype:
             raise TypeError(f"Unable to read pixel type of image {inp}")
         datatype_to_pixeltype = {
