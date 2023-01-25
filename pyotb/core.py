@@ -915,7 +915,7 @@ class App(OTBObject):
                 params[k] = p.summarize()
             elif isinstance(p, list):  # parameter list
                 params[k] = [pi.summarize() if isinstance(pi, App) else pi for pi in p]
-        return {"name": self.name, "parameters": params}
+        return {"name": self.app.GetName(), "parameters": params}
 
     def __str__(self):
         """Return a nice string representation with object id."""
