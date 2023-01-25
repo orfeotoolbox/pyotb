@@ -654,6 +654,7 @@ class App(OTBObject):
         self.quiet = quiet
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         super().__init__(name=f"OTB Application {otb_app_name}", app=create(otb_app_name), image_dic=image_dic)
+        self.description = self.app.GetDocLongDescription()
 
         # Set parameters
         self.parameters = {}
@@ -666,6 +667,31 @@ class App(OTBObject):
 
         # Elapsed time
         self.time_start, self.time_end = 0, 0
+
+    @property
+    def elapsed_time(self):
+        """Get elapsed time between app init and end of exec or file writing."""
+        return self.time_end - self.time_start
+
+    @property
+    def used_outputs(self) -> list[str]:
+        """List of used application outputs."""
+        return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
+
+    def find_outputs(self) -> tuple[str]:
+        """Find output files on disk using path found in parameters.
+
+        Returns:
+            list of files found on disk
+
+        """
+        files, missing = [], []
+        for out in self.used_outputs:
+            dest = files if out.exists() else missing
+            dest.append(str(out.filepath.absolute()))
+        for filename in missing:
+            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
+        return tuple(files)
 
     @property
     def data(self):

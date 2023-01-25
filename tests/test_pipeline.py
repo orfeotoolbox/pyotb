@@ -1,9 +1,7 @@
-import sys
 import os
 import itertools
 import pytest
 import pyotb
-from pyotb.helpers import logger
 
 
 # List of buildings blocks, we can add other pyotb objects here

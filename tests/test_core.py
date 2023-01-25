@@ -1,13 +1,8 @@
-import os
-import pyotb
-from ast import literal_eval
-from pathlib import Path
-
 import pytest
 
+import pyotb
+from tests_data import INPUT
 
-FILEPATH = os.environ["TEST_INPUT_IMAGE"]
-INPUT = pyotb.Input(FILEPATH)
 TEST_IMAGE_STATS = {
     'out.mean': [79.5505, 109.225, 115.456, 249.349],
     'out.min': [33, 64, 91, 47],
@@ -59,8 +54,10 @@ def test_nonraster_property():
     with pytest.raises(TypeError):
         pyotb.ReadImageInfo(INPUT).dtype
 
+
 def test_elapsed_time():
     assert pyotb.ReadImageInfo(INPUT).elapsed_time < 1
+
 
 # Other functions
 def test_get_infos():
