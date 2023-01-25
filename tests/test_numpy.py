@@ -1,10 +1,6 @@
 import numpy as np
 import pyotb
 from tests_data import INPUT
-import numpy as np
-
-import pyotb
-from tests_data import INPUT
 
 
 def test_export():
@@ -43,7 +39,7 @@ def test_pixel_coords_otb_equals_numpy():
 def test_add_noise_array():
     white_noise = np.random.normal(0, 50, size=INPUT.shape)
     noisy_image = INPUT + white_noise
-    assert isinstance(noisy_image, pyotb.core.OTBObject)
+    assert isinstance(noisy_image, pyotb.core.App)
     assert noisy_image.shape == INPUT.shape
 
 

@@ -9,11 +9,11 @@ import textwrap
 import subprocess
 from collections import Counter
 
-from .core import OTBObject, App, Operation, LogicalOperation, Input, get_nbchannels
+from .core import App, Operation, LogicalOperation, Input, get_nbchannels
 from .helpers import logger
 
 
-def where(cond: OTBObject | str, x: OTBObject | str | int | float, y: OTBObject | str | int | float) -> Operation:
+def where(cond: App | str, x: App | str | int | float, y: App | str | int | float) -> Operation:
     """Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y.
 
     Args:
@@ -63,7 +63,7 @@ def where(cond: OTBObject | str, x: OTBObject | str | int | float, y: OTBObject 
     return operation
 
 
-def clip(a: OTBObject | str, a_min: OTBObject | str | int | float, a_max: OTBObject | str | int | float):
+def clip(a: App | str, a_min: App | str | int | float, a_max: App | str | int | float):
     """Clip values of image in a range of values.
 
     Args:
@@ -324,7 +324,7 @@ def run_tf_function(func):
 
 def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_rule: str = 'minimal',
                            interpolator: str = 'nn', reference_window_input: dict = None,
-                           reference_pixel_size_input: str = None) -> list[OTBObject]:
+                           reference_pixel_size_input: str = None) -> list[App]:
     """Given several inputs, this function handles the potential resampling and cropping to same extent.
 
     WARNING: Not fully implemented / tested
@@ -354,7 +354,7 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
     for inp in inputs:
         if isinstance(inp, str):  # this is for filepaths
             metadata = Input(inp).app.GetImageMetaData('out')
-        elif isinstance(inp, OTBObject):
+        elif isinstance(inp, App):
             metadata = inp.app.GetImageMetaData(inp.output_param)
         else:
             raise TypeError(f"Wrong input : {inp}")
