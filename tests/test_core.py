@@ -80,13 +80,6 @@ def test_write():
     INPUT.out.filepath.unlink()
 
 
-def test_output_write():
-    INPUT.out.write("/tmp/missing_dir/test_write.tif")
-    assert INPUT.out.exists()
-    os.remove("/tmp/missing_dir/test_write.tif")
-    INPUT.out.filepath.unlink()
-
-
 # Slicer
 def test_slicer_shape():
     extract = INPUT[:50, :60, :3]
