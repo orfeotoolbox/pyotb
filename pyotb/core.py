@@ -4,9 +4,10 @@ from __future__ import annotations
 from typing import Any
 from pathlib import Path
 from ast import literal_eval
+from time import perf_counter
 
 import numpy as np
-import otbApplication as otb
+import otbApplication as otb  # pylint: disable=import-error
 
 from .helpers import logger
 
@@ -44,7 +45,7 @@ class OTBObject:
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
-        # Output parameters types
+        self.time_start, self.time_end = 0, 0
         self.all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         self.out_param_types = {k: v for k, v in self.all_param_types.items()
                                 if v in (otb.ParameterType_OutputImage,
@@ -83,6 +84,24 @@ class OTBObject:
     def key_output_image(self) -> str:
         """Get the name of first output image parameter."""
         return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
+
+    @property
+    def data(self):
+        """Expose app's output data values in a dictionary."""
+        skip_keys = ("ram", "elev.default", "mapproj.utm.zone", "mapproj.utm.northhem")
+        skip_keys = skip_keys + tuple(self.out_param_types) + tuple(self.parameters)
+        keys = (k for k in self.parameters_keys if k not in skip_keys)
+
+        def _check(v):
+            return not isinstance(v, otb.ApplicationProxy) and v not in ("", None, [], ())
+        return {str(k): self[k] for k in keys if _check(self[k])}
+
+    @property
+    def metadata(self):
+        """Return first output image metadata dictionary."""
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        return dict(self.app.GetMetadataDictionary(self.key_output_image))
 
     @property
     def dtype(self) -> np.dtype:
@@ -185,17 +204,24 @@ class OTBObject:
             # Convert output param path to Output object
             if key in self.out_param_types:
                 value = Output(self, key, value)
+            elif isinstance(value, str):
+                try:
+                    value = literal_eval(value)
+                except (ValueError, SyntaxError):
+                    pass
             # Save attribute
             setattr(self, key, value)
 
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
+        self.time_start = perf_counter()
         try:
             self.app.Execute()
         except (RuntimeError, FileNotFoundError) as e:
             raise Exception(f"{self.name}: error during during app execution") from e
         self.frozen = False
+        self.time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
         self.save_objects()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
 
@@ -207,6 +233,7 @@ class OTBObject:
         except RuntimeError:
             logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
             self.app.ExecuteAndWriteOutput()
+        self.time_end = perf_counter()
 
     def write(self, *args, filename_extension: str = "", pixel_type: dict[str, str] | str = None,
               preserve_dtype: bool = False, **kwargs):
@@ -296,6 +323,18 @@ class OTBObject:
             keys = [k for k, v in self.out_param_types.items() if v == otb.ParameterType_OutputImage]
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
+
+    def get_infos(self):
+        """Return a dict output of ReadImageInfo for the first image output."""
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        return OTBObject("ReadImageInfo", self, quiet=True).data
+
+    def get_statistics(self):
+        """Return a dict output of ComputeImagesStatistics for the first image output."""
+        if not self.key_output_image:
+            raise TypeError(f"{self.name}: this application has no raster output")
+        return OTBObject("ComputeImagesStatistics", self, quiet=True).data
 
     def read_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
         """Get pixel value(s) at a given YX coordinates.
@@ -517,11 +556,9 @@ class OTBObject:
             AttributeError: when `name` is not an attribute of self.app
 
         """
-        try:
-            res = getattr(self.app, name)
-            return res
-        except AttributeError as e:
-            raise AttributeError(f"{self.name}: could not find attribute `{name}`") from e
+        if name in dir(self.app):
+            return getattr(self.app, name)
+        raise AttributeError(f"{self.name}: could not find attribute `{name}`")
 
     def __getitem__(self, key):
         """Override the default __getitem__ behaviour.
@@ -1221,20 +1258,22 @@ class Input(OTBObject):
         return f"<pyotb.Input object from {self.path}>"
 
 
-class Output:
+class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, source_app: OTBObject, param_key: str, filepath: str = None, mkdir: bool = True):
+    def __init__(self, pyotb_app: OTBObject,  # pylint: disable=super-init-not-called
+                 param_key: str, filepath: str = None, mkdir: bool = True):
         """Constructor for an Output object.
 
         Args:
-            source_app: The pyotb App to store reference from
+            pyotb_app: The pyotb App to store reference from
             param_key: Output parameter key of the target app
             filepath: path of the output file (if not in memory)
             mkdir: create missing parent directories
 
         """
-        self.source_app = source_app
+        self.pyotb_app, self.app = pyotb_app, pyotb_app.app
+        self.parameters = pyotb_app.parameters
         self.param_key = param_key
         self.filepath = None
         if filepath:
@@ -1243,7 +1282,12 @@ class Output:
             self.filepath = Path(filepath)
             if mkdir:
                 self.make_parent_dirs()
-        self.name = f"Output {param_key} from {self.source_app.name}"
+        self.name = f"Output {param_key} from {self.pyotb_app.name}"
+
+    @property
+    def key_output_image(self):
+        """Overwrite OTBObject prop, in order to use Operation special methods with the right Output param_key."""
+        return self.param_key
 
     def exists(self) -> bool:
         """Check file exist."""

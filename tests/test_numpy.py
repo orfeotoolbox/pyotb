@@ -36,6 +36,10 @@ def test_convert_to_array():
     assert INPUT.shape == array.shape
 
 
+def test_pixel_coords_otb_equals_numpy():
+    assert INPUT[19,7] == list(INPUT.to_numpy()[19,7])
+
+
 def test_add_noise_array():
     white_noise = np.random.normal(0, 50, size=INPUT.shape)
     noisy_image = INPUT + white_noise

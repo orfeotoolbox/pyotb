@@ -294,16 +294,12 @@ def __suggest_fix_import(error_message: str, prefix: str):
                     logger.critical("You may need to install cmake in order to recompile python bindings")
             else:
                 logger.critical("Unable to automatically locate python dynamic library of %s", sys.executable)
-            return
     elif sys.platform == "win32":
         if error_message.startswith("DLL load failed"):
             if sys.version_info.minor != 7:
                 logger.critical("You need Python 3.5 (OTB releases 6.4 to 7.4) or Python 3.7 (since OTB 8)")
-                issue_link = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/2010"
-                logger.critical("Another workaround is to recompile Python bindings with cmake, see %s", issue_link)
             else:
                 logger.critical("It seems that your env variables aren't properly set,"
                                 " first use 'call otbenv.bat' then try to import pyotb once again")
-            return
     docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
     logger.critical("You can verify installation requirements for your OS at %s", docs_link)

@@ -3,9 +3,10 @@
 from __future__ import annotations
 import os
 import sys
+import subprocess
 from pathlib import Path
 
-import otbApplication as otb
+import otbApplication as otb  # pylint: disable=import-error
 from .core import OTBObject
 from .helpers import logger
 
@@ -29,12 +30,11 @@ def get_available_applications(as_subprocess: bool = False) -> list[str]:
         env = os.environ.copy()
         if "PYTHONPATH" not in env:
             env["PYTHONPATH"] = ""
-        env["PYTHONPATH"] = ":" + str(Path(otb.__file__).parent)
+        env["PYTHONPATH"] += ":" + str(Path(otb.__file__).parent)
         env["OTB_LOGGER_LEVEL"] = "CRITICAL"  # in order to suppress warnings while listing applications
         pycmd = "import otbApplication; print(otbApplication.Registry.GetAvailableApplications())"
         cmd_args = [sys.executable, "-c", pycmd]
         try:
-            import subprocess  # pylint: disable=import-outside-toplevel
             params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
             with subprocess.Popen(cmd_args, **params) as p:
                 logger.debug('Exec "%s \'%s\'"', ' '.join(cmd_args[:-1]), pycmd)
@@ -49,7 +49,7 @@ def get_available_applications(as_subprocess: bool = False) -> list[str]:
         except (ValueError, SyntaxError, AssertionError):
             logger.debug("Failed to decode output or convert to tuple:\nstdout=%s\nstderr=%s", stdout, stderr)
         if not app_list:
-            logger.info("Failed to list applications in an independent process. Falling back to local python import")
+            logger.debug("Failed to list applications in an independent process. Falling back to local python import")
     # Find applications using the normal way
     if not app_list:
         app_list = otb.Registry.GetAvailableApplications()
@@ -67,6 +67,11 @@ class App(OTBObject):
         """Default App constructor, adds UI specific attributes and functions."""
         super().__init__(*args, **kwargs)
         self.description = self.app.GetDocLongDescription()
+
+    @property
+    def elapsed_time(self):
+        """Get elapsed time between app init and end of exec or file writing."""
+        return self.time_end - self.time_start
 
     @property
     def used_outputs(self) -> list[str]:

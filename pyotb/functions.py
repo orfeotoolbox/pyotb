@@ -4,8 +4,9 @@ from __future__ import annotations
 import inspect
 import os
 import sys
-import textwrap
 import uuid
+import textwrap
+import subprocess
 from collections import Counter
 
 from .core import OTBObject, Input, Operation, LogicalOperation, get_nbchannels, Output
@@ -217,7 +218,7 @@ def run_tf_function(func):
 
     """
     try:
-        from .apps import TensorflowModelServe
+        from .apps import TensorflowModelServe  # pylint: disable=import-outside-toplevel
     except ImportError:
         logger.error('Could not run Tensorflow function: failed to import TensorflowModelServe.'
                      'Check that you have OTBTF configured (https://github.com/remicres/otbtf#how-to-install)')
@@ -303,7 +304,6 @@ def run_tf_function(func):
         pycmd = get_tf_pycmd(out_savedmodel, channels, scalar_inputs)
         cmd_args = [sys.executable, "-c", pycmd]
         try:
-            import subprocess
             subprocess.run(cmd_args, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         except subprocess.SubprocessError:
             logger.debug("Failed to call subprocess")
