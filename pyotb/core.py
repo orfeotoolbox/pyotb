@@ -629,7 +629,7 @@ class App(OTBObject):
     """Base class that gathers common operations for any OTB application."""
 
     def __init__(self, otb_app_name: str, *args, frozen: bool = False, quiet: bool = False, image_dic: dict = None,
-                 **kwargs):
+                 name: str = None, **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
@@ -645,6 +645,7 @@ class App(OTBObject):
                        the result of app.ExportImage(). Use it when the app takes a numpy array as input.
                        See this related issue for why it is necessary to keep reference of object:
                        https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
+            name: override the application name
             **kwargs: used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
@@ -653,7 +654,7 @@ class App(OTBObject):
         self.frozen = frozen
         self.quiet = quiet
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
-        super().__init__(name=f"OTB Application {otb_app_name}", app=create(otb_app_name), image_dic=image_dic)
+        super().__init__(name=name or f"OTB Application {otb_app_name}", app=create(otb_app_name), image_dic=image_dic)
         self.description = self.app.GetDocLongDescription()
 
         # Set parameters
@@ -958,8 +959,8 @@ class Slicer(App):
             channels: channels, can be slicing, list or int
 
         """
-        super().__init__("ExtractROI", {"in": obj, "mode": "extent"}, quiet=True, frozen=True)
-        self.name = "Slicer"
+        super().__init__(otb_app_name="ExtractROI", args={"in": obj, "mode": "extent"}, quiet=True, frozen=True,
+                         name="Slicer")
         self.rows, self.cols = rows, cols
         parameters = {}
 
@@ -1029,7 +1030,7 @@ class Operation(App):
 
     """
 
-    def __init__(self, operator: str, *inputs, nb_bands: int = None):
+    def __init__(self, operator: str, *inputs, nb_bands: int = None, name: str = None):
         """Given some inputs and an operator, this function enables to transform this into an OTB application.
 
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
@@ -1039,6 +1040,7 @@ class Operation(App):
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
             *inputs: inputs. Can be OTBObject, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
+            name: override the Operation name
 
         """
         self.operator = operator
@@ -1065,9 +1067,8 @@ class Operation(App):
         self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         # Execute app
-        name = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
-        super().__init__(name, il=self.unique_inputs, exp=self.exp, quiet=True)
-        self.name = f'Operation exp="{self.exp}"'
+        super().__init__(otb_app_name="BandMath" if len(self.exp_bands) == 1 else "BandMathX", il=self.unique_inputs,
+                         exp=self.exp, quiet=True, name=name or f'Operation exp="{self.exp}"')
 
     def create_fake_exp(self, operator: str, inputs: list[OTBObject | str | int | float],
                         nb_bands: int = None):
@@ -1241,14 +1242,13 @@ class LogicalOperation(Operation):
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
-        super().__init__(operator, *inputs, nb_bands=nb_bands)
+        super().__init__(operator=operator, inputs=inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def create_fake_exp(self, operator: str, inputs: list[OTBObject | str | int | float],
-                        nb_bands: int = None):
+    def create_fake_exp(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
         """Create a 'fake' expression.
 
-        E.g for the operation input1 > input2, we create a fake expression that is like
+        e.g for the operation input1 > input2, we create a fake expression that is like
         "str(input1) > str(input2) ? 1 : 0" and a logical fake expression that is like "str(input1) > str(input2)"
 
         Args:
@@ -1299,8 +1299,7 @@ class Input(App):
 
         """
         self.path = path
-        super().__init__("ExtractROI", {"in": path}, frozen=True)
-        self.name = f"Input from {path}"
+        super().__init__(otb_app_name="ExtractROI", args={"in": path}, frozen=True, name=f"Input from {path}")
         self.propagate_dtype()
         self.execute()
 
@@ -1323,7 +1322,8 @@ class Output(OTBObject):
             mkdir: create missing parent directories
 
         """
-        super().__init__(name=f"Output {param_key} from {self.pyotb_app.name}", app=pyotb_app)
+        super().__init__(name=f"Output {param_key} from {self.pyotb_app.name}", app=pyotb_app.app)
+        self.parent_pyotb_app = pyotb_app  # keep trace of parent app
         self.filepath = None
         if filepath:
             if '?' in filepath:
