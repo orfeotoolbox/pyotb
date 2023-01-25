@@ -1199,7 +1199,6 @@ class Operation(App):
                 params[k] = [pi.summarize() if isinstance(pi, App) else pi for pi in p]
         return {"name": self.name, "parameters": params}
 
-
     def __str__(self) -> str:
         """Return a nice string representation with operator and object id."""
         return f"<pyotb.Operation `{self.operator}` object, id {id(self)}>"
