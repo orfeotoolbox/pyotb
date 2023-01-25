@@ -1333,7 +1333,7 @@ def get_nbchannels(inp: str | OTBObject) -> int:
         # Executing the app, without printing its log
         try:
             info = App("ReadImageInfo", inp, quiet=True)
-            nb_channels = info.GetParameterInt("numberbands")
+            nb_channels = info.app.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
     return nb_channels
