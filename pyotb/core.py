@@ -1183,6 +1183,23 @@ class Operation(App):
             fake_exp = f"{x}b{band}"
         return fake_exp, inputs, nb_channels
 
+    def summarize(self) -> dict:
+        """Serialize an object and its pipeline into a dictionary.
+
+        Returns:
+            nested dictionary summarizing the pipeline
+
+        """
+        params = self.parameters
+        for k, p in params.items():
+            # In the following, we replace each parameter which is an OTBObject, with its summary.
+            if isinstance(p, App):  # single parameter
+                params[k] = p.summarize()
+            elif isinstance(p, list):  # parameter list
+                params[k] = [pi.summarize() if isinstance(pi, App) else pi for pi in p]
+        return {"name": self.name, "parameters": params}
+
+
     def __str__(self) -> str:
         """Return a nice string representation with operator and object id."""
         return f"<pyotb.Operation `{self.operator}` object, id {id(self)}>"
