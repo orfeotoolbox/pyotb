@@ -902,7 +902,6 @@ class App(RasterInterface):
 
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
-    name = "Slicer"
 
     def __init__(self, obj: App | str, rows: int, cols: int, channels: int):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
@@ -919,6 +918,7 @@ class Slicer(App):
 
         """
         super().__init__("ExtractROI", obj, mode="extent", quiet=True, frozen=True)
+        self.name = "Slicer"
         self.rows, self.cols = rows, cols
         parameters = {}
 
@@ -1024,10 +1024,10 @@ class Operation(App):
         # Getting unique image inputs, in the order im1, im2, im3 ...
         self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
-        self.name = f'Operation exp="{self.exp}"'
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         # Execute app
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
+        self.name = f'Operation exp="{self.exp}"'
 
     def create_fake_exp(self, operator: str, inputs: list[App | str | int | float],
                         nb_bands: int = None):
