@@ -273,26 +273,31 @@ class OTBObject:
         """
         return id(self)
 
-    def __getattr__(self, name):
-        """This method is called when the default attribute access fails.
-
-        We choose to access the attribute `name` of self.app.
-        Thus, any method of otbApplication can be used transparently on OTBObject objects,
-        e.g. SetParameterOutputImagePixelType() or ExportImage() work
-
-        Args:
-            name: attribute name
-
-        Returns:
-            attribute
-
-        Raises:
-            AttributeError: when `name` is not an attribute of self.app
-
-        """
-        if name in dir(self.app):
-            return getattr(self.app, name)
-        raise AttributeError(f"{self.name}: could not find attribute `{name}`")
+    # TODO: Remove completely this code? I think this is (1) dangerous, because it
+    #       can break things in otb.Application, just by setting some mutable attribute,
+    #       (2) harder to debug. And (3) I feel that this is the wrong design. The good
+    #       design would be to inherit from otb.Application.
+    #
+    # def __getattr__(self, name):
+    #     """This method is called when the default attribute access fails.
+    #
+    #     We choose to access the attribute `name` of self.app.
+    #     Thus, any method of otbApplication can be used transparently on OTBObject objects,
+    #     e.g. SetParameterOutputImagePixelType() or ExportImage() work
+    #
+    #     Args:
+    #         name: attribute name
+    #
+    #     Returns:
+    #         attribute
+    #
+    #     Raises:
+    #         AttributeError: when `name` is not an attribute of self.app
+    #
+    #     """
+    #     if name in dir(self.app):
+    #         return getattr(self.app, name)
+    #     raise AttributeError(f"{self.name}: could not find attribute `{name}`")
 
     def __getitem__(self, key):
         """Override the default __getitem__ behaviour.
@@ -1320,7 +1325,7 @@ class Output(OTBObject):
             mkdir: create missing parent directories
 
         """
-        super().__init__(name=f"Output {param_key} from {self.pyotb_app.name}", app=pyotb_app.app)
+        super().__init__(name=f"Output {param_key} from {pyotb_app.name}", app=pyotb_app.app)
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
         self.filepath = None
         if filepath:
@@ -1405,7 +1410,7 @@ def get_pixel_type(inp: str | OTBObject) -> str:
             raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
         pixel_type = getattr(otb, f'ImagePixelType_{datatype_to_pixeltype[datatype]}')
     elif isinstance(inp, OTBObject):
-        pixel_type = inp.GetParameterOutputImagePixelType(inp.key_output_image)
+        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.key_output_image)
     else:
         raise TypeError(f'Could not get the pixel type of {type(inp)} object {inp}')
     return pixel_type

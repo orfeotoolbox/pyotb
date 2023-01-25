@@ -2,6 +2,7 @@ import os
 import itertools
 import pytest
 import pyotb
+from tests_data import INPUT, FILEPATH
 
 
 # List of buildings blocks, we can add other pyotb objects here
@@ -21,8 +22,6 @@ PYOTB_BLOCKS = [
 PIPELINES_LENGTH = [1, 2, 3]
 
 ALL_BLOCKS = PYOTB_BLOCKS + OTBAPPS_BLOCKS
-FILEPATH = os.environ["TEST_INPUT_IMAGE"]
-INPUT = pyotb.Input(FILEPATH)
 
 
 def generate_pipeline(inp, building_blocks):
