@@ -75,15 +75,16 @@ def test_xy_to_rowcol():
 
 
 def test_write():
-    INPUT.write("/tmp/missing_dir/test_write.tif")
+    INPUT.write("/tmp/test_write.tif")
     assert INPUT.out.exists()
-    os.remove("/tmp/missing_dir/test_write.tif")
+    INPUT.out.filepath.unlink()
 
 
 def test_output_write():
     INPUT.out.write("/tmp/missing_dir/test_write.tif")
     assert INPUT.out.exists()
     os.remove("/tmp/missing_dir/test_write.tif")
+    INPUT.out.filepath.unlink()
 
 
 # Slicer

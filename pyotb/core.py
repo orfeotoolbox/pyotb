@@ -902,6 +902,7 @@ class App(RasterInterface):
 
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
+    name = "Slicer"
 
     def __init__(self, obj: App | str, rows: int, cols: int, channels: int):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
@@ -917,7 +918,6 @@ class Slicer(App):
             channels: channels, can be slicing, list or int
 
         """
-        self.name = "Slicer"
         super().__init__("ExtractROI", obj, mode="extent", quiet=True, frozen=True)
         self.rows, self.cols = rows, cols
         parameters = {}
@@ -1186,7 +1186,6 @@ class LogicalOperation(Operation):
     logical expression (e.g. "im1b1 > 0")
 
     """
-    name = "LogicalOperation"
 
     def __init__(self, operator: str, *inputs, nb_bands: int = None):
         """Constructor for a LogicalOperation object.
@@ -1291,6 +1290,7 @@ class Output(RasterInterface):
 
     @property
     def key_output_image(self):
+        """Force the right key to be used when accessing the RasterInterface."""
         return self.param_key
 
     def exists(self) -> bool:
@@ -1305,7 +1305,7 @@ class Output(RasterInterface):
             self.filepath.parent.mkdir(parents=True)
 
     def write(self, filepath: str = "", **kwargs):
-        """Write output to disk, filepath is not required if it was provided to parent App during init"""
+        """Write output to disk, filepath is not required if it was provided to parent App during init."""
         if not filepath and self.filepath:
             return self.parent_app.write({self.key_output_image: self.filepath}, **kwargs)
         return self.parent_app.write({self.key_output_image: filepath}, **kwargs)
