@@ -607,7 +607,9 @@ class App(RasterInterface):
         # Going through all arguments
         for key, obj in parameters.items():
             if key not in self.parameters_keys:
-                raise KeyError(f'{self.name}: unknown parameter name "{key}"')
+                raise KeyError(
+                    f"{self.name}: parameter '{key}' was not recognized. Available keys are {self.parameters_keys}"
+                )
             # When the parameter expects a list, if needed, change the value to list
             if is_key_list(self, key) and not isinstance(obj, (list, tuple)):
                 obj = [obj]
@@ -821,10 +823,6 @@ class App(RasterInterface):
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
             self.app.ClearValue(key)
             return
-        if key not in self.parameters_keys:
-            raise KeyError(
-                f"{self.name}: parameter '{key}' was not recognized. Available keys are {self.parameters_keys}"
-            )
         # Single-parameter cases
         if isinstance(obj, App):
             self.app.ConnectImage(key, obj.app, obj.key_output_image)
