@@ -872,7 +872,7 @@ class App(RasterInterface):
         """
         # Accessing string attributes
         if isinstance(key, str):
-            return self.__dict__.get(key)
+            return getattr(self, key)
         # Accessing pixel value(s) using Y/X coordinates
         if isinstance(key, tuple) and len(key) >= 2:
             row, col = key[0], key[1]
@@ -1050,7 +1050,7 @@ class Operation(App):
                 nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
                 # check that all inputs have the same nb of bands
                 if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
-                        raise ValueError("All images do not have the same number of bands")
+                    raise ValueError("All images do not have the same number of bands")
                 nb_bands = nb_bands_list[0]
 
         # Create a list of fake expressions, each item of the list corresponding to one band
@@ -1202,7 +1202,7 @@ class LogicalOperation(Operation):
             nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
             # check that all inputs have the same nb of bands
             if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
-                    raise ValueError("All images do not have the same number of bands")
+                raise ValueError("All images do not have the same number of bands")
             nb_bands = nb_bands_list[0]
 
         # Create a list of fake exp, each item of the list corresponding to one band
