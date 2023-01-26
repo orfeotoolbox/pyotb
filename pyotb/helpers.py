@@ -304,5 +304,6 @@ def __suggest_fix_import(error_message: str, prefix: str):
     docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
     logger.critical("You can verify installation requirements for your OS at %s", docs_link)
 
+
 # Since helpers is the first module to be inititialized, this will prevent pyotb to run if OTB is not found
 find_otb()
