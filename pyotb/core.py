@@ -857,7 +857,7 @@ class App(RasterInterface):
         """
         return id(self)
 
-    def __getitem__(self, key) -> Any | list[int | float] | int | float | Slicer :
+    def __getitem__(self, key) -> Any | list[int | float] | int | float | Slicer:
         """Override the default __getitem__ behaviour.
 
         This function enables 2 things :
