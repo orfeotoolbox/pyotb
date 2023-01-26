@@ -525,22 +525,19 @@ class App(RasterInterface):
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
-        self.all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
-        self.out_param_types = {k: v for k, v in self.all_param_types.items()
-                                if v in (otb.ParameterType_OutputImage,
-                                         otb.ParameterType_OutputVectorData,
-                                         otb.ParameterType_OutputFilename)}
-        self.time_start, self.time_end = 0, 0
+        self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
+        otypes = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
+        self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in otypes}
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
             self.execute()
-            if any(key in self.parameters for key in self.out_param_types):
+            if any(key in self.parameters for key in self._out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
 
     def get_first_key(self, param_types: list[int]) -> str:
         """Get the first output param key for specific file types."""
-        for key, param_type in sorted(self.all_param_types.items()):
+        for key, param_type in sorted(self._all_param_types.items()):
             if param_type in param_types:
                 return key
         return None
@@ -570,7 +567,7 @@ class App(RasterInterface):
     @property
     def used_outputs(self) -> list[str]:
         """List of used application outputs."""
-        return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
+        return [getattr(self, key) for key in self._out_param_types if key in self.parameters]
 
     @property
     def data(self) -> dict[str, float, list[float]]:
@@ -654,7 +651,7 @@ class App(RasterInterface):
         if target_key:
             keys = [target_key]
         else:
-            keys = [k for k, v in self.out_param_types.items() if v == otb.ParameterType_OutputImage]
+            keys = [k for k, v in self._out_param_types.items() if v == otb.ParameterType_OutputImage]
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
@@ -673,7 +670,7 @@ class App(RasterInterface):
                 except RuntimeError:
                     continue  # this is when there is no value for key
             # Convert output param path to Output object
-            if key in self.out_param_types:
+            if key in self._out_param_types:
                 value = Output(self, key, value)
             elif isinstance(value, str):
                 try:
@@ -741,7 +738,7 @@ class App(RasterInterface):
             if not filename_extension.startswith("?"):
                 filename_extension = "?" + filename_extension
             for key, value in kwargs.items():
-                if self.out_param_types[key] == otb.ParameterType_OutputImage and '?' not in value:
+                if self._out_param_types[key] == otb.ParameterType_OutputImage and "?" not in value:
                     kwargs[key] = value + filename_extension
 
         # Manage output pixel types
@@ -751,7 +748,7 @@ class App(RasterInterface):
                 type_name = self.app.ConvertPixelTypeToNumpy(parse_pixel_type(pixel_type))
                 logger.debug('%s: output(s) will be written with type "%s"', self.name, type_name)
                 for key in kwargs:
-                    if self.out_param_types[key] == otb.ParameterType_OutputImage:
+                    if self._out_param_types[key] == otb.ParameterType_OutputImage:
                         dtypes[key] = parse_pixel_type(pixel_type)
             elif isinstance(pixel_type, dict):
                 dtypes = {k: parse_pixel_type(v) for k, v in pixel_type.items()}
