@@ -16,6 +16,7 @@ from .helpers import logger
 
 class RasterInterface(ABC):
     """Abstraction of an image object."""
+
     app: otb.Application
     exports_dic: dict
 
@@ -175,14 +176,13 @@ class RasterInterface(ABC):
 
         """
         array = self.to_numpy(preserve_dtype=True, copy=False)
-        array = np.moveaxis(array, 2, 0)
+        height, width, count = array.shape
         proj = self.app.GetImageProjection(self.key_output_image)
         profile = {
-            'crs': proj, 'dtype': array.dtype,
-            'count': array.shape[0], 'height': array.shape[1], 'width': array.shape[2],
-            'transform': self.transform
+            'crs': proj, 'dtype': array.dtype, 'transform': self.transform,
+            'count': count, 'height': height, 'width': width,
         }
-        return array, profile
+        return np.moveaxis(array, 2, 0), profile
 
     def xy_to_rowcol(self, x: float, y: float) -> tuple[int, int]:
         """Find (row, col) index using (x, y) projected coordinates - image CRS is expected.
@@ -514,12 +514,14 @@ class App(RasterInterface):
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
-        self.parameters = {}
         self.name = name
         self.frozen = frozen
         self.quiet = quiet
         self.image_dic = image_dic
+        self.time_start, self.time_end = 0, 0
         self.exports_dic = {}
+        self.parameters = {}
+        # Initialize app, set parameters and execute if not frozen
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
@@ -546,12 +548,9 @@ class App(RasterInterface):
     @property
     def key_input(self) -> str:
         """Get the name of first input parameter, raster > vector > file."""
-        return self.get_first_key(param_types=[otb.ParameterType_InputImage,
-                                               otb.ParameterType_InputImageList]) \
-            or self.get_first_key(param_types=[otb.ParameterType_InputVectorData,
-                                               otb.ParameterType_InputVectorDataList]) \
-            or self.get_first_key(param_types=[otb.ParameterType_InputFilename,
-                                               otb.ParameterType_InputFilenameList])
+        return self.get_first_key([otb.ParameterType_InputImage, otb.ParameterType_InputImageList]) \
+            or self.get_first_key([otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList]) \
+            or self.get_first_key([otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList])
 
     @property
     def key_input_image(self) -> str:
@@ -576,14 +575,14 @@ class App(RasterInterface):
     @property
     def data(self) -> dict[str, float, list[float]]:
         """Expose app's output data values in a dictionary."""
-        skip_keys = ("ram", "elev.default", "mapproj.utm.zone", "mapproj.utm.northhem")
-        skip_keys = skip_keys + tuple(self.out_param_types) + tuple(self.parameters)
-        keys = (k for k in self.parameters_keys if k not in skip_keys)
-
-        def _check(v):
-            return not isinstance(v, otb.ApplicationProxy) and v not in ("", None, [], ())
-
-        return {str(k): self[k] for k in keys if _check(self[k])}
+        known_bad_keys = ("ram", "elev.default", "mapproj.utm.zone", "mapproj.utm.northhem")
+        skip_keys = known_bad_keys + tuple(self._out_param_types) + tuple(self.parameters)
+        data_dict = {}
+        for key in filter(lambda k: k not in skip_keys, self.parameters_keys):
+            value = self.__dict__.get(key)
+            if not isinstance(value, otb.ApplicationProxy) and value not in (None, "", [], ()):
+                data_dict[str(key)] = value
+        return data_dict
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -1053,8 +1052,7 @@ class Operation(App):
             else:
                 nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
                 # check that all inputs have the same nb of bands
-                if len(nb_bands_list) > 1:
-                    if not all(x == nb_bands_list[0] for x in nb_bands_list):
+                if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
                         raise ValueError("All images do not have the same number of bands")
                 nb_bands = nb_bands_list[0]
 
@@ -1067,10 +1065,7 @@ class Operation(App):
                 # this is a special case for the condition of the ternary operator `cond ? x : y`
                 if len(inputs) == 3 and k == 0:
                     # When cond is monoband whereas the result is multiband, we expand the cond to multiband
-                    if nb_bands != inp.shape[2]:
-                        cond_band = 1
-                    else:
-                        cond_band = band
+                    cond_band = 1 if nb_bands != inp.shape[2] else band
                     fake_exp, corresponding_inputs, nb_channels = self.make_fake_exp(inp, cond_band, keep_logical=True)
                 else:
                     # Any other input
@@ -1139,38 +1134,31 @@ class Operation(App):
         if isinstance(x, Slicer) and hasattr(x, "one_band_sliced"):
             if keep_logical and isinstance(x.input, LogicalOperation):
                 fake_exp = x.input.logical_fake_exp_bands[x.one_band_sliced - 1]
-                inputs = x.input.inputs
-                nb_channels = x.input.nb_channels
+                inputs, nb_channels = x.input.inputs, x.input.nb_channels
             elif isinstance(x.input, Operation):
                 # Keep only one band of the expression
                 fake_exp = x.input.fake_exp_bands[x.one_band_sliced - 1]
-                inputs = x.input.inputs
-                nb_channels = x.input.nb_channels
+                inputs, nb_channels = x.input.inputs, x.input.nb_channels
             else:
                 # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
                 fake_exp = f"{x.input}b{x.one_band_sliced}"
-                inputs = [x.input]
-                nb_channels = {x.input: 1}
+                inputs, nb_channels = [x.input], {x.input: 1}
         # For LogicalOperation, we save almost the same attributes as an Operation
         elif keep_logical and isinstance(x, LogicalOperation):
             fake_exp = x.logical_fake_exp_bands[band - 1]
-            inputs = x.inputs
-            nb_channels = x.nb_channels
+            inputs, nb_channels = x.inputs, x.nb_channels
         elif isinstance(x, Operation):
             fake_exp = x.fake_exp_bands[band - 1]
-            inputs = x.inputs
-            nb_channels = x.nb_channels
+            inputs, nb_channels = x.inputs, x.nb_channels
         # For int or float input, we just need to save their value
         elif isinstance(x, (int, float)):
             fake_exp = str(x)
-            inputs = None
-            nb_channels = None
+            inputs, nb_channels = None, None
         # We go on with other inputs, i.e. pyotb objects, filepaths...
         else:
-            nb_channels = {x: get_nbchannels(x)}
-            inputs = [x]
             # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
             fake_exp = f"{x}b{band}"
+            inputs, nb_channels = [x], {x: get_nbchannels(x)}
         return fake_exp, inputs, nb_channels
 
     def __str__(self) -> str:
@@ -1216,8 +1204,7 @@ class LogicalOperation(Operation):
         else:
             nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
             # check that all inputs have the same nb of bands
-            if len(nb_bands_list) > 1:
-                if not all(x == nb_bands_list[0] for x in nb_bands_list):
+            if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
                     raise ValueError("All images do not have the same number of bands")
             nb_bands = nb_bands_list[0]
 
@@ -1281,8 +1268,8 @@ class Output(RasterInterface):
         self.param_key = param_key
         self.filepath = None
         if filepath:
-            if '?' in filepath:
-                filepath = filepath.split('?')[0]
+            if "?" in filepath:
+                filepath = filepath.split("?")[0]
             self.filepath = Path(filepath)
             if mkdir:
                 self.make_parent_dirs()
@@ -1333,7 +1320,7 @@ def get_nbchannels(inp: str | App) -> int:
             info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.app.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f'Could not get the number of channels of `{inp}`. Not a filepath or wrong filepath') from e
+            raise TypeError(f"Could not get the number of channels of '{inp}'. Not a filepath or wrong filepath") from e
     return nb_channels
 
 
@@ -1357,23 +1344,23 @@ def get_pixel_type(inp: str | App) -> str:
         if not datatype:
             raise TypeError(f"Unable to read pixel type of image {inp}")
         datatype_to_pixeltype = {
-            'unsigned_char': 'uint8',
-            'short': 'int16',
-            'unsigned_short': 'uint16',
-            'int': 'int32',
-            'unsigned_int': 'uint32',
-            'long': 'int32',
-            'ulong': 'uint32',
-            'float': 'float',
-            'double': 'double'
+            "unsigned_char": "uint8",
+            "short": "int16",
+            "unsigned_short": "uint16",
+            "int": "int32",
+            "unsigned_int": "uint32",
+            "long": "int32",
+            "ulong": "uint32",
+            "float": "float",
+            "double": "double",
         }
         if datatype not in datatype_to_pixeltype:
             raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
-        pixel_type = getattr(otb, f'ImagePixelType_{datatype_to_pixeltype[datatype]}')
+        pixel_type = getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
     elif isinstance(inp, App):
         pixel_type = inp.app.GetParameterOutputImagePixelType(inp.key_output_image)
     else:
-        raise TypeError(f'Could not get the pixel type of {type(inp)} object {inp}')
+        raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
     return pixel_type
 
 
@@ -1388,10 +1375,10 @@ def parse_pixel_type(pixel_type: str | int) -> int:
 
     """
     if isinstance(pixel_type, str):  # this correspond to 'uint8' etc...
-        return getattr(otb, f'ImagePixelType_{pixel_type}')
+        return getattr(otb, f"ImagePixelType_{pixel_type}")
     if isinstance(pixel_type, int):
         return pixel_type
-    raise ValueError(f'Bad pixel type specification ({pixel_type})')
+    raise ValueError(f"Bad pixel type specification ({pixel_type})")
 
 
 def is_key_list(pyotb_app: App, key: str) -> bool:
@@ -1409,7 +1396,7 @@ def is_key_images_list(pyotb_app: App, key: str) -> bool:
     """Check if a key of the App is an input parameter image list."""
     return pyotb_app.app.GetParameterType(key) in (
         otb.ParameterType_InputImageList,
-        otb.ParameterType_InputFilenameList
+        otb.ParameterType_InputFilenameList,
     )
 
 

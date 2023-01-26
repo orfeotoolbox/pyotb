@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This module provides some helpers to properly initialize pyotb."""
+"""This module helps to ensure we properly initialize pyotb: only in case OTB is found and apps are available."""
 import os
 import sys
 import logging
@@ -41,8 +41,9 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
 
     Path precedence :                                OTB_ROOT > python bindings directory
         OR search for releases installations    :    HOME
-        OR (for linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
-        OR (for windows)                        :    C:/Program Files
+        OR (for Linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
+        OR (for MacOS)                          :    ~/Applications
+        OR (for Windows)                        :    C:/Program Files
 
     Args:
         prefix: prefix to search OTB in (Default value = OTB_ROOT)
@@ -135,9 +136,9 @@ def set_environment(prefix: str):
         os.environ["OTB_APPLICATION_PATH"] = apps_path
     else:
         raise EnvironmentError("Can't find OTB applications directory")
-
     os.environ["LC_NUMERIC"] = "C"
     os.environ["GDAL_DRIVER_PATH"] = "disable"
+
     if (prefix / "share/gdal").exists():
         # Local GDAL (OTB Superbuild, .run, .exe)
         gdal_data = str(prefix / "share/gdal")
@@ -151,7 +152,6 @@ def set_environment(prefix: str):
         proj_lib = str(prefix / "share/proj")
     else:
         raise EnvironmentError(f"Can't find GDAL location with current OTB prefix '{prefix}' or in /usr")
-
     os.environ["GDAL_DATA"] = gdal_data
     os.environ["PROJ_LIB"] = proj_lib
 
@@ -303,3 +303,6 @@ def __suggest_fix_import(error_message: str, prefix: str):
                                 " first use 'call otbenv.bat' then try to import pyotb once again")
     docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
     logger.critical("You can verify installation requirements for your OS at %s", docs_link)
+
+# Since helpers is the first module to be inititialized, this will prevent pyotb to run if OTB is not found
+find_otb()
