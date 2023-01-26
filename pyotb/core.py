@@ -29,7 +29,7 @@ class RasterInterface(ABC):
         """Write image, this is defined in App. Output will use App.write for a specific key."""
 
     @property
-    def metadata(self):
+    def metadata(self) -> dict[str, (str, float, list[float])]:
         """Return first output image metadata dictionary."""
         return dict(self.app.GetMetadataDictionary(self.key_output_image))
 
@@ -45,7 +45,7 @@ class RasterInterface(ABC):
         return self.app.ConvertPixelTypeToNumpy(enum)
 
     @property
-    def shape(self) -> tuple(int):
+    def shape(self) -> tuple[int]:
         """Enables to retrieve the shape of a pyotb object using numpy convention.
 
         Returns:
@@ -57,7 +57,7 @@ class RasterInterface(ABC):
         return height, width, bands
 
     @property
-    def transform(self) -> tuple(int):
+    def transform(self) -> tuple[int]:
         """Get image affine transform, rasterio style (see https://www.perrygeo.com/python-affine-transforms.html).
 
         Returns:
@@ -69,11 +69,11 @@ class RasterInterface(ABC):
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
 
-    def get_infos(self):
+    def get_infos(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ReadImageInfo for the first image output."""
         return App("ReadImageInfo", self, quiet=True).data
 
-    def get_statistics(self):
+    def get_statistics(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ComputeImagesStatistics for the first image output."""
         return App("ComputeImagesStatistics", self, quiet=True).data
 
@@ -536,7 +536,7 @@ class App(RasterInterface):
             if any(key in self.parameters for key in self.out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
 
-    def get_first_key(self, param_types: list[str]) -> str:
+    def get_first_key(self, param_types: list[int]) -> str:
         """Get the first output param key for specific file types."""
         for key, param_type in sorted(self.all_param_types.items()):
             if param_type in param_types:
@@ -564,7 +564,7 @@ class App(RasterInterface):
         return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
 
     @property
-    def elapsed_time(self):
+    def elapsed_time(self) -> float:
         """Get elapsed time between app init and end of exec or file writing."""
         return self.time_end - self.time_start
 
@@ -573,23 +573,8 @@ class App(RasterInterface):
         """List of used application outputs."""
         return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
 
-    def find_outputs(self) -> tuple[str]:
-        """Find output files on disk using path found in parameters.
-
-        Returns:
-            list of files found on disk
-
-        """
-        files, missing = [], []
-        for out in self.used_outputs:
-            dest = files if out.exists() else missing
-            dest.append(str(out.filepath.absolute()))
-        for filename in missing:
-            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-        return tuple(files)
-
     @property
-    def data(self):
+    def data(self) -> dict[str, float, list[float]]:
         """Expose app's output data values in a dictionary."""
         skip_keys = ("ram", "elev.default", "mapproj.utm.zone", "mapproj.utm.northhem")
         skip_keys = skip_keys + tuple(self.out_param_types) + tuple(self.parameters)
@@ -746,8 +731,8 @@ class App(RasterInterface):
                 kwargs.update(arg)
             elif isinstance(arg, str) and kwargs:
                 logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
-            elif isinstance(arg, str) and self.key_output_image:
-                kwargs.update({self.key_output_image: arg})
+            elif isinstance(arg, (str, Path)) and self.key_output_image:
+                kwargs.update({self.key_output_image: str(arg)})
 
         # Append filename extension to filenames
         if filename_extension:
@@ -779,7 +764,22 @@ class App(RasterInterface):
             self.set_parameters({key: output_filename})
         self.flush()
 
-    def summarize(self) -> dict:
+    def find_outputs(self) -> tuple[str]:
+        """Find output files on disk using path found in parameters.
+
+        Returns:
+            list of files found on disk
+
+        """
+        files, missing = [], []
+        for out in self.used_outputs:
+            dest = files if out.exists() else missing
+            dest.append(str(out.filepath.absolute()))
+        for filename in missing:
+            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
+        return tuple(files)
+
+    def summarize(self) -> dict[str, str | dict[str, Any]]:
         """Serialize an object and its pipeline into a dictionary.
 
         Returns:
@@ -848,7 +848,7 @@ class App(RasterInterface):
             self.app.SetParameterValue(key, obj)
 
     # Special functions
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Override the default behaviour of the hash function.
 
         Returns:
@@ -857,7 +857,7 @@ class App(RasterInterface):
         """
         return id(self)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Any | list[int | float] | int | float | Slicer :
         """Override the default __getitem__ behaviour.
 
         This function enables 2 things :
@@ -895,7 +895,7 @@ class App(RasterInterface):
             key = key + (slice(None, None, None),)
         return Slicer(self, *key)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a nice string representation with object id."""
         return f"<pyotb.App {self.name} object id {id(self)}>"
 
@@ -1092,7 +1092,7 @@ class Operation(App):
                 fake_exp = f"({expressions[0]} ? {expressions[1]} : {expressions[2]})"
             self.fake_exp_bands.append(fake_exp)
 
-    def get_real_exp(self, fake_exp_bands: str) -> tuple(list[str], str):
+    def get_real_exp(self, fake_exp_bands: str) -> tuple[list[str], str]:
         """Generates the BandMathX expression.
 
         Args:
@@ -1116,7 +1116,7 @@ class Operation(App):
         return exp_bands, exp
 
     @staticmethod
-    def make_fake_exp(x: App | str, band: int, keep_logical: bool = False) -> tuple(str, list[App], int):
+    def make_fake_exp(x: App | str, band: int, keep_logical: bool = False) -> tuple[str, list[App], int]:
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
@@ -1126,7 +1126,7 @@ class Operation(App):
             band: which band to consider (bands start at 1)
             keep_logical: whether to keep the logical expressions "as is" in case the input is a logical operation.
                           ex: if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
-                          if False, for `input1 > input2`, returned fake exp is "str(input1) > str(input2) ? 1 : 0".
+                          if False, for `input1 > input2`, returned fake exp is "str(input1) > str(input2) ? 1 : 0"]
                           Default False
 
         Returns:
@@ -1288,24 +1288,27 @@ class Output(RasterInterface):
                 self.make_parent_dirs()
 
     @property
-    def key_output_image(self):
+    def key_output_image(self) -> str:
         """Force the right key to be used when accessing the RasterInterface."""
         return self.param_key
 
     def exists(self) -> bool:
         """Check file exist."""
-        assert self.filepath, "Filepath not set"
+        if self.filepath is None:
+            raise ValueError("Filepath is not set")
         return self.filepath.exists()
 
     def make_parent_dirs(self):
         """Create missing parent directories."""
-        assert self.filepath, "Filepath not set"
-        if not self.filepath.parent.exists():
-            self.filepath.parent.mkdir(parents=True)
+        if self.filepath is None:
+            raise ValueError("Filepath is not set")
+        self.filepath.parent.mkdir(parents=True, exist_ok=True)
 
-    def write(self, filepath: str = "", **kwargs):
+    def write(self, filepath: None | str | Path = None, **kwargs):
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
-        if not filepath and self.filepath:
+        if filepath is None and self.filepath:
+            if self.filepath.exists():
+                logger.warning("Overwriting file %s", self.filepath)
             return self.parent_app.write({self.key_output_image: self.filepath}, **kwargs)
         return self.parent_app.write({self.key_output_image: filepath}, **kwargs)
 
