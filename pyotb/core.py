@@ -1008,7 +1008,7 @@ class Operation(App):
         self.nb_channels = {}
         self.fake_exp_bands = []
         self.logical_fake_exp_bands = []
-        self.create_fake_exp(operator, inputs, nb_bands=nb_bands)
+        self.build_fake_expressions(operator, inputs, nb_bands=nb_bands)
         # Transforming images to the adequate im#, e.g. `input1` to "im1"
         # creating a dictionary that is like {str(input1): 'im1', 'image2.tif': 'im2', ...}.
         # NB: the keys of the dictionary are strings-only, instead of 'complex' objects, to enable easy serialization
@@ -1029,9 +1029,8 @@ class Operation(App):
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = f'Operation exp="{self.exp}"'
 
-    def create_fake_exp(self, operator: str, inputs: list[App | str | int | float],
-                        nb_bands: int = None):
-        """Create a 'fake' expression.
+    def build_fake_expressions(self, operator: str, inputs: list[App | str | int | float], nb_bands: int = None):
+        """Create a list of 'fake' expressions, one for each band.
 
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
 
@@ -1062,7 +1061,7 @@ class Operation(App):
         # Create a list of fake expressions, each item of the list corresponding to one band
         self.fake_exp_bands.clear()
         for i, band in enumerate(range(1, nb_bands + 1)):
-            fake_exps = []
+            expressions = []
             for k, inp in enumerate(inputs):
                 # Generating the fake expression of the current input,
                 # this is a special case for the condition of the ternary operator `cond ? x : y`
@@ -1076,7 +1075,7 @@ class Operation(App):
                 else:
                     # Any other input
                     fake_exp, corresponding_inputs, nb_channels = self.make_fake_exp(inp, band, keep_logical=False)
-                fake_exps.append(fake_exp)
+                expressions.append(fake_exp)
                 # Reference the inputs and nb of channels (only on first pass in the loop to avoid duplicates)
                 if i == 0 and corresponding_inputs and nb_channels:
                     self.inputs.extend(corresponding_inputs)
@@ -1084,13 +1083,13 @@ class Operation(App):
 
             # Generating the fake expression of the whole operation
             if len(inputs) == 1:  # this is only for 'abs'
-                fake_exp = f"({operator}({fake_exps[0]}))"
+                fake_exp = f"({operator}({expressions[0]}))"
             elif len(inputs) == 2:
                 # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
                 # the false expression stores the expression 2 * str(input1) + str(input2)
-                fake_exp = f"({fake_exps[0]} {operator} {fake_exps[1]})"
+                fake_exp = f"({expressions[0]} {operator} {expressions[1]})"
             elif len(inputs) == 3 and operator == "?":  # this is only for ternary expression
-                fake_exp = f"({fake_exps[0]} ? {fake_exps[1]} : {fake_exps[2]})"
+                fake_exp = f"({expressions[0]} ? {expressions[1]} : {expressions[2]})"
             self.fake_exp_bands.append(fake_exp)
 
     def get_real_exp(self, fake_exp_bands: str) -> tuple(list[str], str):
@@ -1118,7 +1117,7 @@ class Operation(App):
 
     @staticmethod
     def make_fake_exp(x: App | str, band: int, keep_logical: bool = False) -> tuple(str, list[App], int):
-        """This an internal function, only to be used by `create_fake_exp`.
+        """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
 
@@ -1199,8 +1198,8 @@ class LogicalOperation(Operation):
         super().__init__(operator, *inputs, nb_bands=nb_bands)
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def create_fake_exp(self, operator: str, inputs: list[App | str | int | float], nb_bands: int = None):
-        """Create a 'fake' expression.
+    def build_fake_expressions(self, operator: str, inputs: list[App | str | int | float], nb_bands: int = None):
+        """Create a list of 'fake' expressions, one for each band.
 
         e.g for the operation input1 > input2, we create a fake expression that is like
         "str(input1) > str(input2) ? 1 : 0" and a logical fake expression that is like "str(input1) > str(input2)"
@@ -1224,17 +1223,17 @@ class LogicalOperation(Operation):
 
         # Create a list of fake exp, each item of the list corresponding to one band
         for i, band in enumerate(range(1, nb_bands + 1)):
-            fake_exps = []
+            expressions = []
             for inp in inputs:
                 fake_exp, corresp_inputs, nb_channels = super().make_fake_exp(inp, band, keep_logical=True)
-                fake_exps.append(fake_exp)
+                expressions.append(fake_exp)
                 # Reference the inputs and nb of channels (only on first pass in the loop to avoid duplicates)
                 if i == 0 and corresp_inputs and nb_channels:
                     self.inputs.extend(corresp_inputs)
                     self.nb_channels.update(nb_channels)
             # We create here the "fake" expression. For example, for a BandMathX expression such as 'im1 > im2',
             # the logical fake expression stores the expression "str(input1) > str(input2)"
-            logical_fake_exp = f"({fake_exps[0]} {operator} {fake_exps[1]})"
+            logical_fake_exp = f"({expressions[0]} {operator} {expressions[1]})"
             # We keep the logical expression, useful if later combined with other logical operations
             self.logical_fake_exp_bands.append(logical_fake_exp)
             # We create a valid BandMath expression, e.g. "str(input1) > str(input2) ? 1 : 0"
@@ -1345,7 +1344,7 @@ def get_pixel_type(inp: str | App) -> str:
 
     Returns:
         pixel_type: OTB enum e.g. `otbApplication.ImagePixelType_uint8', which actually is an int.
-                  make_fake_exp  For an App with several outputs, only the pixel type of the first output is returned
+                    For an App with several outputs, only the pixel type of the first output is returned
 
     """
     if isinstance(inp, str):
