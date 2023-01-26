@@ -259,15 +259,15 @@ def __find_otb_root(scan_userdir: bool = False):
             logger.info("Found %s", path.parent)
             prefix = path.parent.absolute()
     elif sys.platform == "darwin":
-        # TODO: find OTB in macOS
-        pass
-
-    # If possible, use OTB found in user's HOME tree (this may take some time)
-    if scan_userdir:
-        for path in Path().home().glob("**/OTB-*/lib"):
+        for path in (Path.home() / "Applications").glob("**/OTB-*/lib"):
             logger.info("Found %s", path.parent)
             prefix = path.parent.absolute()
-
+    # If possible, use OTB found in user's HOME tree (this may take some time)
+    if scan_userdir:
+        for path in Path.home().glob("**/OTB-*/lib"):
+            logger.info("Found %s", path.parent)
+            prefix = path.parent.absolute()
+    # Return latest found prefix (and version), see precedence in function def find_otb()
     return prefix
 
 
