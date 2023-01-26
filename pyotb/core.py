@@ -1261,6 +1261,7 @@ class Output(RasterInterface):
         self.name = f"Output {param_key} from {pyotb_app.name}"
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
         self.app = pyotb_app.app
+        self.exports_dic = pyotb_app.exports_dic
         self.param_key = param_key
         self.filepath = None
         if filepath:

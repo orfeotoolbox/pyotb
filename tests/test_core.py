@@ -1,4 +1,3 @@
-import os
 import pytest
 
 import pyotb
@@ -76,6 +75,12 @@ def test_xy_to_rowcol():
 
 def test_write():
     INPUT.write("/tmp/test_write.tif")
+    assert INPUT.out.exists()
+    INPUT.out.filepath.unlink()
+
+
+def test_output_write():
+    INPUT.out.write("/tmp/test_output_write.tif")
     assert INPUT.out.exists()
     INPUT.out.filepath.unlink()
 
