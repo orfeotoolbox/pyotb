@@ -1234,15 +1234,15 @@ class Input(App):
             path: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
 
         """
-        self.path = path
-        self.name = f"Input from {path}"
         super().__init__("ExtractROI", {"in": path}, frozen=True)
+        self.name = f"Input from {path}"
+        self.filepath = Path(path)
         self.propagate_dtype()
         self.execute()
 
     def __str__(self) -> str:
         """Return a nice string representation with file path."""
-        return f"<pyotb.Input object from {self.path}>"
+        return f"<pyotb.Input object from {self.filepath}>"
 
 
 class Output(RasterInterface):
