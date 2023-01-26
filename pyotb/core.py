@@ -1276,7 +1276,7 @@ class Output(RasterInterface):
 
         """
         self.name = f"Output {param_key} from {pyotb_app.name}"
-        self.parent_app = pyotb_app  # keep trace of parent app
+        self.parent_pyotb_app = pyotb_app  # keep trace of parent app
         self.app = pyotb_app.app
         self.param_key = param_key
         self.filepath = None
@@ -1307,8 +1307,8 @@ class Output(RasterInterface):
     def write(self, filepath: None | str | Path = None, **kwargs):
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
         if filepath is None and self.filepath:
-            return self.parent_app.write({self.key_output_image: self.filepath}, **kwargs)
-        return self.parent_app.write({self.key_output_image: filepath}, **kwargs)
+            return self.parent_pyotb_app.write({self.key_output_image: self.filepath}, **kwargs)
+        return self.parent_pyotb_app.write({self.key_output_image: filepath}, **kwargs)
 
     def __str__(self) -> str:
         """Return a nice string representation with source app name and object id."""
