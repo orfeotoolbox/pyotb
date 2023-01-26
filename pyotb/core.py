@@ -518,7 +518,7 @@ class App(RasterInterface):
         self.frozen = frozen
         self.quiet = quiet
         self.image_dic = image_dic
-        self.time_start, self.time_end = 0, 0
+        self._time_start, self._time_end = 0, 0
         self.exports_dic = {}
         self.parameters = {}
         # Initialize app, set parameters and execute if not frozen
@@ -562,7 +562,7 @@ class App(RasterInterface):
     @property
     def elapsed_time(self) -> float:
         """Get elapsed time between app init and end of exec or file writing."""
-        return self.time_end - self.time_start
+        return self._time_end - self._time_start
 
     @property
     def used_outputs(self) -> list[str]:
@@ -683,13 +683,13 @@ class App(RasterInterface):
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
-        self.time_start = perf_counter()
+        self._time_start = perf_counter()
         try:
             self.app.Execute()
         except (RuntimeError, FileNotFoundError) as e:
             raise Exception(f"{self.name}: error during during app execution") from e
         self.frozen = False
-        self.time_end = perf_counter()
+        self._time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
         self.save_objects()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
 
@@ -701,7 +701,7 @@ class App(RasterInterface):
         except RuntimeError:
             logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
             self.app.ExecuteAndWriteOutput()
-        self.time_end = perf_counter()
+        self._time_end = perf_counter()
 
     def write(self, *args, filename_extension: str = "", pixel_type: dict[str, str] | str = None,
               preserve_dtype: bool = False, **kwargs):
