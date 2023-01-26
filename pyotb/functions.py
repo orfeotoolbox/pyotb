@@ -34,7 +34,6 @@ def where(cond: App | str, x: App | str | int | float, y: App | str | int | floa
         x_nb_channels = get_nbchannels(x)
     if not isinstance(y, (int, float)):
         y_nb_channels = get_nbchannels(y)
-
     if x_nb_channels and y_nb_channels:
         if x_nb_channels != y_nb_channels:
             raise ValueError('X and Y images do not have the same number of bands. '
@@ -42,6 +41,13 @@ def where(cond: App | str, x: App | str | int | float, y: App | str | int | floa
 
     x_or_y_nb_channels = x_nb_channels if x_nb_channels else y_nb_channels
     cond_nb_channels = get_nbchannels(cond)
+    if cond_nb_channels != 1 and x_or_y_nb_channels and cond_nb_channels != x_or_y_nb_channels:
+        raise ValueError('Condition and X&Y do not have the same number of bands. Condition has '
+                         f'{cond_nb_channels} bands whereas X&Y have {x_or_y_nb_channels} bands')
+    # If needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
+    if cond_nb_channels == 1 and x_or_y_nb_channels and x_or_y_nb_channels != 1:
+        logger.info('The condition has one channel whereas X/Y has/have %s channels. Expanding number'
+                    ' of channels of condition to match the number of channels of X/Y', x_or_y_nb_channels)
 
     # Get the number of bands of the result
     if x_or_y_nb_channels:  # if X or Y is a raster
@@ -49,37 +55,24 @@ def where(cond: App | str, x: App | str | int | float, y: App | str | int | floa
     else:  # if only cond is a raster
         out_nb_channels = cond_nb_channels
 
-    if cond_nb_channels != 1 and x_or_y_nb_channels and cond_nb_channels != x_or_y_nb_channels:
-        raise ValueError('Condition and X&Y do not have the same number of bands. Condition has '
-                         f'{cond_nb_channels} bands whereas X&Y have {x_or_y_nb_channels} bands')
-
-    # If needed, duplicate the single band binary mask to multiband to match the dimensions of x & y
-    if cond_nb_channels == 1 and x_or_y_nb_channels and x_or_y_nb_channels != 1:
-        logger.info('The condition has one channel whereas X/Y has/have %s channels. Expanding number'
-                    ' of channels of condition to match the number of channels of X/Y', x_or_y_nb_channels)
-
-    operation = Operation('?', cond, x, y, nb_bands=out_nb_channels)
-
-    return operation
+    return Operation('?', cond, x, y, nb_bands=out_nb_channels)
 
 
-def clip(a: App | str, a_min: App | str | int | float, a_max: App | str | int | float):
+def clip(image: App | str, v_min: App | str | int | float, v_max: App | str | int | float):
     """Clip values of image in a range of values.
 
     Args:
-        a: input raster, can be filepath or any pyotb object
-        a_min: minimum value of the range
-        a_max: maximum value of the range
+        image: input raster, can be filepath or any pyotb object
+        v_min: minimum value of the range
+        v_max: maximum value of the range
 
     Returns:
         raster whose values are clipped in the range
 
     """
-    if isinstance(a, str):
-        a = Input(a)
-
-    res = where(a <= a_min, a_min,
-                where(a >= a_max, a_max, a))
+    if isinstance(image, str):
+        image = Input(image)
+    res = where(image <= v_min, v_min, where(image >= v_max, v_max, image))
     return res
 
 
@@ -102,11 +95,9 @@ def all(*inputs):  # pylint: disable=redefined-builtin
     # If necessary, flatten inputs
     if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
         inputs = inputs[0]
-
     # Add support for generator inputs (to have the same behavior as built-in `all` function)
     if isinstance(inputs, tuple) and len(inputs) == 1 and inspect.isgenerator(inputs[0]):
         inputs = list(inputs[0])
-
     # Transforming potential filepaths to pyotb objects
     inputs = [Input(inp) if isinstance(inp, str) else inp for inp in inputs]
 
@@ -117,13 +108,11 @@ def all(*inputs):  # pylint: disable=redefined-builtin
             res = inp[:, :, 0]
         else:
             res = (inp[:, :, 0] != 0)
-
         for band in range(1, inp.shape[-1]):
             if isinstance(inp, LogicalOperation):
                 res = res & inp[:, :, band]
             else:
                 res = res & (inp[:, :, band] != 0)
-
     # Checking that all images are True
     else:
         if isinstance(inputs[0], LogicalOperation):
@@ -157,11 +146,9 @@ def any(*inputs):  # pylint: disable=redefined-builtin
     # If necessary, flatten inputs
     if len(inputs) == 1 and isinstance(inputs[0], (list, tuple)):
         inputs = inputs[0]
-
     # Add support for generator inputs (to have the same behavior as built-in `any` function)
     if isinstance(inputs, tuple) and len(inputs) == 1 and inspect.isgenerator(inputs[0]):
         inputs = list(inputs[0])
-
     # Transforming potential filepaths to pyotb objects
     inputs = [Input(inp) if isinstance(inp, str) else inp for inp in inputs]
 
@@ -240,7 +227,6 @@ def run_tf_function(func):
         func_name = func.__name__
 
         create_and_save_model_str = func_def_str
-
         # Adding the instructions to create the model and save it to output dir
         create_and_save_model_str += textwrap.dedent(f"""
             import tensorflow as tf
@@ -348,7 +334,6 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
             inputs.extend(arg)
         else:
             inputs.append(arg)
-
     # Getting metadatas of inputs
     metadatas = {}
     for inp in inputs:
@@ -362,7 +347,6 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
 
     # Get a metadata of an arbitrary image. This is just to compare later with other images
     any_metadata = next(iter(metadatas.values()))
-
     # Checking if all images have the same projection
     if not all(metadata['ProjectionRef'] == any_metadata['ProjectionRef']
                for metadata in metadatas.values()):
@@ -403,9 +387,8 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
             # TODO : it is when the user wants the final bounding box to be the union of all bounding box
             #  It should replace any 'outside' pixel by some NoData -> add `fillvalue` argument in the function
 
-        logger.info('Cropping all images to extent Upper Left (%s, %s), Lower Right (%s, %s)', ulx, uly, lrx, lry)
-
         # Applying this bounding box to all inputs
+        logger.info('Cropping all images to extent Upper Left (%s, %s), Lower Right (%s, %s)', ulx, uly, lrx, lry)
         new_inputs = []
         for inp in inputs:
             try:
@@ -425,13 +408,11 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
                 logger.error('Cannot define the processing area for input %s: %s', inp, e)
                 raise
         inputs = new_inputs
-
         # Update metadatas
         metadatas = {input: input.app.GetImageMetaData('out') for input in inputs}
 
     # Get a metadata of an arbitrary image. This is just to compare later with other images
     any_metadata = next(iter(metadatas.values()))
-
     # Handling different pixel sizes
     if not all(metadata['GeoTransform'][1] == any_metadata['GeoTransform'][1]
                and metadata['GeoTransform'][5] == any_metadata['GeoTransform'][5]
@@ -449,9 +430,9 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
             pass
             # TODO : when the user explicitly specify the pixel size -> add argument inside the function
         pixel_size = metadatas[reference_input]['GeoTransform'][1]
-        logger.info('Resampling all inputs to resolution: %s', pixel_size)
 
         # Perform resampling on inputs that do not comply with the target pixel size
+        logger.info('Resampling all inputs to resolution: %s', pixel_size)
         new_inputs = []
         for inp in inputs:
             if metadatas[inp]['GeoTransform'][1] != pixel_size:
@@ -460,18 +441,14 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
             else:
                 new_inputs.append(inp)
         inputs = new_inputs
-
-        # Update metadatas
         metadatas = {inp: inp.app.GetImageMetaData('out') for inp in inputs}
 
     # Final superimposition to be sure to have the exact same image sizes
-    # Getting the sizes of images
     image_sizes = {}
     for inp in inputs:
         if isinstance(inp, str):
             inp = Input(inp)
         image_sizes[inp] = inp.shape[:2]
-
     # Selecting the most frequent image size. It will be used as reference.
     most_common_image_size, _ = Counter(image_sizes.values()).most_common(1)[0]
     same_size_images = [inp for inp, image_size in image_sizes.items() if image_size == most_common_image_size]
@@ -484,6 +461,5 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
             new_inputs.append(superimposed)
         else:
             new_inputs.append(inp)
-    inputs = new_inputs
 
-    return inputs
+    return new_inputs

@@ -77,9 +77,9 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
             otb.Registry.SetApplicationPath(apps_path)
         return otb
     except ImportError as e:
-        PYTHONPATH = os.environ.get("PYTHONPATH")
+        pythonpath = os.environ.get("PYTHONPATH")
         if not scan:
-            raise SystemExit(f"Failed to import OTB with env PYTHONPATH={PYTHONPATH}") from e
+            raise SystemExit(f"Failed to import OTB with env PYTHONPATH={pythonpath}") from e
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
     prefix = __find_otb_root(scan_userdir)

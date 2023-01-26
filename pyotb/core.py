@@ -526,8 +526,8 @@ class App(RasterInterface):
         self.app = create(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
-        otypes = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
-        self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in otypes}
+        types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
+        self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
@@ -786,14 +786,14 @@ class App(RasterInterface):
             nested dictionary summarizing the pipeline
 
         """
-        params = self.parameters
-        for k, p in params.items():
+        parameters = self.parameters.copy()
+        for key, param in parameters.items():
             # In the following, we replace each parameter which is an App, with its summary.
-            if isinstance(p, App):  # single parameter
-                params[k] = p.summarize()
-            elif isinstance(p, list):  # parameter list
-                params[k] = [pi.summarize() if isinstance(pi, App) else pi for pi in p]
-        return {"name": self.app.GetName(), "parameters": params}
+            if isinstance(param, App):  # single parameter
+                parameters[key] = param.summarize()
+            elif isinstance(param, list):  # parameter list
+                parameters[key] = [p.summarize() if isinstance(p, App) else p for p in param]
+        return {"name": self.app.GetName(), "parameters": parameters}
 
     # Private functions
     def __parse_args(self, args: list[str | App | dict | list]) -> dict[str, Any]:
@@ -1104,8 +1104,7 @@ class Operation(App):
                 one_band_exp = one_band_exp.replace(str(inp), self.im_dic[str(inp)])
             exp_bands.append(one_band_exp)
         # Form the final expression (e.g. 'im1b1 + 1; im1b2 + 1')
-        exp = ";".join(exp_bands)
-        return exp_bands, exp
+        return exp_bands, ";".join(exp_bands)
 
     @staticmethod
     def make_fake_exp(x: App | str, band: int, keep_logical: bool = False) -> tuple[str, list[App], int]:
@@ -1156,6 +1155,7 @@ class Operation(App):
             # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
             fake_exp = f"{x}b{band}"
             inputs, nb_channels = [x], {x: get_nbchannels(x)}
+
         return fake_exp, inputs, nb_channels
 
     def __str__(self) -> str:
@@ -1204,7 +1204,6 @@ class LogicalOperation(Operation):
             if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
                 raise ValueError("All images do not have the same number of bands")
             nb_bands = nb_bands_list[0]
-
         # Create a list of fake exp, each item of the list corresponding to one band
         for i, band in enumerate(range(1, nb_bands + 1)):
             expressions = []
@@ -1380,21 +1379,20 @@ def parse_pixel_type(pixel_type: str | int) -> int:
 
 def is_key_list(pyotb_app: App, key: str) -> bool:
     """Check if a key of the App is an input parameter list."""
-    return pyotb_app.app.GetParameterType(key) in (
+    types = (
         otb.ParameterType_InputImageList,
         otb.ParameterType_StringList,
         otb.ParameterType_InputFilenameList,
         otb.ParameterType_ListView,
         otb.ParameterType_InputVectorDataList,
     )
+    return pyotb_app.app.GetParameterType(key) in types
 
 
 def is_key_images_list(pyotb_app: App, key: str) -> bool:
     """Check if a key of the App is an input parameter image list."""
-    return pyotb_app.app.GetParameterType(key) in (
-        otb.ParameterType_InputImageList,
-        otb.ParameterType_InputFilenameList,
-    )
+    types = (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
+    return pyotb_app.app.GetParameterType(key) in types
 
 
 def get_out_images_param_keys(app: App) -> list[str]:
