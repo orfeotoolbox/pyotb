@@ -759,6 +759,8 @@ class App(RasterInterface):
 
         # Set parameters and flush to disk
         for key, output_filename in kwargs.items():
+            if Path(output_filename).exists():
+                logger.warning("%s: overwriting file %s", self.name, output_filename)
             if key in dtypes:
                 self.propagate_dtype(key, dtypes[key])
             self.set_parameters({key: output_filename})
@@ -1307,8 +1309,6 @@ class Output(RasterInterface):
     def write(self, filepath: None | str | Path = None, **kwargs):
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
         if filepath is None and self.filepath:
-            if self.filepath.exists():
-                logger.warning("Overwriting file %s", self.filepath)
             return self.parent_app.write({self.key_output_image: self.filepath}, **kwargs)
         return self.parent_app.write({self.key_output_image: filepath}, **kwargs)
 
