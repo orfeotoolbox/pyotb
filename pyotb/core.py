@@ -355,6 +355,7 @@ class ImageObject(ABC):
         return {"name": self.app.GetName(), "parameters": parameters}
 
     @abstractmethod
+    @property
     def parameters(self):
         """Parameters."""
 
