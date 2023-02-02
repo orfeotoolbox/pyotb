@@ -354,8 +354,8 @@ class ImageObject(ABC):
                 parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
         return {"name": self.app.GetName(), "parameters": parameters}
 
-    @abstractmethod
     @property
+    @abstractmethod
     def parameters(self):
         """Parameters."""
 
