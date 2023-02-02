@@ -36,9 +36,9 @@ def get_available_applications(as_subprocess: bool = False) -> list[str]:
         cmd_args = [sys.executable, "-c", pycmd]
         try:
             params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
-            with subprocess.Popen(cmd_args, **params) as p:
+            with subprocess.Popen(cmd_args, **params) as process:
                 logger.debug('Exec "%s \'%s\'"', ' '.join(cmd_args[:-1]), pycmd)
-                stdout, stderr = p.communicate()
+                stdout, stderr = process.communicate()
                 stdout, stderr = stdout.decode(), stderr.decode()
                 # ast.literal_eval is secure and will raise more handy Exceptions than eval
                 from ast import literal_eval  # pylint: disable=import-outside-toplevel

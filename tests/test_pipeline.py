@@ -103,8 +103,7 @@ PIPELINES, NAMES = make_pipelines_list()
 
 @pytest.mark.parametrize("pipe", PIPELINES, ids=NAMES)
 def test_pipeline_shape(pipe):
-    for i, app in enumerate(pipe):
-        print(app.shape)
+    for app in pipe:
         assert bool(app.shape)
 
 
@@ -116,7 +115,7 @@ def test_pipeline_shape_nointermediate(pipe):
 
 @pytest.mark.parametrize("pipe", PIPELINES, ids=NAMES)
 def test_pipeline_shape_backward(pipe):
-    for i, app in enumerate(reversed(pipe)):
+    for app in reversed(pipe):
         assert bool(app.shape)
 
 

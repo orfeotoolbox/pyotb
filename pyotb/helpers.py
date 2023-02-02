@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This module provides some helpers to properly initialize pyotb."""
+"""This module helps to ensure we properly initialize pyotb: only in case OTB is found and apps are available."""
 import os
 import sys
 import logging
@@ -41,8 +41,9 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
 
     Path precedence :                                OTB_ROOT > python bindings directory
         OR search for releases installations    :    HOME
-        OR (for linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
-        OR (for windows)                        :    C:/Program Files
+        OR (for Linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
+        OR (for MacOS)                          :    ~/Applications
+        OR (for Windows)                        :    C:/Program Files
 
     Args:
         prefix: prefix to search OTB in (Default value = OTB_ROOT)
@@ -76,9 +77,9 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
             otb.Registry.SetApplicationPath(apps_path)
         return otb
     except ImportError as e:
-        PYTHONPATH = os.environ.get("PYTHONPATH")
+        pythonpath = os.environ.get("PYTHONPATH")
         if not scan:
-            raise SystemExit(f"Failed to import OTB with env PYTHONPATH={PYTHONPATH}") from e
+            raise SystemExit(f"Failed to import OTB with env PYTHONPATH={pythonpath}") from e
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
     prefix = __find_otb_root(scan_userdir)
@@ -135,9 +136,9 @@ def set_environment(prefix: str):
         os.environ["OTB_APPLICATION_PATH"] = apps_path
     else:
         raise EnvironmentError("Can't find OTB applications directory")
-
     os.environ["LC_NUMERIC"] = "C"
     os.environ["GDAL_DRIVER_PATH"] = "disable"
+
     if (prefix / "share/gdal").exists():
         # Local GDAL (OTB Superbuild, .run, .exe)
         gdal_data = str(prefix / "share/gdal")
@@ -151,7 +152,6 @@ def set_environment(prefix: str):
         proj_lib = str(prefix / "share/proj")
     else:
         raise EnvironmentError(f"Can't find GDAL location with current OTB prefix '{prefix}' or in /usr")
-
     os.environ["GDAL_DATA"] = gdal_data
     os.environ["PROJ_LIB"] = proj_lib
 
@@ -259,15 +259,15 @@ def __find_otb_root(scan_userdir: bool = False):
             logger.info("Found %s", path.parent)
             prefix = path.parent.absolute()
     elif sys.platform == "darwin":
-        # TODO: find OTB in macOS
-        pass
-
-    # If possible, use OTB found in user's HOME tree (this may take some time)
-    if scan_userdir:
-        for path in Path().home().glob("**/OTB-*/lib"):
+        for path in (Path.home() / "Applications").glob("**/OTB-*/lib"):
             logger.info("Found %s", path.parent)
             prefix = path.parent.absolute()
-
+    # If possible, use OTB found in user's HOME tree (this may take some time)
+    if scan_userdir:
+        for path in Path.home().glob("**/OTB-*/lib"):
+            logger.info("Found %s", path.parent)
+            prefix = path.parent.absolute()
+    # Return latest found prefix (and version), see precedence in function def find_otb()
     return prefix
 
 
@@ -303,3 +303,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
                                 " first use 'call otbenv.bat' then try to import pyotb once again")
     docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
     logger.critical("You can verify installation requirements for your OS at %s", docs_link)
+
+
+# Since helpers is the first module to be inititialized, this will prevent pyotb to run if OTB is not found
+find_otb()

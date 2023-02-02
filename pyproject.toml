@@ -41,16 +41,14 @@ version = {attr = "pyotb.__version__"}
 
 [tool.pylint]
 max-line-length = 120
+max-module-lines = 2000
+good-names = ["x", "y", "i", "j", "k", "e"]
 disable = [
     "fixme",
-    "invalid-name",
-    "too-many-lines",
     "too-many-locals",
     "too-many-branches",
     "too-many-statements",
-    "too-many-public-methods",
-    "too-many-instance-attributes",
-    "wrong-import-position",
+    "too-many-instance-attributes"
 ]
 
 [tool.pydocstyle]

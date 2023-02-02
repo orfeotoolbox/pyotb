@@ -56,7 +56,8 @@ def test_nonraster_property():
 
 
 def test_elapsed_time():
-    assert pyotb.ReadImageInfo(INPUT).elapsed_time < 1
+    assert 0 < pyotb.ReadImageInfo(INPUT).elapsed_time < 1
+
 
 
 # Other functions
@@ -74,8 +75,15 @@ def test_xy_to_rowcol():
 
 
 def test_write():
-    INPUT.write("/tmp/missing_dir/test_write.tif")
+    INPUT.write("/tmp/test_write.tif")
     assert INPUT.out.exists()
+    INPUT.out.filepath.unlink()
+
+
+def test_output_write():
+    INPUT.out.write("/tmp/test_output_write.tif")
+    assert INPUT.out.exists()
+    INPUT.out.filepath.unlink()
 
 
 # Slicer
