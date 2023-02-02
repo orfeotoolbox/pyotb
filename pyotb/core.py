@@ -614,7 +614,7 @@ class App(RasterInterface):
                 # This is when we actually call self.app.SetParameter*
                 self.__set_param(key, obj)
             except (RuntimeError, TypeError, ValueError, KeyError) as e:
-                raise Exception(
+                raise RuntimeError(
                     f"{self.name}: something went wrong before execution "
                     f"(while setting parameter '{key}' to '{obj}')"
                 ) from e
@@ -687,7 +687,7 @@ class App(RasterInterface):
         try:
             self.app.Execute()
         except (RuntimeError, FileNotFoundError) as e:
-            raise Exception(f"{self.name}: error during during app execution") from e
+            raise RuntimeError(f"{self.name}: error during during app execution") from e
         self.frozen = False
         self._time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)

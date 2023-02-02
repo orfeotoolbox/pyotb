@@ -118,7 +118,7 @@ def all(*inputs):  # pylint: disable=redefined-builtin
         if isinstance(inputs[0], LogicalOperation):
             res = inputs[0]
         else:
-            res = (inputs[0] != 0)
+            res = inputs[0] != 0
         for inp in inputs[1:]:
             if isinstance(inp, LogicalOperation):
                 res = res & inp
@@ -171,7 +171,7 @@ def any(*inputs):  # pylint: disable=redefined-builtin
         if isinstance(inputs[0], LogicalOperation):
             res = inputs[0]
         else:
-            res = (inputs[0] != 0)
+            res = inputs[0] != 0
         for inp in inputs[1:]:
             if isinstance(inp, LogicalOperation):
                 res = res | inp
