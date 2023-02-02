@@ -198,241 +198,65 @@ class RasterInterface(ABC):
         row, col = (origin_y - y) / spacing_y, (x - origin_x) / spacing_x
         return abs(int(row)), int(col)
 
-    def __add__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default addition and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self + other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
+    @staticmethod
+    def _create_operator(op_cls, name, a, b):
+        if isinstance(b, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("+", self, other)
+        return op_cls(name, a, b)
+
+    def __add__(self, other: App | str | int | float) -> Operation:
+        return self._create_operator(Operation, "+", self, other)
 
     def __sub__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self - other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("-", self, other)
+        return self._create_operator(Operation, "-", self, other)
 
     def __mul__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self * other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("*", self, other)
+        return self._create_operator(Operation, "*", self, other)
 
     def __truediv__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self / other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("/", self, other)
+        return self._create_operator(Operation, "/", self, other)
 
     def __radd__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default reverse addition and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other + self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("+", other, self)
+        return self._create_operator(Operation, "+", other, self)
 
     def __rsub__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other - self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("-", other, self)
+        return self._create_operator(Operation, "-", other, self)
 
     def __rmul__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default multiplication and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other * self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("*", other, self)
+        return self._create_operator(Operation, "*", other, self)
 
     def __rtruediv__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default division and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other / self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("/", other, self)
+        return self._create_operator(Operation, "/", other, self)
 
     def __abs__(self) -> Operation:
-        """Overrides the default abs operator and flavours it with BandMathX.
-
-        Returns:
-            abs(self)
-
-        """
         return Operation("abs", self)
 
-    def __ge__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default greater or equal and flavours it with BandMathX.
+    def __ge__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, ">=", self, other)
 
-        Args:
-            other: the other member of the operation
+    def __le__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, "<=", self, other)
 
-        Returns:
-            self >= other
+    def __gt__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, ">", self, other)
 
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation(">=", self, other)
+    def __lt__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, "<", self, other)
 
-    def __le__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default less or equal and flavours it with BandMathX.
+    def __eq__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, "==", self, other)
 
-        Args:
-            other: the other member of the operation
+    def __ne__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, "!=", self, other)
 
-        Returns:
-            self <= other
+    def __or__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, "||", self, other)
 
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("<=", self, other)
+    def __and__(self, other: App | str | int | float) -> LogicalOperation:
+        return self._create_operator(LogicalOperation, "&&", self, other)
 
-    def __gt__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default greater operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self > other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation(">", self, other)
-
-    def __lt__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default less operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self < other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("<", self, other)
-
-    def __eq__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default eq operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self == other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("==", self, other)
-
-    def __ne__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default different operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self != other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("!=", self, other)
-
-    def __or__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default or operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self || other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("||", self, other)
-
-    def __and__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default and operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self && other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("&&", self, other)
-
-    # TODO: other operations ?
-    #  e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
+    # Some other operations could be implemented with the same pattern
+    # e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
 
     def __array__(self) -> np.ndarray:
         """This is called when running np.asarray(pyotb_object).
