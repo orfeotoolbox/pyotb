@@ -1,13 +1,14 @@
-import os
-import pyotb
-from ast import literal_eval
-from pathlib import Path
-
 import pytest
 
+import pyotb
+from tests_data import INPUT
 
-FILEPATH = os.environ["TEST_INPUT_IMAGE"]
-INPUT = pyotb.Input(FILEPATH)
+TEST_IMAGE_STATS = {
+    'out.mean': [79.5505, 109.225, 115.456, 249.349],
+    'out.min': [33, 64, 91, 47],
+    'out.max': [255, 255, 230, 255],
+    'out.std': [51.0754, 35.3152, 23.4514, 20.3827]
+}
 
 
 # Input settings
@@ -20,7 +21,7 @@ def test_wrong_key():
         pyotb.BandMath(INPUT, expression="im1b1")
 
 
-# OTBObject's properties
+# OTBObject properties
 def test_key_input():
     assert INPUT.key_input == INPUT.key_input_image == "in"
 
@@ -41,9 +42,48 @@ def test_transform():
     assert INPUT.transform == (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
 
 
+def test_data():
+    assert pyotb.ComputeImagesStatistics(INPUT).data == TEST_IMAGE_STATS
+
+
+def test_metadata():
+    assert INPUT.metadata["Metadata_1"] == "TIFFTAG_SOFTWARE=CSinG - 13 SEPTEMBRE 2012"
+
+
 def test_nonraster_property():
     with pytest.raises(TypeError):
         pyotb.ReadImageInfo(INPUT).dtype
+
+
+def test_elapsed_time():
+    assert 0 < pyotb.ReadImageInfo(INPUT).elapsed_time < 1
+
+
+
+# Other functions
+def test_get_infos():
+    infos = INPUT.get_infos()
+    assert (infos["sizex"], infos["sizey"]) == (251, 304)
+
+
+def test_get_statistics():
+    assert INPUT.get_statistics() == TEST_IMAGE_STATS
+
+
+def test_xy_to_rowcol():
+    assert INPUT.xy_to_rowcol(760101, 6945977) == (19, 7)
+
+
+def test_write():
+    INPUT.write("/tmp/test_write.tif")
+    assert INPUT.out.exists()
+    INPUT.out.filepath.unlink()
+
+
+def test_output_write():
+    INPUT.out.write("/tmp/test_output_write.tif")
+    assert INPUT.out.exists()
+    INPUT.out.filepath.unlink()
 
 
 # Slicer
@@ -85,7 +125,7 @@ def test_binary_mask_where():
     assert res.exp == "(((((im1b1 == 1) || (im1b1 == 2)) || (im1b1 == 3)) || (im1b1 == 4)) ? 255 : 0)"
 
 
-# Apps
+# Essential apps
 def test_app_readimageinfo():
     info = pyotb.ReadImageInfo(INPUT, quiet=True)
     assert (info.sizex, info.sizey) == (251, 304)
@@ -94,32 +134,17 @@ def test_app_readimageinfo():
 
 def test_app_computeimagestats():
     stats = pyotb.ComputeImagesStatistics([INPUT], quiet=True)
-    assert stats["out.min"] == "[33, 64, 91, 47]"
+    assert stats["out.min"] == TEST_IMAGE_STATS["out.min"]
 
 
 def test_app_computeimagestats_sliced():
     slicer_stats = pyotb.ComputeImagesStatistics(il=[INPUT[:10, :10, 0]], quiet=True)
-    assert slicer_stats["out.min"] == "[180]"
+    assert slicer_stats["out.min"] == [180]
 
 
 def test_read_values_at_coords():
     assert INPUT[0, 0, 0] == 180
     assert INPUT[10, 20, :] == [207, 192, 172, 255]
-
-
-# XY => RowCol
-def test_xy_to_rowcol():
-    assert INPUT.xy_to_rowcol(760101, 6945977) == (19, 7)
-
-
-def test_pixel_coords_numpy_equals_otb():
-    assert INPUT[19,7] == list(INPUT.to_numpy()[19,7])
-
-
-# Create dir before write
-def test_write():
-    INPUT.write("/tmp/missing_dir/test_write.tif")
-    assert INPUT.out.filepath.exists()
 
 
 # BandMath NDVI == RadiometricIndices NDVI ?

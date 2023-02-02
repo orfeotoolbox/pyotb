@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 """Search for OTB (set env if necessary), subclass core.App for each available application."""
+from __future__ import annotations
 import os
 import sys
+import subprocess
 from pathlib import Path
 
-import otbApplication as otb
-from .core import OTBObject
+import otbApplication as otb  # pylint: disable=import-error
+from .core import App
 from .helpers import logger
 
 
-def get_available_applications(as_subprocess=False):
+def get_available_applications(as_subprocess: bool = False) -> list[str]:
     """Find available OTB applications.
 
     Args:
@@ -28,16 +30,15 @@ def get_available_applications(as_subprocess=False):
         env = os.environ.copy()
         if "PYTHONPATH" not in env:
             env["PYTHONPATH"] = ""
-        env["PYTHONPATH"] = ":" + str(Path(otb.__file__).parent)
+        env["PYTHONPATH"] += ":" + str(Path(otb.__file__).parent)
         env["OTB_LOGGER_LEVEL"] = "CRITICAL"  # in order to suppress warnings while listing applications
         pycmd = "import otbApplication; print(otbApplication.Registry.GetAvailableApplications())"
         cmd_args = [sys.executable, "-c", pycmd]
         try:
-            import subprocess  # pylint: disable=import-outside-toplevel
             params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
-            with subprocess.Popen(cmd_args, **params) as p:
+            with subprocess.Popen(cmd_args, **params) as process:
                 logger.debug('Exec "%s \'%s\'"', ' '.join(cmd_args[:-1]), pycmd)
-                stdout, stderr = p.communicate()
+                stdout, stderr = process.communicate()
                 stdout, stderr = stdout.decode(), stderr.decode()
                 # ast.literal_eval is secure and will raise more handy Exceptions than eval
                 from ast import literal_eval  # pylint: disable=import-outside-toplevel
@@ -48,7 +49,7 @@ def get_available_applications(as_subprocess=False):
         except (ValueError, SyntaxError, AssertionError):
             logger.debug("Failed to decode output or convert to tuple:\nstdout=%s\nstderr=%s", stdout, stderr)
         if not app_list:
-            logger.info("Failed to list applications in an independent process. Falling back to local python import")
+            logger.debug("Failed to list applications in an independent process. Falling back to local python import")
     # Find applications using the normal way
     if not app_list:
         app_list = otb.Registry.GetAvailableApplications()
@@ -58,40 +59,10 @@ def get_available_applications(as_subprocess=False):
     return app_list
 
 
-class App(OTBObject):
-    """Base class for UI related functions, will be subclassed using app name as class name, see CODE_TEMPLATE."""
-    _name = ""
-
-    def __init__(self, *args, **kwargs):
-        """Default App constructor, adds UI specific attributes and functions."""
-        super().__init__(*args, **kwargs)
-        self.description = self.app.GetDocLongDescription()
-
-    @property
-    def used_outputs(self):
-        """List of used application outputs."""
-        return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
-
-    def find_outputs(self):
-        """Find output files on disk using path found in parameters.
-
-        Returns:
-            list of files found on disk
-
-        """
-        files, missing = [], []
-        for out in self.used_outputs:
-            dest = files if out.exists() else missing
-            dest.append(str(out.filepath.absolute()))
-        for filename in missing:
-            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-        return tuple(files)
-
-
 class OTBTFApp(App):
     """Helper for OTBTF."""
     @staticmethod
-    def set_nb_sources(*args, n_sources=None):
+    def set_nb_sources(*args, n_sources: int = None):
         """Set the number of sources of TensorflowModelServe. Can be either user-defined or deduced from the args.
 
         Args:
@@ -109,11 +80,11 @@ class OTBTFApp(App):
             if n_sources >= 1:
                 os.environ['OTB_TF_NSOURCES'] = str(n_sources)
 
-    def __init__(self, app_name, *args, n_sources=None, **kwargs):
+    def __init__(self, name: str, *args, n_sources: int = None, **kwargs):
         """Constructor for an OTBTFApp object.
 
         Args:
-            app_name: name of the OTBTF app
+            name: name of the OTBTF app
             *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
             n_sources: number of sources. Default is None (resolves the number of sources based on the
                        content of the dict passed in args, where some 'source' str is found)
@@ -121,7 +92,7 @@ class OTBTFApp(App):
 
         """
         self.set_nb_sources(*args, n_sources=n_sources)
-        super().__init__(app_name, *args, **kwargs)
+        super().__init__(name, *args, **kwargs)
 
 
 AVAILABLE_APPLICATIONS = get_available_applications(as_subprocess=True)

@@ -1,18 +1,19 @@
-import os
 import numpy as np
 import pyotb
-
-
-FILEPATH = os.environ["TEST_INPUT_IMAGE"]
-INPUT = pyotb.Input(FILEPATH)
+from tests_data import INPUT
 
 
 def test_export():
     INPUT.export()
-    assert "out" in INPUT.exports_dic
-    array = INPUT.exports_dic["out"]["array"]
+    array = INPUT.exports_dic[INPUT.key_output_image]["array"]
     assert isinstance(array, np.ndarray)
     assert array.dtype == "uint8"
+    del INPUT.exports_dic["out"]
+
+
+def test_output_export():
+    INPUT.out.export()
+    assert INPUT.out.key_output_image in INPUT.out.exports_dic
 
 
 def test_to_numpy():
@@ -36,10 +37,14 @@ def test_convert_to_array():
     assert INPUT.shape == array.shape
 
 
+def test_pixel_coords_otb_equals_numpy():
+    assert INPUT[19, 7] == list(INPUT.to_numpy()[19, 7])
+
+
 def test_add_noise_array():
     white_noise = np.random.normal(0, 50, size=INPUT.shape)
     noisy_image = INPUT + white_noise
-    assert isinstance(noisy_image, pyotb.core.OTBObject)
+    assert isinstance(noisy_image, pyotb.core.App)
     assert noisy_image.shape == INPUT.shape
 
 

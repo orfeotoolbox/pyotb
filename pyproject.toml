@@ -1,7 +1,58 @@
 [build-system]
-requires = [
-    "setuptools>=42",
-    "wheel",
-    "numpy>=1.13,<1.23"
-]
+requires = ["setuptools >= 61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyotb"
+description = "Library to enable easy use of the Orfeo ToolBox (OTB) in Python"
+authors =  [{name = "Rémi Cresson", email = "remi.cresson@inrae.fr"},  {name = "Nicolas Narçon"}, {name = "Vincent Delbar"}]
+requires-python = ">=3.7"
+keywords = ["gis", "remote sensing", "otb", "orfeotoolbox", "orfeo toolbox"]
+dependencies = ["numpy>=1.16"]
+readme = "README.md"
+license = { file = "LICENSE" }
+dynamic = ["version"]
+classifiers=[
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pylint", "codespell", "pydocstyle", "tomli"]
+
+[project.urls]
+documentation = "https://pyotb.readthedocs.io"
+homepage = "https://github.com/orfeotoolbox/pyotb"
+repository = "https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb"
+
+[tool.setuptools]
+packages = ["pyotb"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pyotb.__version__"}
+
+[tool.pylint]
+max-line-length = 120
+max-module-lines = 2000
+good-names = ["x", "y", "i", "j", "k", "e"]
+disable = [
+    "fixme",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-instance-attributes"
+]
+
+[tool.pydocstyle]
+convention = "google"
+
+[tool.black]
+line-length = 120
