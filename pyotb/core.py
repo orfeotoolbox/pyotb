@@ -199,60 +199,89 @@ class RasterInterface(ABC):
         return abs(int(row)), int(col)
 
     @staticmethod
-    def _create_operator(op_cls, name, a, b):
-        if isinstance(b, (np.ndarray, np.generic)):
+    def _create_operator(op_cls, name, x, y) -> Operation:
+        """Create an operator.
+
+        Args:
+            op_cls: Operator class
+            name: operator expression
+            x: first element
+            y: second element
+
+        Return:
+            operator
+
+        """
+        if isinstance(y, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return op_cls(name, a, b)
+        return op_cls(name, x, y)
 
     def __add__(self, other: App | str | int | float) -> Operation:
+        """Addition."""
         return self._create_operator(Operation, "+", self, other)
 
     def __sub__(self, other: App | str | int | float) -> Operation:
+        """Subtraction."""
         return self._create_operator(Operation, "-", self, other)
 
     def __mul__(self, other: App | str | int | float) -> Operation:
+        """Multiplication."""
         return self._create_operator(Operation, "*", self, other)
 
     def __truediv__(self, other: App | str | int | float) -> Operation:
+        """Division."""
         return self._create_operator(Operation, "/", self, other)
 
     def __radd__(self, other: App | str | int | float) -> Operation:
+        """Right addition."""
         return self._create_operator(Operation, "+", other, self)
 
     def __rsub__(self, other: App | str | int | float) -> Operation:
+        """Right subtraction."""
         return self._create_operator(Operation, "-", other, self)
 
     def __rmul__(self, other: App | str | int | float) -> Operation:
+        """Right multiplication."""
         return self._create_operator(Operation, "*", other, self)
 
     def __rtruediv__(self, other: App | str | int | float) -> Operation:
+        """Right division."""
         return self._create_operator(Operation, "/", other, self)
 
     def __abs__(self) -> Operation:
+        """Absolute value."""
         return Operation("abs", self)
 
     def __ge__(self, other: App | str | int | float) -> LogicalOperation:
+        """Greater of equal than."""
         return self._create_operator(LogicalOperation, ">=", self, other)
 
     def __le__(self, other: App | str | int | float) -> LogicalOperation:
+        """Lower of equal than."""
         return self._create_operator(LogicalOperation, "<=", self, other)
 
     def __gt__(self, other: App | str | int | float) -> LogicalOperation:
+        """Greater than."""
         return self._create_operator(LogicalOperation, ">", self, other)
 
     def __lt__(self, other: App | str | int | float) -> LogicalOperation:
+        """Lower than."""
         return self._create_operator(LogicalOperation, "<", self, other)
 
     def __eq__(self, other: App | str | int | float) -> LogicalOperation:
+        """Equality."""
         return self._create_operator(LogicalOperation, "==", self, other)
 
     def __ne__(self, other: App | str | int | float) -> LogicalOperation:
+        """Inequality."""
         return self._create_operator(LogicalOperation, "!=", self, other)
 
     def __or__(self, other: App | str | int | float) -> LogicalOperation:
+        """Logical or."""
         return self._create_operator(LogicalOperation, "||", self, other)
 
     def __and__(self, other: App | str | int | float) -> LogicalOperation:
+        """Logical and."""
         return self._create_operator(LogicalOperation, "&&", self, other)
 
     # Some other operations could be implemented with the same pattern
