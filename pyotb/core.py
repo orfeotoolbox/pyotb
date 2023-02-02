@@ -354,6 +354,10 @@ class ImageObject(ABC):
                 parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
         return {"name": self.app.GetName(), "parameters": parameters}
 
+    @abstractmethod
+    def parameters(self):
+        """Parameters"""
+
 
 class App(ImageObject):
     """Base class that gathers common operations for any OTB application."""
@@ -385,7 +389,7 @@ class App(ImageObject):
         self.image_dic = image_dic
         self._time_start, self._time_end = 0, 0
         self.exports_dic = {}
-        self.parameters = {}
+        self._parameters = {}
         # Initialize app, set parameters and execute if not frozen
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
@@ -446,6 +450,10 @@ class App(ImageObject):
                 data_dict[str(key)] = value
         return data_dict
 
+    @property
+    def parameters(self):
+        return self._parameters
+
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
 
@@ -487,7 +495,7 @@ class App(ImageObject):
         otb_params = self.app.GetParameters().items()
         otb_params = {k: str(v) if isinstance(v, otb.ApplicationProxy) else v for k, v in otb_params}
         # Update param dict and save values as object attributes
-        self.parameters.update({**parameters, **otb_params})
+        self._parameters.update({**parameters, **otb_params})
         self.save_objects()
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
@@ -1112,7 +1120,6 @@ class Output(ImageObject):
         """
         self.name = f"Output {param_key} from {pyotb_app.name}"
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
-        self.parameters = pyotb_app.parameters
         self.app = pyotb_app.app
         self.exports_dic = pyotb_app.exports_dic
         self.param_key = param_key
@@ -1128,6 +1135,10 @@ class Output(ImageObject):
     def output_image_key(self) -> str:
         """Force the right key to be used when accessing the ImageObject."""
         return self.param_key
+
+    @property
+    def parameters(self):
+        return self.parent_pyotb_app.parameters
 
     def exists(self) -> bool:
         """Check file exist."""
