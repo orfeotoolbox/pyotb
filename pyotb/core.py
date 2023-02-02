@@ -356,7 +356,7 @@ class ImageObject(ABC):
 
     @abstractmethod
     def parameters(self):
-        """Parameters"""
+        """Parameters."""
 
 
 class App(ImageObject):
@@ -452,6 +452,7 @@ class App(ImageObject):
 
     @property
     def parameters(self):
+        """Parameters."""
         return self._parameters
 
     def set_parameters(self, *args, **kwargs):
@@ -1138,6 +1139,7 @@ class Output(ImageObject):
 
     @property
     def parameters(self):
+        """Parameters."""
         return self.parent_pyotb_app.parameters
 
     def exists(self) -> bool:
