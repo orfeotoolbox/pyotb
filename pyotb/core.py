@@ -984,7 +984,7 @@ class Operation(App):
 
     """
 
-    def __init__(self, operator: str, *inputs, nb_bands: int = None):
+    def __init__(self, operator: str, *inputs, nb_bands: int = None, name: str = None):
         """Given some inputs and an operator, this function enables to transform this into an OTB application.
 
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
@@ -1180,7 +1180,7 @@ class LogicalOperation(Operation):
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
-        super().__init__(operator, *inputs, nb_bands=nb_bands)
+        super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
     def build_fake_expressions(self, operator: str, inputs: list[App | str | int | float], nb_bands: int = None):

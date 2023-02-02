@@ -59,6 +59,7 @@ def test_elapsed_time():
     assert 0 < pyotb.ReadImageInfo(INPUT).elapsed_time < 1
 
 
+
 # Other functions
 def test_get_infos():
     infos = INPUT.get_infos()
