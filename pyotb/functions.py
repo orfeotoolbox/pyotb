@@ -9,12 +9,11 @@ import textwrap
 import subprocess
 from collections import Counter
 
-from .core import OTBObject, Input, Operation, LogicalOperation, get_nbchannels, Output
+from .core import OTBObject, App, Operation, LogicalOperation, Input, get_nbchannels
 from .helpers import logger
 
 
-def where(cond: OTBObject | Output | str, x: OTBObject | Output | str | int | float,
-          y: OTBObject | Output | str | int | float) -> Operation:
+def where(cond: OTBObject | str, x: OTBObject | str | int | float, y: OTBObject | str | int | float) -> Operation:
     """Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y.
 
     Args:
@@ -64,8 +63,7 @@ def where(cond: OTBObject | Output | str, x: OTBObject | Output | str | int | fl
     return operation
 
 
-def clip(a: OTBObject | Output | str, a_min: OTBObject | Output | str | int | float,
-         a_max: OTBObject | Output | str | int | float):
+def clip(a: OTBObject | str, a_min: OTBObject | str | int | float, a_max: OTBObject | str | int | float):
     """Clip values of image in a range of values.
 
     Args:
@@ -355,9 +353,9 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
     metadatas = {}
     for inp in inputs:
         if isinstance(inp, str):  # this is for filepaths
-            metadata = Input(inp).GetImageMetaData('out')
+            metadata = Input(inp).app.GetImageMetaData('out')
         elif isinstance(inp, OTBObject):
-            metadata = inp.GetImageMetaData(inp.output_param)
+            metadata = inp.app.GetImageMetaData(inp.output_param)
         else:
             raise TypeError(f"Wrong input : {inp}")
         metadatas[inp] = metadata
@@ -416,7 +414,7 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
                     'mode.extent.ulx': ulx, 'mode.extent.uly': lry,  # bug in OTB <= 7.3 :
                     'mode.extent.lrx': lrx, 'mode.extent.lry': uly,  # ULY/LRY are inverted
                 }
-                new_input = OTBObject('ExtractROI', params)
+                new_input = App('ExtractROI', params)
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
@@ -429,7 +427,7 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
         inputs = new_inputs
 
         # Update metadatas
-        metadatas = {input: input.GetImageMetaData('out') for input in inputs}
+        metadatas = {input: input.app.GetImageMetaData('out') for input in inputs}
 
     # Get a metadata of an arbitrary image. This is just to compare later with other images
     any_metadata = next(iter(metadatas.values()))
@@ -457,14 +455,14 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
         new_inputs = []
         for inp in inputs:
             if metadatas[inp]['GeoTransform'][1] != pixel_size:
-                superimposed = OTBObject('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
+                superimposed = App('Superimpose', inr=reference_input, inm=inp, interpolator=interpolator)
                 new_inputs.append(superimposed)
             else:
                 new_inputs.append(inp)
         inputs = new_inputs
 
         # Update metadatas
-        metadatas = {inp: inp.GetImageMetaData('out') for inp in inputs}
+        metadatas = {inp: inp.app.GetImageMetaData('out') for inp in inputs}
 
     # Final superimposition to be sure to have the exact same image sizes
     # Getting the sizes of images
@@ -482,7 +480,7 @@ def define_processing_area(*args, window_rule: str = 'intersection', pixel_size_
     new_inputs = []
     for inp in inputs:
         if image_sizes[inp] != most_common_image_size:
-            superimposed = OTBObject('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
+            superimposed = App('Superimpose', inr=same_size_images[0], inm=inp, interpolator=interpolator)
             new_inputs.append(superimposed)
         else:
             new_inputs.append(inp)
