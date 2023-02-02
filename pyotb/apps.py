@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 
 import otbApplication as otb  # pylint: disable=import-error
-from .core import OTBObject
+from .core import App
 from .helpers import logger
 
 
@@ -57,41 +57,6 @@ def get_available_applications(as_subprocess: bool = False) -> list[str]:
         raise SystemExit("Unable to load applications. Set env variable OTB_APPLICATION_PATH and try again.")
     logger.info("Successfully loaded %s OTB applications", len(app_list))
     return app_list
-
-
-class App(OTBObject):
-    """Base class for UI related functions, will be subclassed using app name as class name, see CODE_TEMPLATE."""
-    _name = ""
-
-    def __init__(self, *args, **kwargs):
-        """Default App constructor, adds UI specific attributes and functions."""
-        super().__init__(*args, **kwargs)
-        self.description = self.app.GetDocLongDescription()
-
-    @property
-    def elapsed_time(self):
-        """Get elapsed time between app init and end of exec or file writing."""
-        return self.time_end - self.time_start
-
-    @property
-    def used_outputs(self) -> list[str]:
-        """List of used application outputs."""
-        return [getattr(self, key) for key in self.out_param_types if key in self.parameters]
-
-    def find_outputs(self) -> tuple[str]:
-        """Find output files on disk using path found in parameters.
-
-        Returns:
-            list of files found on disk
-
-        """
-        files, missing = [], []
-        for out in self.used_outputs:
-            dest = files if out.exists() else missing
-            dest.append(str(out.filepath.absolute()))
-        for filename in missing:
-            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-        return tuple(files)
 
 
 class OTBTFApp(App):

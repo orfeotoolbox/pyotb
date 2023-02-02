@@ -1,10 +1,10 @@
-import os
 import numpy as np
 import pyotb
+from tests_data import INPUT
+import numpy as np
 
-
-FILEPATH = os.environ["TEST_INPUT_IMAGE"]
-INPUT = pyotb.Input(FILEPATH)
+import pyotb
+from tests_data import INPUT
 
 
 def test_export():
@@ -37,7 +37,7 @@ def test_convert_to_array():
 
 
 def test_pixel_coords_otb_equals_numpy():
-    assert INPUT[19,7] == list(INPUT.to_numpy()[19,7])
+    assert INPUT[19, 7] == list(INPUT.to_numpy()[19, 7])
 
 
 def test_add_noise_array():
