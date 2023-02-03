@@ -1172,8 +1172,8 @@ def get_nbchannels(inp: str | ImageObject) -> int:
         try:
             info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.app.GetParameterInt("numberbands")
-        except RuntimeError as e:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f"Could not get the number of channels of '{inp}' ({e})") from e
+        except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
+            raise TypeError(f"Could not get the number of channels of '{inp}' ({info_err})") from info_err
     return nb_channels
 
 
