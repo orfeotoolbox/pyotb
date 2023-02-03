@@ -1034,7 +1034,8 @@ class LogicalOperation(Operation):
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def build_fake_expressions(self, operator: str, inputs: list[RasterInterface | str | int | float], nb_bands: int = None):
+    def build_fake_expressions(self, operator: str, inputs: list[RasterInterface | str | int | float],
+                               nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
         e.g for the operation input1 > input2, we create a fake expression that is like
@@ -1165,7 +1166,7 @@ def get_nbchannels(inp: str | RasterInterface) -> int:
     else:
         # Executing the app, without printing its log
         try:
-            info = RasterInterface("ReadImageInfo", inp, quiet=True)
+            info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.app.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the number of channels of '{inp}'. Not a filepath or wrong filepath") from e
