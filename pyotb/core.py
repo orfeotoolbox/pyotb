@@ -216,35 +216,35 @@ class RasterInterface(ABC):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
 
-    def __add__(self, other: App | str | int | float) -> Operation:
+    def __add__(self, other: RasterInterface | str | int | float) -> Operation:
         """Addition."""
         return self._create_operator(Operation, "+", self, other)
 
-    def __sub__(self, other: App | str | int | float) -> Operation:
+    def __sub__(self, other: RasterInterface | str | int | float) -> Operation:
         """Subtraction."""
         return self._create_operator(Operation, "-", self, other)
 
-    def __mul__(self, other: App | str | int | float) -> Operation:
+    def __mul__(self, other: RasterInterface | str | int | float) -> Operation:
         """Multiplication."""
         return self._create_operator(Operation, "*", self, other)
 
-    def __truediv__(self, other: App | str | int | float) -> Operation:
+    def __truediv__(self, other: RasterInterface | str | int | float) -> Operation:
         """Division."""
         return self._create_operator(Operation, "/", self, other)
 
-    def __radd__(self, other: App | str | int | float) -> Operation:
+    def __radd__(self, other: RasterInterface | str | int | float) -> Operation:
         """Right addition."""
         return self._create_operator(Operation, "+", other, self)
 
-    def __rsub__(self, other: App | str | int | float) -> Operation:
+    def __rsub__(self, other: RasterInterface | str | int | float) -> Operation:
         """Right subtraction."""
         return self._create_operator(Operation, "-", other, self)
 
-    def __rmul__(self, other: App | str | int | float) -> Operation:
+    def __rmul__(self, other: RasterInterface | str | int | float) -> Operation:
         """Right multiplication."""
         return self._create_operator(Operation, "*", other, self)
 
-    def __rtruediv__(self, other: App | str | int | float) -> Operation:
+    def __rtruediv__(self, other: RasterInterface | str | int | float) -> Operation:
         """Right division."""
         return self._create_operator(Operation, "/", other, self)
 
@@ -252,35 +252,35 @@ class RasterInterface(ABC):
         """Absolute value."""
         return Operation("abs", self)
 
-    def __ge__(self, other: App | str | int | float) -> LogicalOperation:
+    def __ge__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Greater of equal than."""
         return self._create_operator(LogicalOperation, ">=", self, other)
 
-    def __le__(self, other: App | str | int | float) -> LogicalOperation:
+    def __le__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Lower of equal than."""
         return self._create_operator(LogicalOperation, "<=", self, other)
 
-    def __gt__(self, other: App | str | int | float) -> LogicalOperation:
+    def __gt__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Greater than."""
         return self._create_operator(LogicalOperation, ">", self, other)
 
-    def __lt__(self, other: App | str | int | float) -> LogicalOperation:
+    def __lt__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Lower than."""
         return self._create_operator(LogicalOperation, "<", self, other)
 
-    def __eq__(self, other: App | str | int | float) -> LogicalOperation:
+    def __eq__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Equality."""
         return self._create_operator(LogicalOperation, "==", self, other)
 
-    def __ne__(self, other: App | str | int | float) -> LogicalOperation:
+    def __ne__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Inequality."""
         return self._create_operator(LogicalOperation, "!=", self, other)
 
-    def __or__(self, other: App | str | int | float) -> LogicalOperation:
+    def __or__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Logical or."""
         return self._create_operator(LogicalOperation, "||", self, other)
 
-    def __and__(self, other: App | str | int | float) -> LogicalOperation:
+    def __and__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
         """Logical and."""
         return self._create_operator(LogicalOperation, "&&", self, other)
 
