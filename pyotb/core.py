@@ -14,7 +14,7 @@ import otbApplication as otb  # pylint: disable=import-error
 from .helpers import logger
 
 
-class ImageObject(ABC):
+class OTBObject(ABC):
     """Abstraction of an image object."""
 
     name: str
@@ -214,35 +214,35 @@ class ImageObject(ABC):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
 
-    def __add__(self, other: ImageObject | str | int | float) -> Operation:
+    def __add__(self, other: OTBObject | str | int | float) -> Operation:
         """Addition."""
         return self._create_operator(Operation, "+", self, other)
 
-    def __sub__(self, other: ImageObject | str | int | float) -> Operation:
+    def __sub__(self, other: OTBObject | str | int | float) -> Operation:
         """Subtraction."""
         return self._create_operator(Operation, "-", self, other)
 
-    def __mul__(self, other: ImageObject | str | int | float) -> Operation:
+    def __mul__(self, other: OTBObject | str | int | float) -> Operation:
         """Multiplication."""
         return self._create_operator(Operation, "*", self, other)
 
-    def __truediv__(self, other: ImageObject | str | int | float) -> Operation:
+    def __truediv__(self, other: OTBObject | str | int | float) -> Operation:
         """Division."""
         return self._create_operator(Operation, "/", self, other)
 
-    def __radd__(self, other: ImageObject | str | int | float) -> Operation:
+    def __radd__(self, other: OTBObject | str | int | float) -> Operation:
         """Right addition."""
         return self._create_operator(Operation, "+", other, self)
 
-    def __rsub__(self, other: ImageObject | str | int | float) -> Operation:
+    def __rsub__(self, other: OTBObject | str | int | float) -> Operation:
         """Right subtraction."""
         return self._create_operator(Operation, "-", other, self)
 
-    def __rmul__(self, other: ImageObject | str | int | float) -> Operation:
+    def __rmul__(self, other: OTBObject | str | int | float) -> Operation:
         """Right multiplication."""
         return self._create_operator(Operation, "*", other, self)
 
-    def __rtruediv__(self, other: ImageObject | str | int | float) -> Operation:
+    def __rtruediv__(self, other: OTBObject | str | int | float) -> Operation:
         """Right division."""
         return self._create_operator(Operation, "/", other, self)
 
@@ -250,35 +250,35 @@ class ImageObject(ABC):
         """Absolute value."""
         return Operation("abs", self)
 
-    def __ge__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __ge__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Greater of equal than."""
         return self._create_operator(LogicalOperation, ">=", self, other)
 
-    def __le__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __le__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Lower of equal than."""
         return self._create_operator(LogicalOperation, "<=", self, other)
 
-    def __gt__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __gt__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Greater than."""
         return self._create_operator(LogicalOperation, ">", self, other)
 
-    def __lt__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __lt__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Lower than."""
         return self._create_operator(LogicalOperation, "<", self, other)
 
-    def __eq__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __eq__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Equality."""
         return self._create_operator(LogicalOperation, "==", self, other)
 
-    def __ne__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __ne__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Inequality."""
         return self._create_operator(LogicalOperation, "!=", self, other)
 
-    def __or__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __or__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Logical or."""
         return self._create_operator(LogicalOperation, "||", self, other)
 
-    def __and__(self, other: ImageObject | str | int | float) -> LogicalOperation:
+    def __and__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Logical and."""
         return self._create_operator(LogicalOperation, "&&", self, other)
 
@@ -317,7 +317,7 @@ class ImageObject(ABC):
             for inp in inputs:
                 if isinstance(inp, (float, int, np.ndarray, np.generic)):
                     arrays.append(inp)
-                elif isinstance(inp, ImageObject):
+                elif isinstance(inp, OTBObject):
                     if not inp.exports_dic:
                         inp.export()
                     image_dic = inp.exports_dic[inp.output_image_key]
@@ -349,16 +349,15 @@ class ImageObject(ABC):
         """
         parameters = self.parameters.copy()
         for key, param in parameters.items():
-            # In the following, we replace each parameter which is an ImageObject, with its summary.
-            if isinstance(param, ImageObject):  # single parameter
+            # In the following, we replace each parameter which is an OTBObject, with its summary.
+            if isinstance(param, OTBObject):  # single parameter
                 parameters[key] = param.summarize()
             elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
+                parameters[key] = [p.summarize() if isinstance(p, OTBObject) else p for p in param]
         return {"name": self.app.GetName(), "parameters": parameters}
 
 
-
-class App(ImageObject):
+class App(OTBObject):
     """Base class that gathers common operations for any OTB application."""
 
     def __init__(self, name: str, *args, frozen: bool = False, quiet: bool = False, image_dic: dict = None, **kwargs):
@@ -458,7 +457,7 @@ class App(ImageObject):
         Args:
             *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                               (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-                            - string or ImageObject, useful when the user implicitly wants to set the param "in"
+                            - string or OTBObject, useful when the user implicitly wants to set the param "in"
                             - list, useful when the user implicitly wants to set the param "il"
             **kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
 
@@ -648,7 +647,7 @@ class App(ImageObject):
         return tuple(files)
 
     # Private functions
-    def __parse_args(self, args: list[str | ImageObject | dict | list]) -> dict[str, Any]:
+    def __parse_args(self, args: list[str | OTBObject | dict | list]) -> dict[str, Any]:
         """Gather all input arguments in kwargs dict.
 
         Args:
@@ -662,17 +661,17 @@ class App(ImageObject):
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, ImageObject)) or isinstance(arg, list) and is_key_list(self, self.key_input):
+            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and is_key_list(self, self.key_input):
                 kwargs.update({self.key_input: arg})
         return kwargs
 
-    def __set_param(self, key: str, obj: list | tuple | ImageObject | otb.Application | list[Any]):
+    def __set_param(self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]):
         """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
             self.app.ClearValue(key)
             return
         # Single-parameter cases
-        if isinstance(obj, ImageObject):
+        if isinstance(obj, OTBObject):
             self.app.ConnectImage(key, obj.app, obj.output_image_key)
         elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
             self.app.ConnectImage(key, obj, get_out_images_param_keys(obj)[0])
@@ -684,7 +683,7 @@ class App(ImageObject):
         elif is_key_images_list(self, key):
             # To enable possible in-memory connections, we go through the list and set the parameters one by one
             for inp in obj:
-                if isinstance(inp, ImageObject):
+                if isinstance(inp, OTBObject):
                     self.app.ConnectImage(key, inp.app, inp.output_image_key)
                 elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
                     self.app.ConnectImage(key, obj, get_out_images_param_keys(inp)[0])
@@ -844,7 +843,7 @@ class Operation(App):
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
-            *inputs: inputs. Can be ImageObject, filepath, int or float
+            *inputs: inputs. Can be OTBObject, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
             name: override the Operation name
 
@@ -876,7 +875,7 @@ class Operation(App):
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = name or f'Operation exp="{self.exp}"'
 
-    def build_fake_expressions(self, operator: str, inputs: list[ImageObject | str | int | float],
+    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float],
                                nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
@@ -884,7 +883,7 @@ class Operation(App):
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
-            inputs: inputs. Can be ImageObject, filepath, int or float
+            inputs: inputs. Can be OTBObject, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
@@ -959,8 +958,8 @@ class Operation(App):
         return exp_bands, ";".join(exp_bands)
 
     @staticmethod
-    def make_fake_exp(x: ImageObject | str, band: int, keep_logical: bool = False) \
-            -> tuple[str, list[ImageObject], int]:
+    def make_fake_exp(x: OTBObject | str, band: int, keep_logical: bool = False) \
+            -> tuple[str, list[OTBObject], int]:
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
@@ -1037,7 +1036,7 @@ class LogicalOperation(Operation):
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def build_fake_expressions(self, operator: str, inputs: list[ImageObject | str | int | float],
+    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float],
                                nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
@@ -1046,7 +1045,7 @@ class LogicalOperation(Operation):
 
         Args:
             operator: str (one of >, <, >=, <=, ==, !=, &, |)
-            inputs: Can be ImageObject, filepath, int or float
+            inputs: Can be OTBObject, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
@@ -1100,7 +1099,7 @@ class Input(App):
         return f"<pyotb.Input object from {self.filepath}>"
 
 
-class Output(ImageObject):
+class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
     def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = None, mkdir: bool = True):
@@ -1129,7 +1128,7 @@ class Output(ImageObject):
 
     @property
     def output_image_key(self) -> str:
-        """Force the right key to be used when accessing the ImageObject."""
+        """Force the right key to be used when accessing the OTBObject."""
         return self.param_key
 
     def exists(self) -> bool:
@@ -1155,17 +1154,17 @@ class Output(ImageObject):
         return f"<pyotb.Output {self.name} object, id {id(self)}>"
 
 
-def get_nbchannels(inp: str | ImageObject) -> int:
+def get_nbchannels(inp: str | OTBObject) -> int:
     """Get the nb of bands of input image.
 
     Args:
-        inp: can be filepath or ImageObject object
+        inp: can be filepath or OTBObject object
 
     Returns:
         number of bands in image
 
     """
-    if isinstance(inp, ImageObject):
+    if isinstance(inp, OTBObject):
         nb_channels = inp.shape[-1]
     else:
         # Executing the app, without printing its log
@@ -1177,7 +1176,7 @@ def get_nbchannels(inp: str | ImageObject) -> int:
     return nb_channels
 
 
-def get_pixel_type(inp: str | ImageObject) -> str:
+def get_pixel_type(inp: str | OTBObject) -> str:
     """Get the encoding of input image pixels.
 
     Args:
@@ -1185,7 +1184,7 @@ def get_pixel_type(inp: str | ImageObject) -> str:
 
     Returns:
         pixel_type: OTB enum e.g. `otbApplication.ImagePixelType_uint8', which actually is an int.
-                    For an ImageObject with several outputs, only the pixel type of the first output is returned
+                    For an OTBObject with several outputs, only the pixel type of the first output is returned
 
     """
     if isinstance(inp, str):
@@ -1210,7 +1209,7 @@ def get_pixel_type(inp: str | ImageObject) -> str:
         if datatype not in datatype_to_pixeltype:
             raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
         pixel_type = getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
-    elif isinstance(inp, ImageObject):
+    elif isinstance(inp, OTBObject):
         pixel_type = inp.app.GetParameterOutputImagePixelType(inp.output_image_key)
     else:
         raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
@@ -1234,8 +1233,8 @@ def parse_pixel_type(pixel_type: str | int) -> int:
     raise ValueError(f"Bad pixel type specification ({pixel_type})")
 
 
-def is_key_list(pyotb_app: ImageObject, key: str) -> bool:
-    """Check if a key of the ImageObject is an input parameter list."""
+def is_key_list(pyotb_app: OTBObject, key: str) -> bool:
+    """Check if a key of the OTBObject is an input parameter list."""
     types = (
         otb.ParameterType_InputImageList,
         otb.ParameterType_StringList,
@@ -1246,12 +1245,12 @@ def is_key_list(pyotb_app: ImageObject, key: str) -> bool:
     return pyotb_app.app.GetParameterType(key) in types
 
 
-def is_key_images_list(pyotb_app: ImageObject, key: str) -> bool:
-    """Check if a key of the ImageObject is an input parameter image list."""
+def is_key_images_list(pyotb_app: OTBObject, key: str) -> bool:
+    """Check if a key of the OTBObject is an input parameter image list."""
     types = (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
     return pyotb_app.app.GetParameterType(key) in types
 
 
-def get_out_images_param_keys(app: ImageObject) -> list[str]:
+def get_out_images_param_keys(app: OTBObject) -> list[str]:
     """Return every output parameter keys of an OTB app."""
     return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]
