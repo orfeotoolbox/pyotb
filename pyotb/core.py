@@ -836,7 +836,7 @@ class Operation(App):
 
     """
 
-    def __init__(self, operator: str, *inputs, nb_bands: int = None):
+    def __init__(self, operator: str, *inputs, nb_bands: int = None, name: str = None):
         """Given some inputs and an operator, this function enables to transform this into an OTB application.
 
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
@@ -874,7 +874,7 @@ class Operation(App):
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         # Execute app
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
-        self.name = f'Operation exp="{self.exp}"'
+        self.name = name or f'Operation exp="{self.exp}"'
 
     def build_fake_expressions(self, operator: str, inputs: list[ImageObject | str | int | float],
                                nb_bands: int = None):
