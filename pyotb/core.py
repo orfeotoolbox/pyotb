@@ -17,6 +17,7 @@ from .helpers import logger
 class ImageObject(ABC):
     """Abstraction of an image object."""
 
+    name: str
     app: otb.Application
     exports_dic: dict
 
