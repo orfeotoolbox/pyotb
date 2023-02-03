@@ -14,7 +14,7 @@ import otbApplication as otb  # pylint: disable=import-error
 from .helpers import logger
 
 
-class RasterInterface(ABC):
+class ImageObject(ABC):
     """Abstraction of an image object."""
 
     app: otb.Application
@@ -22,7 +22,7 @@ class RasterInterface(ABC):
 
     @property
     @abstractmethod
-    def key_output_image(self):
+    def output_image_key(self):
         """Returns the name of a parameter associated to an image. Property defined in App and Output."""
 
     @abstractmethod
@@ -32,7 +32,7 @@ class RasterInterface(ABC):
     @property
     def metadata(self) -> dict[str, (str, float, list[float])]:
         """Return first output image metadata dictionary."""
-        return dict(self.app.GetMetadataDictionary(self.key_output_image))
+        return dict(self.app.GetMetadataDictionary(self.output_image_key))
 
     @property
     def dtype(self) -> np.dtype:
@@ -42,7 +42,7 @@ class RasterInterface(ABC):
             dtype: pixel type of the output image
 
         """
-        enum = self.app.GetParameterOutputImagePixelType(self.key_output_image)
+        enum = self.app.GetParameterOutputImagePixelType(self.output_image_key)
         return self.app.ConvertPixelTypeToNumpy(enum)
 
     @property
@@ -53,8 +53,8 @@ class RasterInterface(ABC):
             shape: (height, width, bands)
 
         """
-        width, height = self.app.GetImageSize(self.key_output_image)
-        bands = self.app.GetImageNbBands(self.key_output_image)
+        width, height = self.app.GetImageSize(self.output_image_key)
+        bands = self.app.GetImageNbBands(self.output_image_key)
         return height, width, bands
 
     @property
@@ -64,13 +64,13 @@ class RasterInterface(ABC):
         Returns:
             transform: (X spacing, X offset, X origin, Y offset, Y spacing, Y origin)
         """
-        spacing_x, spacing_y = self.app.GetImageSpacing(self.key_output_image)
-        origin_x, origin_y = self.app.GetImageOrigin(self.key_output_image)
+        spacing_x, spacing_y = self.app.GetImageSpacing(self.output_image_key)
+        origin_x, origin_y = self.app.GetImageOrigin(self.output_image_key)
         # Shift image origin since OTB is giving coordinates of pixel center instead of corners
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
 
-    def get_infos(self) -> dict[str, (str, float, list[float])]:
+    def get_info(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ReadImageInfo for the first image output."""
         return App("ReadImageInfo", self, quiet=True).data
 
@@ -78,7 +78,7 @@ class RasterInterface(ABC):
         """Return a dict output of ComputeImagesStatistics for the first image output."""
         return App("ComputeImagesStatistics", self, quiet=True).data
 
-    def read_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
+    def get_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
         """Get pixel value(s) at a given YX coordinates.
 
         Args:
@@ -106,9 +106,7 @@ class RasterInterface(ABC):
                 app.set_parameters({"cl": [f"Channel{n + 1}" for n in channels]})
         app.execute()
         data = literal_eval(app.app.GetParameterString("value"))
-        if len(channels) == 1:
-            return data[0]
-        return data
+        return data[0] if len(channels) == 1 else data
 
     def channels_list_from_slice(self, bands: int) -> list[int]:
         """Get list of channels to read values at, from a slice."""
@@ -140,7 +138,7 @@ class RasterInterface(ABC):
 
         """
         if key is None:
-            key = self.key_output_image
+            key = self.output_image_key
         if key not in self.exports_dic:
             self.exports_dic[key] = self.app.ExportImage(key)
         if preserve_dtype:
@@ -163,9 +161,7 @@ class RasterInterface(ABC):
         """
         data = self.export(key, preserve_dtype)
         array = data["array"]
-        if copy:
-            return array.copy()
-        return array
+        return array.copy() if copy else array
 
     def to_rasterio(self) -> tuple[np.ndarray, dict[str, Any]]:
         """Export image as a numpy array and its metadata compatible with rasterio.
@@ -177,14 +173,14 @@ class RasterInterface(ABC):
         """
         array = self.to_numpy(preserve_dtype=True, copy=False)
         height, width, count = array.shape
-        proj = self.app.GetImageProjection(self.key_output_image)
+        proj = self.app.GetImageProjection(self.output_image_key)
         profile = {
             'crs': proj, 'dtype': array.dtype, 'transform': self.transform,
             'count': count, 'height': height, 'width': width,
         }
         return np.moveaxis(array, 2, 0), profile
 
-    def xy_to_rowcol(self, x: float, y: float) -> tuple[int, int]:
+    def get_rowcol_from_xy(self, x: float, y: float) -> tuple[int, int]:
         """Find (row, col) index using (x, y) projected coordinates - image CRS is expected.
 
         Args:
@@ -216,35 +212,35 @@ class RasterInterface(ABC):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
 
-    def __add__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __add__(self, other: ImageObject | str | int | float) -> Operation:
         """Addition."""
         return self._create_operator(Operation, "+", self, other)
 
-    def __sub__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __sub__(self, other: ImageObject | str | int | float) -> Operation:
         """Subtraction."""
         return self._create_operator(Operation, "-", self, other)
 
-    def __mul__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __mul__(self, other: ImageObject | str | int | float) -> Operation:
         """Multiplication."""
         return self._create_operator(Operation, "*", self, other)
 
-    def __truediv__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __truediv__(self, other: ImageObject | str | int | float) -> Operation:
         """Division."""
         return self._create_operator(Operation, "/", self, other)
 
-    def __radd__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __radd__(self, other: ImageObject | str | int | float) -> Operation:
         """Right addition."""
         return self._create_operator(Operation, "+", other, self)
 
-    def __rsub__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __rsub__(self, other: ImageObject | str | int | float) -> Operation:
         """Right subtraction."""
         return self._create_operator(Operation, "-", other, self)
 
-    def __rmul__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __rmul__(self, other: ImageObject | str | int | float) -> Operation:
         """Right multiplication."""
         return self._create_operator(Operation, "*", other, self)
 
-    def __rtruediv__(self, other: RasterInterface | str | int | float) -> Operation:
+    def __rtruediv__(self, other: ImageObject | str | int | float) -> Operation:
         """Right division."""
         return self._create_operator(Operation, "/", other, self)
 
@@ -252,35 +248,35 @@ class RasterInterface(ABC):
         """Absolute value."""
         return Operation("abs", self)
 
-    def __ge__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __ge__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Greater of equal than."""
         return self._create_operator(LogicalOperation, ">=", self, other)
 
-    def __le__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __le__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Lower of equal than."""
         return self._create_operator(LogicalOperation, "<=", self, other)
 
-    def __gt__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __gt__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Greater than."""
         return self._create_operator(LogicalOperation, ">", self, other)
 
-    def __lt__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __lt__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Lower than."""
         return self._create_operator(LogicalOperation, "<", self, other)
 
-    def __eq__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __eq__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Equality."""
         return self._create_operator(LogicalOperation, "==", self, other)
 
-    def __ne__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __ne__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Inequality."""
         return self._create_operator(LogicalOperation, "!=", self, other)
 
-    def __or__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __or__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Logical or."""
         return self._create_operator(LogicalOperation, "||", self, other)
 
-    def __and__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+    def __and__(self, other: ImageObject | str | int | float) -> LogicalOperation:
         """Logical and."""
         return self._create_operator(LogicalOperation, "&&", self, other)
 
@@ -322,7 +318,7 @@ class RasterInterface(ABC):
                 elif isinstance(inp, App):
                     if not inp.exports_dic:
                         inp.export()
-                    image_dic = inp.exports_dic[inp.key_output_image]
+                    image_dic = inp.exports_dic[inp.output_image_key]
                     array = image_dic["array"]
                     arrays.append(array)
                 else:
@@ -343,7 +339,7 @@ class RasterInterface(ABC):
         return NotImplemented
 
 
-class App(RasterInterface):
+class App(ImageObject):
     """Base class that gathers common operations for any OTB application."""
 
     def __init__(self, name: str, *args, frozen: bool = False, quiet: bool = False, image_dic: dict = None, **kwargs):
@@ -408,7 +404,7 @@ class App(RasterInterface):
         return self.get_first_key(param_types=[otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
 
     @property
-    def key_output_image(self) -> str:
+    def output_image_key(self) -> str:
         """Get the name of first output image parameter."""
         return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
 
@@ -443,7 +439,7 @@ class App(RasterInterface):
         Args:
             *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                               (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-                            - string or RasterInterface, useful when the user implicitly wants to set the param "in"
+                            - string or ImageObject, useful when the user implicitly wants to set the param "in"
                             - list, useful when the user implicitly wants to set the param "il"
             **kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
 
@@ -582,8 +578,8 @@ class App(RasterInterface):
                 kwargs.update(arg)
             elif isinstance(arg, str) and kwargs:
                 logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
-            elif isinstance(arg, (str, Path)) and self.key_output_image:
-                kwargs.update({self.key_output_image: str(arg)})
+            elif isinstance(arg, (str, Path)) and self.output_image_key:
+                kwargs.update({self.output_image_key: str(arg)})
 
         # Append filename extension to filenames
         if filename_extension:
@@ -641,15 +637,15 @@ class App(RasterInterface):
         """
         parameters = self.parameters.copy()
         for key, param in parameters.items():
-            # In the following, we replace each parameter which is an RasterInterface, with its summary.
-            if isinstance(param, RasterInterface):  # single parameter
+            # In the following, we replace each parameter which is an ImageObject, with its summary.
+            if isinstance(param, ImageObject):  # single parameter
                 parameters[key] = param.summarize()
             elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, RasterInterface) else p for p in param]
+                parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
         return {"name": self.app.GetName(), "parameters": parameters}
 
     # Private functions
-    def __parse_args(self, args: list[str | RasterInterface | dict | list]) -> dict[str, Any]:
+    def __parse_args(self, args: list[str | ImageObject | dict | list]) -> dict[str, Any]:
         """Gather all input arguments in kwargs dict.
 
         Args:
@@ -663,18 +659,18 @@ class App(RasterInterface):
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, RasterInterface)) or isinstance(arg, list) and is_key_list(self, self.key_input):
+            elif isinstance(arg, (str, ImageObject)) or isinstance(arg, list) and is_key_list(self, self.key_input):
                 kwargs.update({self.key_input: arg})
         return kwargs
 
-    def __set_param(self, key: str, obj: list | tuple | RasterInterface | otb.Application | list[Any]):
+    def __set_param(self, key: str, obj: list | tuple | ImageObject | otb.Application | list[Any]):
         """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
             self.app.ClearValue(key)
             return
         # Single-parameter cases
-        if isinstance(obj, RasterInterface):
-            self.app.ConnectImage(key, obj.app, obj.key_output_image)
+        if isinstance(obj, ImageObject):
+            self.app.ConnectImage(key, obj.app, obj.output_image_key)
         elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
             self.app.ConnectImage(key, obj, get_out_images_param_keys(obj)[0])
         elif key == "ram":  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
@@ -685,8 +681,8 @@ class App(RasterInterface):
         elif is_key_images_list(self, key):
             # To enable possible in-memory connections, we go through the list and set the parameters one by one
             for inp in obj:
-                if isinstance(inp, RasterInterface):
-                    self.app.ConnectImage(key, inp.app, inp.key_output_image)
+                if isinstance(inp, ImageObject):
+                    self.app.ConnectImage(key, inp.app, inp.output_image_key)
                 elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
                     self.app.ConnectImage(key, obj, get_out_images_param_keys(inp)[0])
                 else:  # here `input` should be an image filepath
@@ -735,7 +731,7 @@ class App(RasterInterface):
                 channels = None
                 if len(key) == 3:
                     channels = key[2]
-                return self.read_values_at_coords(row, col, channels)
+                return self.get_values_at_coords(row, col, channels)
         # Slicing
         if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
             raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
@@ -1098,7 +1094,7 @@ class Input(App):
         return f"<pyotb.Input object from {self.filepath}>"
 
 
-class Output(RasterInterface):
+class Output(ImageObject):
     """Object that behave like a pointer to a specific application output file."""
 
     def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = None, mkdir: bool = True):
@@ -1125,8 +1121,8 @@ class Output(RasterInterface):
                 self.make_parent_dirs()
 
     @property
-    def key_output_image(self) -> str:
-        """Force the right key to be used when accessing the RasterInterface."""
+    def output_image_key(self) -> str:
+        """Force the right key to be used when accessing the ImageObject."""
         return self.param_key
 
     def exists(self) -> bool:
@@ -1144,8 +1140,8 @@ class Output(RasterInterface):
     def write(self, filepath: None | str | Path = None, **kwargs):
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
         if filepath is None and self.filepath:
-            return self.parent_pyotb_app.write({self.key_output_image: self.filepath}, **kwargs)
-        return self.parent_pyotb_app.write({self.key_output_image: filepath}, **kwargs)
+            return self.parent_pyotb_app.write({self.output_image_key: self.filepath}, **kwargs)
+        return self.parent_pyotb_app.write({self.output_image_key: filepath}, **kwargs)
 
     def __str__(self) -> str:
         """Return a nice string representation with source app name and object id."""
@@ -1208,7 +1204,7 @@ def get_pixel_type(inp: str | App) -> str:
             raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
         pixel_type = getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
     elif isinstance(inp, App):
-        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.key_output_image)
+        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.output_image_key)
     else:
         raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
     return pixel_type
