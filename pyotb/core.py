@@ -856,7 +856,6 @@ class Operation(App):
         self.inputs = []
         self.nb_channels = {}
         self.fake_exp_bands = []
-        self.logical_fake_exp_bands = []
         self.build_fake_expressions(operator, inputs, nb_bands=nb_bands)
         # Transforming images to the adequate im#, e.g. `input1` to "im1"
         # creating a dictionary that is like {str(input1): 'im1', 'image2.tif': 'im2', ...}.
@@ -1033,6 +1032,7 @@ class LogicalOperation(Operation):
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
+        self.logical_fake_exp_bands = []
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
