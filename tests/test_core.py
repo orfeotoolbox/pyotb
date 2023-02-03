@@ -27,7 +27,7 @@ def test_key_input():
 
 
 def test_key_output():
-    assert INPUT.key_output_image == "out"
+    assert INPUT.output_image_key == "out"
 
 
 def test_dtype():
@@ -62,7 +62,7 @@ def test_elapsed_time():
 
 # Other functions
 def test_get_infos():
-    infos = INPUT.get_infos()
+    infos = INPUT.get_info()
     assert (infos["sizex"], infos["sizey"]) == (251, 304)
 
 
@@ -71,7 +71,7 @@ def test_get_statistics():
 
 
 def test_xy_to_rowcol():
-    assert INPUT.xy_to_rowcol(760101, 6945977) == (19, 7)
+    assert INPUT.get_rowcol_from_xy(760101, 6945977) == (19, 7)
 
 
 def test_write():

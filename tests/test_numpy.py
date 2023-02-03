@@ -5,7 +5,7 @@ from tests_data import INPUT
 
 def test_export():
     INPUT.export()
-    array = INPUT.exports_dic[INPUT.key_output_image]["array"]
+    array = INPUT.exports_dic[INPUT.output_image_key]["array"]
     assert isinstance(array, np.ndarray)
     assert array.dtype == "uint8"
     del INPUT.exports_dic["out"]
@@ -13,7 +13,7 @@ def test_export():
 
 def test_output_export():
     INPUT.out.export()
-    assert INPUT.out.key_output_image in INPUT.out.exports_dic
+    assert INPUT.out.output_image_key in INPUT.out.exports_dic
 
 
 def test_to_numpy():
