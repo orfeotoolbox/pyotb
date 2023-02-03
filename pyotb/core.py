@@ -196,8 +196,24 @@ class OTBObject(ABC):
         row, col = (origin_y - y) / spacing_y, (x - origin_x) / spacing_x
         return abs(int(row)), int(col)
 
+    def summarize(self) -> dict[str, str | dict[str, Any]]:
+        """Serialize an object and its pipeline into a dictionary.
+
+        Returns:
+            nested dictionary summarizing the pipeline
+
+        """
+        parameters = self.parameters.copy()
+        for key, param in parameters.items():
+            # In the following, we replace each parameter which is an OTBObject, with its summary.
+            if isinstance(param, OTBObject):  # single parameter
+                parameters[key] = param.summarize()
+            elif isinstance(param, list):  # parameter list
+                parameters[key] = [p.summarize() if isinstance(p, OTBObject) else p for p in param]
+        return {"name": self.app.GetName(), "parameters": parameters}
+
     @staticmethod
-    def _create_operator(op_cls, name, x, y) -> Operation:
+    def __create_operator(op_cls, name, x, y) -> Operation:
         """Create an operator.
 
         Args:
@@ -213,6 +229,44 @@ class OTBObject(ABC):
         if isinstance(y, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
+
+    def __getitem__(self, key) -> Any | list[int | float] | int | float | Slicer:
+        """Override the default __getitem__ behaviour.
+
+        This function enables 2 things :
+        - access attributes like that : object['any_attribute']
+        - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
+                                                          selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
+                                                          selecting 1000x1000 subset : object[:1000, :1000]
+        - access pixel value(s) at a specified row, col index
+
+        Args:
+            key: attribute key
+
+        Returns:
+            attribute, pixel values or Slicer
+
+        """
+        # Accessing string attributes
+        if isinstance(key, str):
+            return getattr(self, key)
+        # Accessing pixel value(s) using Y/X coordinates
+        if isinstance(key, tuple) and len(key) >= 2:
+            row, col = key[0], key[1]
+            if isinstance(row, int) and isinstance(col, int):
+                if row < 0 or col < 0:
+                    raise ValueError(f"{self.name}: can't read pixel value at negative coordinates ({row}, {col})")
+                channels = None
+                if len(key) == 3:
+                    channels = key[2]
+                return self.get_values_at_coords(row, col, channels)
+        # Slicing
+        if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
+            raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
+        if isinstance(key, tuple) and len(key) == 2:
+            # Adding a 3rd dimension
+            key = key + (slice(None, None, None),)
+        return Slicer(self, *key)
 
     def __add__(self, other: OTBObject | str | int | float) -> Operation:
         """Addition."""
@@ -339,22 +393,6 @@ class OTBObject(ABC):
             pyotb_app.execute()
             return pyotb_app
         return NotImplemented
-
-    def summarize(self) -> dict[str, str | dict[str, Any]]:
-        """Serialize an object and its pipeline into a dictionary.
-
-        Returns:
-            nested dictionary summarizing the pipeline
-
-        """
-        parameters = self.parameters.copy()
-        for key, param in parameters.items():
-            # In the following, we replace each parameter which is an OTBObject, with its summary.
-            if isinstance(param, OTBObject):  # single parameter
-                parameters[key] = param.summarize()
-            elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, OTBObject) else p for p in param]
-        return {"name": self.app.GetName(), "parameters": parameters}
 
 
 class App(OTBObject):
@@ -703,44 +741,6 @@ class App(OTBObject):
 
         """
         return id(self)
-
-    def __getitem__(self, key) -> Any | list[int | float] | int | float | Slicer:
-        """Override the default __getitem__ behaviour.
-
-        This function enables 2 things :
-        - access attributes like that : object['any_attribute']
-        - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
-                                                          selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
-                                                          selecting 1000x1000 subset : object[:1000, :1000]
-        - access pixel value(s) at a specified row, col index
-
-        Args:
-            key: attribute key
-
-        Returns:
-            attribute, pixel values or Slicer
-
-        """
-        # Accessing string attributes
-        if isinstance(key, str):
-            return getattr(self, key)
-        # Accessing pixel value(s) using Y/X coordinates
-        if isinstance(key, tuple) and len(key) >= 2:
-            row, col = key[0], key[1]
-            if isinstance(row, int) and isinstance(col, int):
-                if row < 0 or col < 0:
-                    raise ValueError(f"{self.name}: can't read pixel value at negative coordinates ({row}, {col})")
-                channels = None
-                if len(key) == 3:
-                    channels = key[2]
-                return self.get_values_at_coords(row, col, channels)
-        # Slicing
-        if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
-            raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
-        if isinstance(key, tuple) and len(key) == 2:
-            # Adding a 3rd dimension
-            key = key + (slice(None, None, None),)
-        return Slicer(self, *key)
 
     def __str__(self) -> str:
         """Return a nice string representation with object id."""
