@@ -1206,8 +1206,8 @@ def get_pixel_type(inp: str | RasterInterface) -> str:
         if datatype not in datatype_to_pixeltype:
             raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
         pixel_type = getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
-    elif isinstance(inp, RasterInterface):
-        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.key_output_image)
+    elif isinstance(inp, ImageObject):
+        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.output_image_key)
     else:
         raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
     return pixel_type
