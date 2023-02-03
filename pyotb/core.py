@@ -198,241 +198,94 @@ class RasterInterface(ABC):
         row, col = (origin_y - y) / spacing_y, (x - origin_x) / spacing_x
         return abs(int(row)), int(col)
 
-    def __add__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default addition and flavours it with BandMathX.
+    @staticmethod
+    def _create_operator(op_cls, name, x, y) -> Operation:
+        """Create an operator.
 
         Args:
-            other: the other member of the operation
+            op_cls: Operator class
+            name: operator expression
+            x: first element
+            y: second element
 
-        Returns:
-            self + other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("+", self, other)
-
-    def __sub__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self - other
+        Return:
+            operator
 
         """
-        if isinstance(other, (np.ndarray, np.generic)):
+        if isinstance(y, (np.ndarray, np.generic)):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("-", self, other)
+        return op_cls(name, x, y)
 
-    def __mul__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
+    def __add__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Addition."""
+        return self._create_operator(Operation, "+", self, other)
 
-        Args:
-            other: the other member of the operation
+    def __sub__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Subtraction."""
+        return self._create_operator(Operation, "-", self, other)
 
-        Returns:
-            self * other
+    def __mul__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Multiplication."""
+        return self._create_operator(Operation, "*", self, other)
 
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("*", self, other)
+    def __truediv__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Division."""
+        return self._create_operator(Operation, "/", self, other)
 
-    def __truediv__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
+    def __radd__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Right addition."""
+        return self._create_operator(Operation, "+", other, self)
 
-        Args:
-            other: the other member of the operation
+    def __rsub__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Right subtraction."""
+        return self._create_operator(Operation, "-", other, self)
 
-        Returns:
-            self / other
+    def __rmul__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Right multiplication."""
+        return self._create_operator(Operation, "*", other, self)
 
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("/", self, other)
-
-    def __radd__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default reverse addition and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other + self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("+", other, self)
-
-    def __rsub__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default subtraction and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other - self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("-", other, self)
-
-    def __rmul__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default multiplication and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other * self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("*", other, self)
-
-    def __rtruediv__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default division and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            other / self
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return Operation("/", other, self)
+    def __rtruediv__(self, other: RasterInterface | str | int | float) -> Operation:
+        """Right division."""
+        return self._create_operator(Operation, "/", other, self)
 
     def __abs__(self) -> Operation:
-        """Overrides the default abs operator and flavours it with BandMathX.
-
-        Returns:
-            abs(self)
-
-        """
+        """Absolute value."""
         return Operation("abs", self)
 
-    def __ge__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default greater or equal and flavours it with BandMathX.
+    def __ge__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Greater of equal than."""
+        return self._create_operator(LogicalOperation, ">=", self, other)
 
-        Args:
-            other: the other member of the operation
+    def __le__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Lower of equal than."""
+        return self._create_operator(LogicalOperation, "<=", self, other)
 
-        Returns:
-            self >= other
+    def __gt__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Greater than."""
+        return self._create_operator(LogicalOperation, ">", self, other)
 
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation(">=", self, other)
+    def __lt__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Lower than."""
+        return self._create_operator(LogicalOperation, "<", self, other)
 
-    def __le__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default less or equal and flavours it with BandMathX.
+    def __eq__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Equality."""
+        return self._create_operator(LogicalOperation, "==", self, other)
 
-        Args:
-            other: the other member of the operation
+    def __ne__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Inequality."""
+        return self._create_operator(LogicalOperation, "!=", self, other)
 
-        Returns:
-            self <= other
+    def __or__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Logical or."""
+        return self._create_operator(LogicalOperation, "||", self, other)
 
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("<=", self, other)
+    def __and__(self, other: RasterInterface | str | int | float) -> LogicalOperation:
+        """Logical and."""
+        return self._create_operator(LogicalOperation, "&&", self, other)
 
-    def __gt__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default greater operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self > other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation(">", self, other)
-
-    def __lt__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default less operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self < other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("<", self, other)
-
-    def __eq__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default eq operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self == other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("==", self, other)
-
-    def __ne__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default different operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self != other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("!=", self, other)
-
-    def __or__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default or operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self || other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("||", self, other)
-
-    def __and__(self, other: App | str | int | float) -> Operation:
-        """Overrides the default and operator and flavours it with BandMathX.
-
-        Args:
-            other: the other member of the operation
-
-        Returns:
-            self && other
-
-        """
-        if isinstance(other, (np.ndarray, np.generic)):
-            return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
-        return LogicalOperation("&&", self, other)
-
-    # TODO: other operations ?
-    #  e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
+    # Some other operations could be implemented with the same pattern
+    # e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
 
     def __array__(self) -> np.ndarray:
         """This is called when running np.asarray(pyotb_object).
@@ -590,7 +443,7 @@ class App(RasterInterface):
         Args:
             *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                               (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-                            - string or App, useful when the user implicitly wants to set the param "in"
+                            - string or RasterInterface, useful when the user implicitly wants to set the param "in"
                             - list, useful when the user implicitly wants to set the param "il"
             **kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
 
@@ -788,15 +641,15 @@ class App(RasterInterface):
         """
         parameters = self.parameters.copy()
         for key, param in parameters.items():
-            # In the following, we replace each parameter which is an App, with its summary.
-            if isinstance(param, App):  # single parameter
+            # In the following, we replace each parameter which is an RasterInterface, with its summary.
+            if isinstance(param, RasterInterface):  # single parameter
                 parameters[key] = param.summarize()
             elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, App) else p for p in param]
+                parameters[key] = [p.summarize() if isinstance(p, RasterInterface) else p for p in param]
         return {"name": self.app.GetName(), "parameters": parameters}
 
     # Private functions
-    def __parse_args(self, args: list[str | App | dict | list]) -> dict[str, Any]:
+    def __parse_args(self, args: list[str | RasterInterface | dict | list]) -> dict[str, Any]:
         """Gather all input arguments in kwargs dict.
 
         Args:
@@ -810,17 +663,17 @@ class App(RasterInterface):
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, App)) or isinstance(arg, list) and is_key_list(self, self.key_input):
+            elif isinstance(arg, (str, RasterInterface)) or isinstance(arg, list) and is_key_list(self, self.key_input):
                 kwargs.update({self.key_input: arg})
         return kwargs
 
-    def __set_param(self, key: str, obj: list | tuple | App | otb.Application | list[Any]):
+    def __set_param(self, key: str, obj: list | tuple | RasterInterface | otb.Application | list[Any]):
         """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
             self.app.ClearValue(key)
             return
         # Single-parameter cases
-        if isinstance(obj, App):
+        if isinstance(obj, RasterInterface):
             self.app.ConnectImage(key, obj.app, obj.key_output_image)
         elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
             self.app.ConnectImage(key, obj, get_out_images_param_keys(obj)[0])
@@ -832,7 +685,7 @@ class App(RasterInterface):
         elif is_key_images_list(self, key):
             # To enable possible in-memory connections, we go through the list and set the parameters one by one
             for inp in obj:
-                if isinstance(inp, App):
+                if isinstance(inp, RasterInterface):
                     self.app.ConnectImage(key, inp.app, inp.key_output_image)
                 elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
                     self.app.ConnectImage(key, obj, get_out_images_param_keys(inp)[0])
