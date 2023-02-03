@@ -1172,7 +1172,7 @@ def get_nbchannels(inp: str | ImageObject) -> int:
         try:
             info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.app.GetParameterInt("numberbands")
-        except Exception as e:  # this happens when we pass a str that is not a filepath
+        except RuntimeError as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the number of channels of '{inp}' ({e})") from e
     return nb_channels
 
@@ -1191,7 +1191,7 @@ def get_pixel_type(inp: str | ImageObject) -> str:
     if isinstance(inp, str):
         try:
             info = App("ReadImageInfo", inp, quiet=True)
-        except Exception as info_err:  # this happens when we pass a str that is not a filepath
+        except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the pixel type of `{inp}` ({info_err})") from info_err
         datatype = info.app.GetParameterString("datatype")  # which is such as short, float...
         if not datatype:
