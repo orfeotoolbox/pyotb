@@ -19,6 +19,7 @@ class ImageObject(ABC):
 
     name: str
     app: otb.Application
+    parameters: dict
     exports_dic: dict
 
     @property
@@ -355,10 +356,6 @@ class ImageObject(ABC):
                 parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
         return {"name": self.app.GetName(), "parameters": parameters}
 
-    @property
-    @abstractmethod
-    def parameters(self):
-        """Parameters."""
 
 
 class App(ImageObject):
@@ -391,7 +388,7 @@ class App(ImageObject):
         self.image_dic = image_dic
         self._time_start, self._time_end = 0, 0
         self.exports_dic = {}
-        self._parameters = {}
+        self.parameters = {}
         # Initialize app, set parameters and execute if not frozen
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
@@ -422,7 +419,7 @@ class App(ImageObject):
 
     @property
     def key_input_image(self) -> str:
-        """Get the name of first input image parameter."""
+        """Name of the first input image parameter."""
         return self.get_first_key(param_types=[otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
 
     @property
@@ -451,11 +448,6 @@ class App(ImageObject):
             if not isinstance(value, otb.ApplicationProxy) and value not in (None, "", [], ()):
                 data_dict[str(key)] = value
         return data_dict
-
-    @property
-    def parameters(self):
-        """Parameters."""
-        return self._parameters
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -498,7 +490,7 @@ class App(ImageObject):
         otb_params = self.app.GetParameters().items()
         otb_params = {k: str(v) if isinstance(v, otb.ApplicationProxy) else v for k, v in otb_params}
         # Update param dict and save values as object attributes
-        self._parameters.update({**parameters, **otb_params})
+        self.parameters.update({**parameters, **otb_params})
         self.save_objects()
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
@@ -844,7 +836,7 @@ class Operation(App):
 
     """
 
-    def __init__(self, operator: str, *inputs, nb_bands: int = None, name: str = None):
+    def __init__(self, operator: str, *inputs, nb_bands: int = None):
         """Given some inputs and an operator, this function enables to transform this into an OTB application.
 
         Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
@@ -1126,6 +1118,7 @@ class Output(ImageObject):
         self.app = pyotb_app.app
         self.exports_dic = pyotb_app.exports_dic
         self.param_key = param_key
+        self.parameters = self.parent_pyotb_app.parameters
         self.filepath = None
         if filepath:
             if "?" in filepath:
@@ -1138,11 +1131,6 @@ class Output(ImageObject):
     def output_image_key(self) -> str:
         """Force the right key to be used when accessing the ImageObject."""
         return self.param_key
-
-    @property
-    def parameters(self):
-        """Parameters."""
-        return self.parent_pyotb_app.parameters
 
     def exists(self) -> bool:
         """Check file exist."""
