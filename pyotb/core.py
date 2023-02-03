@@ -17,7 +17,9 @@ from .helpers import logger
 class ImageObject(ABC):
     """Abstraction of an image object."""
 
+    name: str
     app: otb.Application
+    parameters: dict
     exports_dic: dict
 
     @property
@@ -338,6 +340,23 @@ class ImageObject(ABC):
             return pyotb_app
         return NotImplemented
 
+    def summarize(self) -> dict[str, str | dict[str, Any]]:
+        """Serialize an object and its pipeline into a dictionary.
+
+        Returns:
+            nested dictionary summarizing the pipeline
+
+        """
+        parameters = self.parameters.copy()
+        for key, param in parameters.items():
+            # In the following, we replace each parameter which is an ImageObject, with its summary.
+            if isinstance(param, ImageObject):  # single parameter
+                parameters[key] = param.summarize()
+            elif isinstance(param, list):  # parameter list
+                parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
+        return {"name": self.app.GetName(), "parameters": parameters}
+
+
 
 class App(ImageObject):
     """Base class that gathers common operations for any OTB application."""
@@ -400,7 +419,7 @@ class App(ImageObject):
 
     @property
     def key_input_image(self) -> str:
-        """Get the name of first input image parameter."""
+        """Name of the first input image parameter."""
         return self.get_first_key(param_types=[otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
 
     @property
@@ -465,7 +484,7 @@ class App(ImageObject):
             except (RuntimeError, TypeError, ValueError, KeyError) as e:
                 raise RuntimeError(
                     f"{self.name}: something went wrong before execution "
-                    f"(while setting parameter '{key}' to '{obj}')"
+                    f"(while setting parameter '{key}' to '{obj}': {e})"
                 ) from e
         # Update _parameters using values from OtbApplication object
         otb_params = self.app.GetParameters().items()
@@ -536,7 +555,7 @@ class App(ImageObject):
         try:
             self.app.Execute()
         except (RuntimeError, FileNotFoundError) as e:
-            raise RuntimeError(f"{self.name}: error during during app execution") from e
+            raise RuntimeError(f"{self.name}: error during during app execution ({e}") from e
         self.frozen = False
         self._time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
@@ -627,22 +646,6 @@ class App(ImageObject):
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
         return tuple(files)
-
-    def summarize(self) -> dict[str, str | dict[str, Any]]:
-        """Serialize an object and its pipeline into a dictionary.
-
-        Returns:
-            nested dictionary summarizing the pipeline
-
-        """
-        parameters = self.parameters.copy()
-        for key, param in parameters.items():
-            # In the following, we replace each parameter which is an ImageObject, with its summary.
-            if isinstance(param, ImageObject):  # single parameter
-                parameters[key] = param.summarize()
-            elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, ImageObject) else p for p in param]
-        return {"name": self.app.GetName(), "parameters": parameters}
 
     # Private functions
     def __parse_args(self, args: list[str | ImageObject | dict | list]) -> dict[str, Any]:
@@ -871,7 +874,7 @@ class Operation(App):
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         # Execute app
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
-        self.name = f'Operation exp="{self.exp}"'
+        self.name = name or f'Operation exp="{self.exp}"'
 
     def build_fake_expressions(self, operator: str, inputs: list[ImageObject | str | int | float],
                                nb_bands: int = None):
@@ -1079,16 +1082,16 @@ class LogicalOperation(Operation):
 class Input(App):
     """Class for transforming a filepath to pyOTB object."""
 
-    def __init__(self, path: str):
+    def __init__(self, filepath: str):
         """Default constructor.
 
         Args:
-            path: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
+            filepath: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
 
         """
-        super().__init__("ExtractROI", {"in": path}, frozen=True)
-        self.name = f"Input from {path}"
-        self.filepath = Path(path)
+        super().__init__("ExtractROI", {"in": filepath}, frozen=True)
+        self.name = f"Input from {filepath}"
+        self.filepath = Path(filepath)
         self.propagate_dtype()
         self.execute()
 
@@ -1115,6 +1118,7 @@ class Output(ImageObject):
         self.app = pyotb_app.app
         self.exports_dic = pyotb_app.exports_dic
         self.param_key = param_key
+        self.parameters = self.parent_pyotb_app.parameters
         self.filepath = None
         if filepath:
             if "?" in filepath:
@@ -1168,8 +1172,8 @@ def get_nbchannels(inp: str | ImageObject) -> int:
         try:
             info = App("ReadImageInfo", inp, quiet=True)
             nb_channels = info.app.GetParameterInt("numberbands")
-        except Exception as e:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f"Could not get the number of channels of '{inp}'. Not a filepath or wrong filepath") from e
+        except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
+            raise TypeError(f"Could not get the number of channels of '{inp}' ({info_err})") from info_err
     return nb_channels
 
 
@@ -1187,8 +1191,8 @@ def get_pixel_type(inp: str | ImageObject) -> str:
     if isinstance(inp, str):
         try:
             info = App("ReadImageInfo", inp, quiet=True)
-        except Exception as info_err:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f"Could not get the pixel type of `{inp}`. Not a filepath or wrong filepath") from info_err
+        except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
+            raise TypeError(f"Could not get the pixel type of `{inp}` ({info_err})") from info_err
         datatype = info.app.GetParameterString("datatype")  # which is such as short, float...
         if not datatype:
             raise TypeError(f"Unable to read pixel type of image {inp}")

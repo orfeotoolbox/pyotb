@@ -166,3 +166,14 @@ def test_ndvi_comparison():
 
     thresholded_bandmath = pyotb.where(ndvi_bandmath >= 0.3, 1, 0)
     assert thresholded_bandmath.exp == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
+
+
+def test_output_in_arg():
+    o = pyotb.Output(INPUT, "out")
+    t = pyotb.ReadImageInfo(o)
+    assert t
+
+
+def test_output_summary():
+    o = pyotb.Output(INPUT, "out")
+    assert o.summarize()
