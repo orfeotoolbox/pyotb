@@ -315,7 +315,7 @@ class ImageObject(ABC):
             for inp in inputs:
                 if isinstance(inp, (float, int, np.ndarray, np.generic)):
                     arrays.append(inp)
-                elif isinstance(inp, App):
+                elif isinstance(inp, RasterInterface):
                     if not inp.exports_dic:
                         inp.export()
                     image_dic = inp.exports_dic[inp.output_image_key]
@@ -841,7 +841,7 @@ class Operation(App):
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
-            *inputs: inputs. Can be App, filepath, int or float
+            *inputs: inputs. Can be RasterInterface, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
             name: override the Operation name
 
@@ -873,14 +873,15 @@ class Operation(App):
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = f'Operation exp="{self.exp}"'
 
-    def build_fake_expressions(self, operator: str, inputs: list[App | str | int | float], nb_bands: int = None):
+    def build_fake_expressions(self, operator: str, inputs: list[RasterInterface | str | int | float],
+                               nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
-            inputs: inputs. Can be App, filepath, int or float
+            inputs: inputs. Can be RasterInterface, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
@@ -955,7 +956,8 @@ class Operation(App):
         return exp_bands, ";".join(exp_bands)
 
     @staticmethod
-    def make_fake_exp(x: App | str, band: int, keep_logical: bool = False) -> tuple[str, list[App], int]:
+    def make_fake_exp(x: RasterInterface | str, band: int, keep_logical: bool = False) \
+            -> tuple[str, list[RasterInterface], int]:
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
@@ -1032,7 +1034,7 @@ class LogicalOperation(Operation):
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def build_fake_expressions(self, operator: str, inputs: list[App | str | int | float], nb_bands: int = None):
+    def build_fake_expressions(self, operator: str, inputs: list[RasterInterface | str | int | float], nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
         e.g for the operation input1 > input2, we create a fake expression that is like
@@ -1040,7 +1042,7 @@ class LogicalOperation(Operation):
 
         Args:
             operator: str (one of >, <, >=, <=, ==, !=, &, |)
-            inputs: Can be App, filepath, int or float
+            inputs: Can be RasterInterface, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
         """
@@ -1148,29 +1150,29 @@ class Output(ImageObject):
         return f"<pyotb.Output {self.name} object, id {id(self)}>"
 
 
-def get_nbchannels(inp: str | App) -> int:
+def get_nbchannels(inp: str | RasterInterface) -> int:
     """Get the nb of bands of input image.
 
     Args:
-        inp: can be filepath or pyotb object
+        inp: can be filepath or RasterInterface object
 
     Returns:
         number of bands in image
 
     """
-    if isinstance(inp, App):
+    if isinstance(inp, RasterInterface):
         nb_channels = inp.shape[-1]
     else:
         # Executing the app, without printing its log
         try:
-            info = App("ReadImageInfo", inp, quiet=True)
+            info = RasterInterface("ReadImageInfo", inp, quiet=True)
             nb_channels = info.app.GetParameterInt("numberbands")
         except Exception as e:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the number of channels of '{inp}'. Not a filepath or wrong filepath") from e
     return nb_channels
 
 
-def get_pixel_type(inp: str | App) -> str:
+def get_pixel_type(inp: str | RasterInterface) -> str:
     """Get the encoding of input image pixels.
 
     Args:
@@ -1178,7 +1180,7 @@ def get_pixel_type(inp: str | App) -> str:
 
     Returns:
         pixel_type: OTB enum e.g. `otbApplication.ImagePixelType_uint8', which actually is an int.
-                    For an App with several outputs, only the pixel type of the first output is returned
+                    For an RasterInterface with several outputs, only the pixel type of the first output is returned
 
     """
     if isinstance(inp, str):
@@ -1203,8 +1205,8 @@ def get_pixel_type(inp: str | App) -> str:
         if datatype not in datatype_to_pixeltype:
             raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
         pixel_type = getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
-    elif isinstance(inp, App):
-        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.output_image_key)
+    elif isinstance(inp, RasterInterface):
+        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.key_output_image)
     else:
         raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
     return pixel_type
@@ -1227,8 +1229,8 @@ def parse_pixel_type(pixel_type: str | int) -> int:
     raise ValueError(f"Bad pixel type specification ({pixel_type})")
 
 
-def is_key_list(pyotb_app: App, key: str) -> bool:
-    """Check if a key of the App is an input parameter list."""
+def is_key_list(pyotb_app: RasterInterface, key: str) -> bool:
+    """Check if a key of the RasterInterface is an input parameter list."""
     types = (
         otb.ParameterType_InputImageList,
         otb.ParameterType_StringList,
@@ -1239,12 +1241,12 @@ def is_key_list(pyotb_app: App, key: str) -> bool:
     return pyotb_app.app.GetParameterType(key) in types
 
 
-def is_key_images_list(pyotb_app: App, key: str) -> bool:
-    """Check if a key of the App is an input parameter image list."""
+def is_key_images_list(pyotb_app: RasterInterface, key: str) -> bool:
+    """Check if a key of the RasterInterface is an input parameter image list."""
     types = (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
     return pyotb_app.app.GetParameterType(key) in types
 
 
-def get_out_images_param_keys(app: App) -> list[str]:
+def get_out_images_param_keys(app: RasterInterface) -> list[str]:
     """Return every output parameter keys of an OTB app."""
     return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]
