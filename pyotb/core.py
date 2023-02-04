@@ -440,29 +440,39 @@ class App(OTBObject):
             if any(key in self.parameters for key in self._out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
 
-    def get_first_key(self, param_types: list[int]) -> str:
-        """Get the first output param key for specific file types."""
-        for key, param_type in sorted(self._all_param_types.items()):
-            if param_type in param_types:
-                return key
+    def get_first_key(self, *args: tuple[list[int]]) -> str:
+        """Get the first param key for specific file types, try each list in args."""
+        for param_types in args:
+            for key, param_type in sorted(self._all_param_types.items()):
+                if param_type in param_types:
+                    return key
         return None
 
     @property
-    def key_input(self) -> str:
+    def input_key(self) -> str:
         """Get the name of first input parameter, raster > vector > file."""
-        return self.get_first_key([otb.ParameterType_InputImage, otb.ParameterType_InputImageList]) \
-            or self.get_first_key([otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList]) \
-            or self.get_first_key([otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList])
+        return self.get_first_key(
+            [otb.ParameterType_InputImage, otb.ParameterType_InputImageList],
+            [otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList],
+            [otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList]
+        )
 
     @property
-    def key_input_image(self) -> str:
+    def input_image_key(self) -> str:
         """Name of the first input image parameter."""
-        return self.get_first_key(param_types=[otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
+        return self.get_first_key([otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
+
+    @property
+    def output_key(self) -> str:
+        """Name of the first output parameter, raster > vector > file."""
+        return self.get_first_key(
+            [otb.ParameterType_OutputImage], [otb.ParameterType_OutputVectorData], [otb.ParameterType_OutputFilename]
+        )
 
     @property
     def output_image_key(self) -> str:
         """Get the name of first output image parameter."""
-        return self.get_first_key(param_types=[otb.ParameterType_OutputImage])
+        return self.get_first_key([otb.ParameterType_OutputImage])
 
     @property
     def elapsed_time(self) -> float:
@@ -542,7 +552,7 @@ class App(OTBObject):
 
         """
         if not dtype:
-            param = self.parameters.get(self.key_input_image)
+            param = self.parameters.get(self.input_image_key)
             if not param:
                 logger.warning("%s: could not propagate pixel type from inputs to output", self.name)
                 return
@@ -699,8 +709,8 @@ class App(OTBObject):
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and is_key_list(self, self.key_input):
-                kwargs.update({self.key_input: arg})
+            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and is_key_list(self, self.input_key):
+                kwargs.update({self.input_key: arg})
         return kwargs
 
     def __set_param(self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]):
