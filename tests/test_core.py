@@ -52,7 +52,6 @@ def test_elapsed_time():
     assert 0 < pyotb.ReadImageInfo(INPUT).elapsed_time < 1
 
 
-
 # Other functions
 def test_get_infos():
     infos = INPUT.get_info()
@@ -154,9 +153,9 @@ def test_ndvi_comparison():
     assert ndvi_bandmath.exp == "((im1b4 - im1b1) / (im1b4 + im1b1))"
 
     ndvi_bandmath.write("/tmp/ndvi_bandmath.tif", pixel_type="float")
-    assert ndvi_bandmath["out"].filepath.exists()
+    assert ndvi_bandmath["out"].exists()
     ndvi_indices.write("/tmp/ndvi_indices.tif", pixel_type="float")
-    assert ndvi_indices["out"].filepath.exists()
+    assert ndvi_indices["out"].exists()
 
     compared = pyotb.CompareImages({"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"})
     assert (compared["count"], compared["mse"]) == (0, 0)
