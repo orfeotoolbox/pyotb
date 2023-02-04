@@ -1,14 +1,7 @@
 import pytest
 
 import pyotb
-from tests_data import INPUT
-
-TEST_IMAGE_STATS = {
-    'out.mean': [79.5505, 109.225, 115.456, 249.349],
-    'out.min': [33, 64, 91, 47],
-    'out.max': [255, 255, 230, 255],
-    'out.std': [51.0754, 35.3152, 23.4514, 20.3827]
-}
+from tests_data import INPUT, TEST_IMAGE_STATS
 
 
 # Input settings
@@ -23,7 +16,7 @@ def test_wrong_key():
 
 # OTBObject properties
 def test_key_input():
-    assert INPUT.key_input == INPUT.key_input_image == "in"
+    assert INPUT.input_key == INPUT.input_image_key == "in"
 
 
 def test_key_output():
@@ -64,6 +57,8 @@ def test_elapsed_time():
 def test_get_infos():
     infos = INPUT.get_info()
     assert (infos["sizex"], infos["sizey"]) == (251, 304)
+    bm_infos = pyotb.BandMathX([INPUT], exp="im1")["out"].get_info()
+    assert infos == bm_infos
 
 
 def test_get_statistics():
@@ -76,21 +71,21 @@ def test_xy_to_rowcol():
 
 def test_write():
     INPUT.write("/tmp/test_write.tif")
-    assert INPUT.out.exists()
-    INPUT.out.filepath.unlink()
+    assert INPUT["out"].exists()
+    INPUT["out"].filepath.unlink()
 
 
 def test_output_write():
-    INPUT.out.write("/tmp/test_output_write.tif")
-    assert INPUT.out.exists()
-    INPUT.out.filepath.unlink()
+    INPUT["out"].write("/tmp/test_output_write.tif")
+    assert INPUT["out"].exists()
+    INPUT["out"].filepath.unlink()
 
 
 # Slicer
 def test_slicer_shape():
     extract = INPUT[:50, :60, :3]
     assert extract.shape == (50, 60, 3)
-    assert extract.parameters["cl"] == ("Channel1", "Channel2", "Channel3")
+    assert extract.parameters["cl"] == ["Channel1", "Channel2", "Channel3"]
 
 
 def test_slicer_preserve_dtype():
@@ -100,6 +95,11 @@ def test_slicer_preserve_dtype():
 
 def test_slicer_negative_band_index():
     assert INPUT[:50, :60, :-2].shape == (50, 60, 2)
+
+
+def test_slicer_in_output():
+    slc = pyotb.BandMath([INPUT], exp="im1b1")["out"][:50, :60, :-2]
+    assert isinstance(slc, pyotb.core.Slicer)
 
 
 # Arithmetic
@@ -128,8 +128,8 @@ def test_binary_mask_where():
 # Essential apps
 def test_app_readimageinfo():
     info = pyotb.ReadImageInfo(INPUT, quiet=True)
-    assert (info.sizex, info.sizey) == (251, 304)
-    assert info["numberbands"] == info.numberbands == 4
+    assert (info["sizex"], info["sizey"]) == (251, 304)
+    assert info["numberbands"] == 4
 
 
 def test_app_computeimagestats():
@@ -150,16 +150,16 @@ def test_read_values_at_coords():
 # BandMath NDVI == RadiometricIndices NDVI ?
 def test_ndvi_comparison():
     ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (INPUT[:, :, -1] + INPUT[:, :, 0])
-    ndvi_indices = pyotb.RadiometricIndices(INPUT, {"list": "Vegetation:NDVI", "channels.red": 1, "channels.nir": 4})
+    ndvi_indices = pyotb.RadiometricIndices(INPUT, {"list": ["Vegetation:NDVI"], "channels.red": 1, "channels.nir": 4})
     assert ndvi_bandmath.exp == "((im1b4 - im1b1) / (im1b4 + im1b1))"
 
     ndvi_bandmath.write("/tmp/ndvi_bandmath.tif", pixel_type="float")
-    assert ndvi_bandmath.out.filepath.exists()
+    assert ndvi_bandmath["out"].filepath.exists()
     ndvi_indices.write("/tmp/ndvi_indices.tif", pixel_type="float")
-    assert ndvi_indices.out.filepath.exists()
+    assert ndvi_indices["out"].filepath.exists()
 
     compared = pyotb.CompareImages({"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"})
-    assert (compared.count, compared.mse) == (0, 0)
+    assert (compared["count"], compared["mse"]) == (0, 0)
 
     thresholded_indices = pyotb.where(ndvi_indices >= 0.3, 1, 0)
     assert thresholded_indices.exp == "((im1b1 >= 0.3) ? 1 : 0)"
