@@ -745,7 +745,7 @@ class App(OTBObject):
                 return self.parameters[key]
             if key in self.data:
                 return self.data[key]
-            raise KeyError(f"{self.name} object has no attribute '{key}'")
+            raise KeyError(f"{self.name}: unknown parameter '{key}'")
         return super().__getitem__(key)
 
 
