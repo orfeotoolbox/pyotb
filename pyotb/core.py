@@ -736,7 +736,8 @@ class App(OTBObject):
     def __getitem__(self, key: str) -> Any | list[int | float] | int | float | Slicer:
         """This function is called when we use App()[...].
 
-        We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer."""
+        We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer
+        """
         if isinstance(key, str):
             if key in self._out_param_types:
                 return Output(self, key, self.parameters.get(key))
@@ -791,7 +792,7 @@ class Slicer(App):
 
         # Spatial slicing
         spatial_slicing = False
-        # TODO TBD: handle the step value in the slice so that NN undersampling is possible ? e.g. raster[::2, ::2]
+        # TODO: handle the step value in the slice so that NN undersampling is possible ? e.g. raster[::2, ::2]
         if rows.start is not None:
             parameters.update({"mode.extent.uly": rows.start})
             spatial_slicing = True
