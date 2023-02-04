@@ -230,11 +230,32 @@ class OTBObject(ABC):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
 
-    def __getitem__(self, key) -> Any | list[int | float] | int | float | Slicer:
+    # Special functions
+    def __hash__(self) -> int:
+        """Override the default behaviour of the hash function.
+
+        Returns:
+            self hash
+
+        """
+        return id(self)
+
+    def __getattr__(self, key: str) -> Any:
+        """Return object attribute, or  if key is found in self.parameters or self.data."""
+        if key in dir(self):
+            return self.__dict__[key]
+        if key in self._out_param_types and key in self.parameters:
+            return Output(self, key, self.parameters[key])
+        if key in self.parameters:
+            return self.parameters[key]
+        if key in self.data:
+            return self.data[key]
+        raise AttributeError(f"{self.name}: unknown attribute '{key}'")
+
+    def __getitem__(self, key) -> Any | list[float] | float | Slicer:
         """Override the default __getitem__ behaviour.
 
         This function enables 2 things :
-        - access attributes like that : object['any_attribute']
         - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
                                                           selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
                                                           selecting 1000x1000 subset : object[:1000, :1000]
@@ -244,12 +265,9 @@ class OTBObject(ABC):
             key: attribute key
 
         Returns:
-            attribute, pixel values or Slicer
+            list of pixel values if vector image, or pixel value, or Slicer
 
         """
-        # Accessing string attributes
-        if isinstance(key, str):
-            return getattr(self, key)
         # Accessing pixel value(s) using Y/X coordinates
         if isinstance(key, tuple) and len(key) >= 2:
             row, col = key[0], key[1]
@@ -372,11 +390,8 @@ class OTBObject(ABC):
                 if isinstance(inp, (float, int, np.ndarray, np.generic)):
                     arrays.append(inp)
                 elif isinstance(inp, OTBObject):
-                    if not inp.exports_dic:
-                        inp.export()
-                    image_dic = inp.exports_dic[inp.output_image_key]
-                    array = image_dic["array"]
-                    arrays.append(array)
+                    image_dic = inp.export()
+                    arrays.append(image_dic["array"])
                 else:
                     logger.debug(type(self))
                     return NotImplemented
@@ -424,8 +439,7 @@ class App(OTBObject):
         self.quiet = quiet
         self.image_dic = image_dic
         self._time_start, self._time_end = 0, 0
-        self.exports_dic = {}
-        self.parameters = {}
+        self.data, self.parameters, self.exports_dic = {}, {}, {}
         # Initialize app, set parameters and execute if not frozen
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
@@ -484,18 +498,6 @@ class App(OTBObject):
         """List of used application outputs."""
         return [getattr(self, key) for key in self._out_param_types if key in self.parameters]
 
-    @property
-    def data(self) -> dict[str, float, list[float]]:
-        """Expose app's output data values in a dictionary."""
-        known_bad_keys = ("ram", "elev.default", "mapproj.utm.zone", "mapproj.utm.northhem")
-        skip_keys = known_bad_keys + tuple(self._out_param_types) + tuple(self.parameters)
-        data_dict = {}
-        for key in filter(lambda k: k not in skip_keys, self.parameters_keys):
-            value = self.__dict__.get(key)
-            if not isinstance(value, otb.ApplicationProxy) and value not in (None, "", [], ()):
-                data_dict[str(key)] = value
-        return data_dict
-
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
 
@@ -533,11 +535,8 @@ class App(OTBObject):
                     f"{self.name}: something went wrong before execution "
                     f"(while setting parameter '{key}' to '{obj}': {e})"
                 ) from e
-        # Update _parameters using values from OtbApplication object
-        otb_params = self.app.GetParameters().items()
-        otb_params = {k: str(v) if isinstance(v, otb.ApplicationProxy) else v for k, v in otb_params}
         # Update param dict and save values as object attributes
-        self.parameters.update({**parameters, **otb_params})
+        self.parameters.update(parameters)
         self.save_objects()
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
@@ -571,29 +570,27 @@ class App(OTBObject):
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
     def save_objects(self):
-        """Saving app parameters and outputs as attributes, so that they can be accessed with `obj.key`.
-
-        This is useful when the key contains reserved characters such as a point eg "io.out"
-        """
+        """Saving OTB app parameters and outputs in data and parameters dict."""
         for key in self.parameters_keys:
-            if key in dir(self.__class__):
-                continue  # skip forbidden attribute since it is already used by the class
-            value = self.parameters.get(key)  # basic parameters
+            value = self.parameters.get(key)
             if value is None:
                 try:
                     value = self.app.GetParameterValue(key)  # any other app attribute (e.g. ReadImageInfo results)
+                    if isinstance(value, otb.ApplicationProxy):
+                        continue
                 except RuntimeError:
                     continue  # this is when there is no value for key
-            # Convert output param path to Output object
-            if key in self._out_param_types:
-                value = Output(self, key, value)
-            elif isinstance(value, str):
-                try:
-                    value = literal_eval(value)
-                except (ValueError, SyntaxError):
-                    pass
-            # Save attribute
-            setattr(self, key, value)
+            # Save app data output or update parameters dict with otb.Application values
+            if isinstance(value, OTBObject) or bool(value) or value == 0:
+                if self.app.GetParameterRole(key) == 0:
+                    self.parameters[key] = value
+                else:
+                    if isinstance(value, str):
+                        try:
+                            value = literal_eval(value)
+                        except (ValueError, SyntaxError):
+                            pass
+                    self.data[key] = value
 
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
@@ -615,6 +612,7 @@ class App(OTBObject):
             self.app.WriteOutput()
         except RuntimeError:
             logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
+            self._time_start = perf_counter()
             self.app.ExecuteAndWriteOutput()
         self._time_end = perf_counter()
 
@@ -743,18 +741,13 @@ class App(OTBObject):
             self.app.SetParameterValue(key, obj)
 
     # Special functions
-    def __hash__(self) -> int:
-        """Override the default behaviour of the hash function.
+    def __getitem__(self, key: str) -> Any | list[int | float] | int | float | Slicer:
+        """This function is called when we use App()[...].
 
-        Returns:
-            self hash
-
-        """
-        return id(self)
-
-    def __str__(self) -> str:
-        """Return a nice string representation with object id."""
-        return f"<pyotb.App {self.name} object id {id(self)}>"
+        We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer."""
+        if isinstance(key, str) and key in self.parameters_keys:
+            return getattr(self, key)
+        return super().__getitem__(key)
 
 
 class Slicer(App):
