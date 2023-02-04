@@ -270,35 +270,35 @@ class OTBObject(ABC):
 
     def __add__(self, other: OTBObject | str | int | float) -> Operation:
         """Addition."""
-        return self._create_operator(Operation, "+", self, other)
+        return self.__create_operator(Operation, "+", self, other)
 
     def __sub__(self, other: OTBObject | str | int | float) -> Operation:
         """Subtraction."""
-        return self._create_operator(Operation, "-", self, other)
+        return self.__create_operator(Operation, "-", self, other)
 
     def __mul__(self, other: OTBObject | str | int | float) -> Operation:
         """Multiplication."""
-        return self._create_operator(Operation, "*", self, other)
+        return self.__create_operator(Operation, "*", self, other)
 
     def __truediv__(self, other: OTBObject | str | int | float) -> Operation:
         """Division."""
-        return self._create_operator(Operation, "/", self, other)
+        return self.__create_operator(Operation, "/", self, other)
 
     def __radd__(self, other: OTBObject | str | int | float) -> Operation:
         """Right addition."""
-        return self._create_operator(Operation, "+", other, self)
+        return self.__create_operator(Operation, "+", other, self)
 
     def __rsub__(self, other: OTBObject | str | int | float) -> Operation:
         """Right subtraction."""
-        return self._create_operator(Operation, "-", other, self)
+        return self.__create_operator(Operation, "-", other, self)
 
     def __rmul__(self, other: OTBObject | str | int | float) -> Operation:
         """Right multiplication."""
-        return self._create_operator(Operation, "*", other, self)
+        return self.__create_operator(Operation, "*", other, self)
 
     def __rtruediv__(self, other: OTBObject | str | int | float) -> Operation:
         """Right division."""
-        return self._create_operator(Operation, "/", other, self)
+        return self.__create_operator(Operation, "/", other, self)
 
     def __abs__(self) -> Operation:
         """Absolute value."""
@@ -306,35 +306,35 @@ class OTBObject(ABC):
 
     def __ge__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Greater of equal than."""
-        return self._create_operator(LogicalOperation, ">=", self, other)
+        return self.__create_operator(LogicalOperation, ">=", self, other)
 
     def __le__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Lower of equal than."""
-        return self._create_operator(LogicalOperation, "<=", self, other)
+        return self.__create_operator(LogicalOperation, "<=", self, other)
 
     def __gt__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Greater than."""
-        return self._create_operator(LogicalOperation, ">", self, other)
+        return self.__create_operator(LogicalOperation, ">", self, other)
 
     def __lt__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Lower than."""
-        return self._create_operator(LogicalOperation, "<", self, other)
+        return self.__create_operator(LogicalOperation, "<", self, other)
 
     def __eq__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Equality."""
-        return self._create_operator(LogicalOperation, "==", self, other)
+        return self.__create_operator(LogicalOperation, "==", self, other)
 
     def __ne__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Inequality."""
-        return self._create_operator(LogicalOperation, "!=", self, other)
+        return self.__create_operator(LogicalOperation, "!=", self, other)
 
     def __or__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Logical or."""
-        return self._create_operator(LogicalOperation, "||", self, other)
+        return self.__create_operator(LogicalOperation, "||", self, other)
 
     def __and__(self, other: OTBObject | str | int | float) -> LogicalOperation:
         """Logical and."""
-        return self._create_operator(LogicalOperation, "&&", self, other)
+        return self.__create_operator(LogicalOperation, "&&", self, other)
 
     # Some other operations could be implemented with the same pattern
     # e.g. __pow__... cf https://docs.python.org/3/reference/datamodel.html#emulating-numeric-types
