@@ -5,6 +5,7 @@ from __future__ import annotations
 from ast import literal_eval
 from pathlib import Path
 from time import perf_counter
+from itertools import chain
 from typing import Any
 from abc import ABC, abstractmethod
 
@@ -173,13 +174,12 @@ class OTBObject(ABC):
           profile: a metadata dict required to write image using rasterio
 
         """
+        profile = {}
         array = self.to_numpy(preserve_dtype=True, copy=False)
         height, width, count = array.shape
         proj = self.app.GetImageProjection(self.output_image_key)
-        profile = {
-            'crs': proj, 'dtype': array.dtype, 'transform': self.transform,
-            'count': count, 'height': height, 'width': width,
-        }
+        profile.update({"crs": proj, "dtype": array.dtype, "transform": self.transform})
+        profile.update({"count": count, "height": height, "width": width})
         return np.moveaxis(array, 2, 0), profile
 
     def get_rowcol_from_xy(self, x: float, y: float) -> tuple[int, int]:
@@ -449,36 +449,35 @@ class App(OTBObject):
     def get_first_key(self, *args: tuple[list[int]]) -> str:
         """Get the first param key for specific file types, try each list in args."""
         for param_types in args:
-            for key, param_type in sorted(self._all_param_types.items()):
-                if param_type in param_types:
+            types = [getattr(otb, "ParameterType_" + key) for key in param_types]
+            for key, value in sorted(self._all_param_types.items()):
+                if value in types:
                     return key
-        return None
+        raise TypeError(f"{self.name}: could not find any parameter of type {tuple(chain(*args))}")
 
     @property
     def input_key(self) -> str:
         """Get the name of first input parameter, raster > vector > file."""
         return self.get_first_key(
-            [otb.ParameterType_InputImage, otb.ParameterType_InputImageList],
-            [otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList],
-            [otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList]
+            ["InputImage", "InputImageList"],
+            ["InputVectorData", "InputVectorDataList"],
+            ["InputFilename", "InputFilenameList"],
         )
 
     @property
     def input_image_key(self) -> str:
         """Name of the first input image parameter."""
-        return self.get_first_key([otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
+        return self.get_first_key(["InputImage", "InputImageList"])
 
     @property
     def output_key(self) -> str:
         """Name of the first output parameter, raster > vector > file."""
-        return self.get_first_key(
-            [otb.ParameterType_OutputImage], [otb.ParameterType_OutputVectorData], [otb.ParameterType_OutputFilename]
-        )
+        return self.get_first_key(["OutputImage"], ["OutputVectorData"], ["OutputFilename"])
 
     @property
     def output_image_key(self) -> str:
         """Get the name of first output image parameter."""
-        return self.get_first_key([otb.ParameterType_OutputImage])
+        return self.get_first_key(["OutputImage"])
 
     @property
     def elapsed_time(self) -> float:
@@ -659,7 +658,8 @@ class App(OTBObject):
                 dtypes = {k: parse_pixel_type(v) for k, v in pixel_type.items()}
         elif preserve_dtype:
             self.propagate_dtype()  # all outputs will have the same type as the main input raster
-
+        if not kwargs:
+            raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
         # Set parameters and flush to disk
         for key, output_filename in kwargs.items():
             if Path(output_filename.split("?")[0]).exists():
@@ -877,8 +877,7 @@ class Operation(App):
         super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
         self.name = name or f'Operation exp="{self.exp}"'
 
-    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float],
-                               nb_bands: int = None):
+    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
@@ -960,8 +959,7 @@ class Operation(App):
         return exp_bands, ";".join(exp_bands)
 
     @staticmethod
-    def make_fake_exp(x: OTBObject | str, band: int, keep_logical: bool = False) \
-            -> tuple[str, list[OTBObject], int]:
+    def make_fake_exp(x: OTBObject | str, band: int, keep_logical: bool = False) -> tuple[str, list[OTBObject], int]:
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
@@ -1038,8 +1036,7 @@ class LogicalOperation(Operation):
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
 
-    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float],
-                               nb_bands: int = None):
+    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
 
         e.g for the operation input1 > input2, we create a fake expression that is like
