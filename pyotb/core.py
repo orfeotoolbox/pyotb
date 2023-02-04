@@ -240,18 +240,6 @@ class OTBObject(ABC):
         """
         return id(self)
 
-    def __getattr__(self, key: str) -> Any:
-        """Return object attribute, or  if key is found in self.parameters or self.data."""
-        if key in dir(self):
-            return self.__dict__[key]
-        if key in self._out_param_types and key in self.parameters:
-            return Output(self, key, self.parameters[key])
-        if key in self.parameters:
-            return self.parameters[key]
-        if key in self.data:
-            return self.data[key]
-        raise AttributeError(f"{self.name}: unknown attribute '{key}'")
-
     def __getitem__(self, key) -> Any | list[float] | float | Slicer:
         """Override the default __getitem__ behaviour.
 
@@ -285,6 +273,10 @@ class OTBObject(ABC):
             # Adding a 3rd dimension
             key = key + (slice(None, None, None),)
         return Slicer(self, *key)
+
+    def __repr__(self) -> str:
+        """Return a nice string representation with object id."""
+        return f"<pyotb.{self.__class__.__name__} object id {id(self)}>"
 
     def __add__(self, other: OTBObject | str | int | float) -> Operation:
         """Addition."""
@@ -670,7 +662,7 @@ class App(OTBObject):
 
         # Set parameters and flush to disk
         for key, output_filename in kwargs.items():
-            if Path(output_filename).exists():
+            if Path(output_filename.split("?")[0]).exists():
                 logger.warning("%s: overwriting file %s", self.name, output_filename)
             if key in dtypes:
                 self.propagate_dtype(key, dtypes[key])
@@ -745,8 +737,14 @@ class App(OTBObject):
         """This function is called when we use App()[...].
 
         We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer."""
-        if isinstance(key, str) and key in self.parameters_keys:
-            return getattr(self, key)
+        if isinstance(key, str):
+            if key in self._out_param_types:
+                return Output(self, key, self.parameters.get(key))
+            if key in self.parameters:
+                return self.parameters[key]
+            if key in self.data:
+                return self.data[key]
+            raise KeyError(f"{self.name} object has no attribute '{key}'")
         return super().__getitem__(key)
 
 
@@ -1153,8 +1151,8 @@ class Output(OTBObject):
         return self.parent_pyotb_app.write({self.output_image_key: filepath}, **kwargs)
 
     def __str__(self) -> str:
-        """Return a nice string representation with source app name and object id."""
-        return f"<pyotb.Output {self.name} object, id {id(self)}>"
+        """Return string representation of Output filepath."""
+        return str(self.filepath)
 
 
 def get_nbchannels(inp: str | OTBObject) -> int:
