@@ -70,7 +70,7 @@ def test_xy_to_rowcol():
 
 
 def test_write():
-    INPUT.write("/tmp/test_write.tif", ext_fname="?&nodata=0")
+    INPUT.write("/tmp/test_write.tif", ext_fname="nodata=0")
     assert INPUT["out"].exists()
     INPUT["out"].filepath.unlink()
 

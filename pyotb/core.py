@@ -640,7 +640,7 @@ class App(OTBObject):
         if ext_fname:
             logger.debug("%s: using extended filename for outputs: %s", self.name, ext_fname)
             if not ext_fname.startswith("?"):
-                ext_fname = "?" + ext_fname
+                ext_fname = "?&" + ext_fname
             for key, value in kwargs.items():
                 if self._out_param_types[key] == otb.ParameterType_OutputImage and "?" not in value:
                     kwargs[key] = value + ext_fname
