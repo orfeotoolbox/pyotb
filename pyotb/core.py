@@ -607,7 +607,7 @@ class App(OTBObject):
             self.app.ExecuteAndWriteOutput()
         self._time_end = perf_counter()
 
-    def write(self, *args, filename_extension: str = "", pixel_type: dict[str, str] | str = None,
+    def write(self, *args, ext_fname: str = "", pixel_type: dict[str, str] | str = None,
               preserve_dtype: bool = False, **kwargs):
         """Set output pixel type and write the output raster files.
 
@@ -616,7 +616,7 @@ class App(OTBObject):
                               non-standard characters such as a point, e.g. {'io.out':'output.tif'}
                             - string, useful when there is only one output, e.g. 'output.tif'
                             - None if output file was passed during App init
-            filename_extension: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
+            ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
                                 Will be used for all outputs (Default value = "")
             pixel_type: Can be : - dictionary {output_parameter_key: pixeltype} when specifying for several outputs
                                  - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
@@ -637,13 +637,13 @@ class App(OTBObject):
                 kwargs.update({self.output_image_key: str(arg)})
 
         # Append filename extension to filenames
-        if filename_extension:
-            logger.debug("%s: using extended filename for outputs: %s", self.name, filename_extension)
-            if not filename_extension.startswith("?"):
-                filename_extension = "?" + filename_extension
+        if ext_fname:
+            logger.debug("%s: using extended filename for outputs: %s", self.name, ext_fname)
+            if not ext_fname.startswith("?"):
+                ext_fname = "?" + ext_fname
             for key, value in kwargs.items():
                 if self._out_param_types[key] == otb.ParameterType_OutputImage and "?" not in value:
-                    kwargs[key] = value + filename_extension
+                    kwargs[key] = value + ext_fname
 
         # Manage output pixel types
         dtypes = {}
