@@ -638,8 +638,8 @@ class App(OTBObject):
                 kwargs.update({self.output_key: str(arg)})
         if not kwargs:
             raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
-
         parameters = kwargs.copy()
+
         # Append filename extension to filenames
         if ext_fname:
             logger.debug("%s: using extended filename for outputs: %s", self.name, ext_fname)
@@ -673,10 +673,11 @@ class App(OTBObject):
                 self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: output_filename})
         self.flush()
+        # Search and log missing files
         files, missing = [], []
-        for out in self.used_outputs:
-            dest = files if out.exists() else missing
-            dest.append(str(out.filepath.absolute()))
+        for key, output_filename in parameters.items():
+            dest = files if Path(output_filename).exists() else missing
+            dest.append(str(Path(output_filename).absolute()))
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
         return bool(files) and not missing
