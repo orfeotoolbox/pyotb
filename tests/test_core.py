@@ -1,7 +1,7 @@
 import pytest
 
 import pyotb
-from tests_data import INPUT, TEST_IMAGE_STATS
+from tests_data import *
 
 
 # Input settings
@@ -53,7 +53,7 @@ def test_elapsed_time():
 
 
 # Other functions
-def test_get_infos():
+def test_get_info():
     infos = INPUT.get_info()
     assert (infos["sizex"], infos["sizey"]) == (251, 304)
     bm_infos = pyotb.BandMathX([INPUT], exp="im1")["out"].get_info()
@@ -76,6 +76,15 @@ def test_write():
 def test_output_write():
     assert INPUT["out"].write("/tmp/test_output_write.tif")
     INPUT["out"].filepath.unlink()
+
+
+def test_output_in_arg():
+    t = pyotb.ReadImageInfo(INPUT["out"])
+    assert t.data
+
+
+def test_output_summary():
+    assert INPUT["out"].summarize()
 
 
 # Slicer
@@ -160,10 +169,20 @@ def test_ndvi_comparison():
     assert thresholded_bandmath.exp == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
 
 
-def test_output_in_arg():
-    t = pyotb.ReadImageInfo(INPUT["out"])
-    assert t.data
+def test_pipeline_simple():
+    # BandMath -> OrthoRectification -> ManageNoData
+    app1 = pyotb.BandMath({"il": [FILEPATH], "exp": "im1b1"})
+    app2 = pyotb.OrthoRectification({"io.in": app1})
+    app3 = pyotb.ManageNoData({"in": app2})
+    summary = app3.summarize()
+    assert summary == SIMPLE_SERIALIZATION
 
 
-def test_output_summary():
-    assert INPUT["out"].summarize()
+def test_pipeline_diamond():
+    # Diamond graph
+    app1 = pyotb.BandMath({"il": [FILEPATH], "exp": "im1b1"})
+    app2 = pyotb.OrthoRectification({"io.in": app1})
+    app3 = pyotb.ManageNoData({"in": app2})
+    app4 = pyotb.BandMathX({"il": [app2, app3], "exp": "im1+im2"})
+    summary = app4.summarize()
+    assert summary == COMPLEX_SERIALIZATION
