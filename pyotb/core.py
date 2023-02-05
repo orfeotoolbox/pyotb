@@ -259,16 +259,15 @@ class OTBObject(ABC):
         # Accessing pixel value(s) using Y/X coordinates
         if isinstance(key, tuple) and len(key) >= 2:
             row, col = key[0], key[1]
-            if isinstance(row, int) and isinstance(col, int):
-                if row < 0 or col < 0:
-                    raise ValueError(f"{self.name}: can't read pixel value at negative coordinates ({row}, {col})")
-                channels = None
-                if len(key) == 3:
-                    channels = key[2]
-                return self.get_values_at_coords(row, col, channels)
+            if not isinstance(row, int) or not isinstance(col, int):
+                raise TypeError(f"{self.name}: cannnot read pixel values using {type(row)} and {type(col)}")
+            if row < 0 or col < 0:
+                raise ValueError(f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})")
+            channels = key[2] if len(key) == 3 else None
+            return self.get_values_at_coords(row, col, channels)
         # Slicing
         if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
-            raise ValueError(f'"{key}"cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
+            raise ValueError(f'"{key}" cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
         if isinstance(key, tuple) and len(key) == 2:
             # Adding a 3rd dimension
             key = key + (slice(None, None, None),)
@@ -430,7 +429,7 @@ class App(OTBObject):
         self.frozen = frozen
         self.quiet = quiet
         self.image_dic = image_dic
-        self._time_start, self._time_end = 0, 0
+        self._time_start, self._time_end = 0., 0.
         self.data, self.parameters, self.exports_dic = {}, {}, {}
         # Initialize app, set parameters and execute if not frozen
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
@@ -446,14 +445,14 @@ class App(OTBObject):
             if any(key in self.parameters for key in self._out_param_types):
                 self.flush()  # auto flush if any output param was provided during app init
 
-    def get_first_key(self, *args: tuple[list[int]]) -> str:
+    def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
         """Get the first param key for specific file types, try each list in args."""
-        for param_types in args:
+        for param_types in type_lists:
             types = [getattr(otb, "ParameterType_" + key) for key in param_types]
             for key, value in sorted(self._all_param_types.items()):
                 if value in types:
                     return key
-        raise TypeError(f"{self.name}: could not find any parameter of type {tuple(chain(*args))}")
+        raise TypeError(f"{self.name}: could not find any parameter of type {tuple(chain(*type_lists))}")
 
     @property
     def input_key(self) -> str:
@@ -608,23 +607,26 @@ class App(OTBObject):
         self._time_end = perf_counter()
 
     def write(self, *args, ext_fname: str = "", pixel_type: dict[str, str] | str = None,
-              preserve_dtype: bool = False, **kwargs):
+              preserve_dtype: bool = False, **kwargs, ) -> bool:
         """Set output pixel type and write the output raster files.
 
         Args:
             *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key contains
                               non-standard characters such as a point, e.g. {'io.out':'output.tif'}
-                            - string, useful when there is only one output, e.g. 'output.tif'
+                            - filepath, useful when there is only one output, e.g. 'output.tif'
                             - None if output file was passed during App init
             ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
                                 Will be used for all outputs (Default value = "")
-            pixel_type: Can be : - dictionary {output_parameter_key: pixeltype} when specifying for several outputs
+            pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
                                  - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
                                    outputs, all outputs are written with this unique type.
                                    Valid pixel types are uint8, uint16, uint32, int16, int32, float, double,
                                    cint16, cint32, cfloat, cdouble. (Default value = None)
             preserve_dtype: propagate main input pixel type to outputs, in case pixel_type is None
             **kwargs: keyword arguments e.g. out='output.tif'
+
+        Returns:
+            True if all files are found on disk
 
         """
         # Gather all input arguments in kwargs dict
@@ -633,39 +635,43 @@ class App(OTBObject):
                 kwargs.update(arg)
             elif isinstance(arg, str) and kwargs:
                 logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
-            elif isinstance(arg, (str, Path)) and self.output_image_key:
-                kwargs.update({self.output_image_key: str(arg)})
+            elif isinstance(arg, (str, Path)) and self.output_key:
+                kwargs.update({self.output_key: str(arg)})
+        if not kwargs:
+            raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
 
+        parameters = kwargs.copy()
         # Append filename extension to filenames
         if ext_fname:
             logger.debug("%s: using extended filename for outputs: %s", self.name, ext_fname)
             if not ext_fname.startswith("?"):
                 ext_fname = "?&" + ext_fname
+            elif not ext_fname.startswith("?&"):
+                ext_fname = "?&" + ext_fname[1:]
             for key, value in kwargs.items():
                 if self._out_param_types[key] == otb.ParameterType_OutputImage and "?" not in value:
-                    kwargs[key] = value + ext_fname
-
+                    parameters[key] = value + ext_fname
         # Manage output pixel types
-        dtypes = {}
-        if pixel_type:
+        data_types = {}
+        if pixel_type is not None:
             if isinstance(pixel_type, str):
-                type_name = self.app.ConvertPixelTypeToNumpy(parse_pixel_type(pixel_type))
+                dtype = parse_pixel_type(pixel_type)
+                type_name = self.app.ConvertPixelTypeToNumpy(dtype)
                 logger.debug('%s: output(s) will be written with type "%s"', self.name, type_name)
-                for key in kwargs:
+                for key in parameters:
                     if self._out_param_types[key] == otb.ParameterType_OutputImage:
-                        dtypes[key] = parse_pixel_type(pixel_type)
+                        data_types[key] = dtype
             elif isinstance(pixel_type, dict):
-                dtypes = {k: parse_pixel_type(v) for k, v in pixel_type.items()}
+                data_types = {key: parse_pixel_type(dtype) for key, dtype in pixel_type.items()}
         elif preserve_dtype:
             self.propagate_dtype()  # all outputs will have the same type as the main input raster
-        if not kwargs:
-            raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
+
         # Set parameters and flush to disk
-        for key, output_filename in kwargs.items():
+        for key, output_filename in parameters.items():
             if Path(output_filename.split("?")[0]).exists():
                 logger.warning("%s: overwriting file %s", self.name, output_filename)
-            if key in dtypes:
-                self.propagate_dtype(key, dtypes[key])
+            if key in data_types:
+                self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: output_filename})
         self.flush()
 
@@ -1153,7 +1159,7 @@ class Output(OTBObject):
         return str(self.filepath)
 
 
-def get_nbchannels(inp: str | OTBObject) -> int:
+def get_nbchannels(inp: str | Path | OTBObject) -> int:
     """Get the nb of bands of input image.
 
     Args:
@@ -1164,18 +1170,18 @@ def get_nbchannels(inp: str | OTBObject) -> int:
 
     """
     if isinstance(inp, OTBObject):
-        nb_channels = inp.shape[-1]
-    else:
+        return inp.shape[-1]
+    if isinstance(inp, (str, Path)):
         # Executing the app, without printing its log
         try:
             info = App("ReadImageInfo", inp, quiet=True)
-            nb_channels = info.app.GetParameterInt("numberbands")
+            return info["numberbands"]
         except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f"Could not get the number of channels of '{inp}' ({info_err})") from info_err
-    return nb_channels
+            raise TypeError(f"Could not get the number of channels file '{inp}' ({info_err})") from info_err
+    raise TypeError(f"Can't read number of channels of type '{type(inp)}' object {inp}")
 
 
-def get_pixel_type(inp: str | OTBObject) -> str:
+def get_pixel_type(inp: str | Path | OTBObject) -> str:
     """Get the encoding of input image pixels.
 
     Args:
@@ -1186,33 +1192,30 @@ def get_pixel_type(inp: str | OTBObject) -> str:
                     For an OTBObject with several outputs, only the pixel type of the first output is returned
 
     """
-    if isinstance(inp, str):
+    if isinstance(inp, OTBObject):
+        return inp.app.GetParameterOutputImagePixelType(inp.output_image_key)
+    if isinstance(inp, (str, Path)):
         try:
             info = App("ReadImageInfo", inp, quiet=True)
+            datatype = info["datatype"]  # which is such as short, float...
         except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the pixel type of `{inp}` ({info_err})") from info_err
-        datatype = info.app.GetParameterString("datatype")  # which is such as short, float...
-        if not datatype:
-            raise TypeError(f"Unable to read pixel type of image {inp}")
-        datatype_to_pixeltype = {
-            "unsigned_char": "uint8",
-            "short": "int16",
-            "unsigned_short": "uint16",
-            "int": "int32",
-            "unsigned_int": "uint32",
-            "long": "int32",
-            "ulong": "uint32",
-            "float": "float",
-            "double": "double",
-        }
-        if datatype not in datatype_to_pixeltype:
-            raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
-        pixel_type = getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
-    elif isinstance(inp, OTBObject):
-        pixel_type = inp.app.GetParameterOutputImagePixelType(inp.output_image_key)
-    else:
-        raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
-    return pixel_type
+        if datatype:
+            datatype_to_pixeltype = {
+                "unsigned_char": "uint8",
+                "short": "int16",
+                "unsigned_short": "uint16",
+                "int": "int32",
+                "unsigned_int": "uint32",
+                "long": "int32",
+                "ulong": "uint32",
+                "float": "float",
+                "double": "double",
+            }
+            if datatype not in datatype_to_pixeltype:
+                raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
+            return getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
+    raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
 
 
 def parse_pixel_type(pixel_type: str | int) -> int:
