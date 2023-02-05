@@ -213,52 +213,6 @@ class OTBObject(ABC):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
 
-    # Special functions
-    def __hash__(self) -> int:
-        """Override the default behaviour of the hash function.
-
-        Returns:
-            self hash
-
-        """
-        return id(self)
-
-    def __getitem__(self, key) -> Any | list[float] | float | Slicer:
-        """Override the default __getitem__ behaviour.
-
-        This function enables 2 things :
-        - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
-                                                          selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
-                                                          selecting 1000x1000 subset : object[:1000, :1000]
-        - access pixel value(s) at a specified row, col index
-
-        Args:
-            key: attribute key
-
-        Returns:
-            list of pixel values if vector image, or pixel value, or Slicer
-
-        """
-        # Accessing pixel value(s) using Y/X coordinates
-        if isinstance(key, tuple) and len(key) >= 2:
-            row, col = key[0], key[1]
-            if isinstance(row, int) and isinstance(col, int):
-                if row < 0 or col < 0:
-                    raise ValueError(f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})")
-                channels = key[2] if len(key) == 3 else None
-                return self.get_values_at_coords(row, col, channels)
-        # Slicing
-        if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
-            raise ValueError(f'"{key}" cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
-        if isinstance(key, tuple) and len(key) == 2:
-            # Adding a 3rd dimension
-            key = key + (slice(None, None, None),)
-        return Slicer(self, *key)
-
-    def __repr__(self) -> str:
-        """Return a nice string representation with object id."""
-        return f"<pyotb.{self.__class__.__name__} object id {id(self)}>"
-
     def __add__(self, other: OTBObject | str | int | float) -> Operation:
         """Addition."""
         return self.__create_operator(Operation, "+", self, other)
@@ -381,6 +335,51 @@ class OTBObject(ABC):
             pyotb_app.execute()
             return pyotb_app
         return NotImplemented
+
+    def __hash__(self) -> int:
+        """Override the default behaviour of the hash function.
+
+        Returns:
+            self hash
+
+        """
+        return id(self)
+
+    def __getitem__(self, key) -> Any | list[float] | float | Slicer:
+        """Override the default __getitem__ behaviour.
+
+        This function enables 2 things :
+        - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
+                                                          selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
+                                                          selecting 1000x1000 subset : object[:1000, :1000]
+        - access pixel value(s) at a specified row, col index
+
+        Args:
+            key: attribute key
+
+        Returns:
+            list of pixel values if vector image, or pixel value, or Slicer
+
+        """
+        # Accessing pixel value(s) using Y/X coordinates
+        if isinstance(key, tuple) and len(key) >= 2:
+            row, col = key[0], key[1]
+            if isinstance(row, int) and isinstance(col, int):
+                if row < 0 or col < 0:
+                    raise ValueError(f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})")
+                channels = key[2] if len(key) == 3 else None
+                return self.get_values_at_coords(row, col, channels)
+        # Slicing
+        if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
+            raise ValueError(f'"{key}" cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
+        if isinstance(key, tuple) and len(key) == 2:
+            # Adding a 3rd dimension
+            key = key + (slice(None, None, None),)
+        return Slicer(self, *key)
+
+    def __repr__(self) -> str:
+        """Return a nice string representation with object id."""
+        return f"<pyotb.{self.__class__.__name__} object id {id(self)}>"
 
 
 class App(OTBObject):
