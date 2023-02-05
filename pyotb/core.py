@@ -464,11 +464,6 @@ class App(OTBObject):
         """Get elapsed time between app init and end of exec or file writing."""
         return self._time_end - self._time_start
 
-    @property
-    def used_outputs(self) -> list[str]:
-        """List of used application outputs."""
-        return [self.outputs[key] for key in self._out_param_types if key in self.parameters]
-
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
 
