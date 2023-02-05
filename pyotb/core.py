@@ -679,7 +679,6 @@ class App(OTBObject):
             dest.append(str(out.filepath.absolute()))
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-            raise Exception
         return bool(files) and not missing
 
     # Private functions
@@ -747,6 +746,7 @@ class App(OTBObject):
                 return self.parameters[key]
             raise KeyError(f"{self.name}: unknown or undefined parameter '{key}'")
         raise TypeError(f"{self.name}: cannot access object item or slice using {type(key)} object")
+
 
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
