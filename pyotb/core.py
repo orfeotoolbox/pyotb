@@ -379,7 +379,7 @@ class OTBObject(ABC):
 
     def __repr__(self) -> str:
         """Return a nice string representation with object id."""
-        return f"<pyotb.{self.__class__.__name__} object id {id(self)}>"
+        return f"<pyotb.{self.__class__.__name__} object, id {id(self)}>"
 
 
 class App(OTBObject):
@@ -852,15 +852,15 @@ class Operation(App):
         # NB: the keys of the dictionary are strings-only, instead of 'complex' objects, to enable easy serialization
         self.im_dic = {}
         self.im_count = 1
-        mapping_str_to_input = {}  # to be able to retrieve the real python object from its string representation
+        map_repr_to_input = {}  # to be able to retrieve the real python object from its string representation
         for inp in self.inputs:
             if not isinstance(inp, (int, float)):
                 if str(inp) not in self.im_dic:
-                    self.im_dic[str(inp)] = f"im{self.im_count}"
-                    mapping_str_to_input[str(inp)] = inp
+                    self.im_dic[repr(inp)] = f"im{self.im_count}"
+                    map_repr_to_input[repr(inp)] = inp
                     self.im_count += 1
         # Getting unique image inputs, in the order im1, im2, im3 ...
-        self.unique_inputs = [mapping_str_to_input[str_input] for str_input in sorted(self.im_dic, key=self.im_dic.get)]
+        self.unique_inputs = [map_repr_to_input[id_str] for id_str in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         # Execute app
@@ -943,7 +943,7 @@ class Operation(App):
             one_band_exp = one_band_fake_exp
             for inp in self.inputs:
                 # Replace the name of in-memory object (e.g. '<pyotb.App object>b1' by 'im1b1')
-                one_band_exp = one_band_exp.replace(str(inp), self.im_dic[str(inp)])
+                one_band_exp = one_band_exp.replace(repr(inp), self.im_dic[repr(inp)])
             exp_bands.append(one_band_exp)
         # Form the final expression (e.g. 'im1b1 + 1; im1b2 + 1')
         return exp_bands, ";".join(exp_bands)
@@ -979,8 +979,8 @@ class Operation(App):
                 inputs, nb_channels = x.input.inputs, x.input.nb_channels
             else:
                 # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-                fake_exp = f"{x.input}b{x.one_band_sliced}"
-                inputs, nb_channels = [x.input], {x.input: 1}
+                fake_exp = f"{repr(x.input)}b{x.one_band_sliced}"
+                inputs, nb_channels = [x.input], {repr(x.input): 1}
         # For LogicalOperation, we save almost the same attributes as an Operation
         elif keep_logical and isinstance(x, LogicalOperation):
             fake_exp = x.logical_fake_exp_bands[band - 1]
@@ -995,12 +995,12 @@ class Operation(App):
         # We go on with other inputs, i.e. pyotb objects, filepaths...
         else:
             # Add the band number (e.g. replace '<pyotb.App object>' by '<pyotb.App object>b1')
-            fake_exp = f"{x}b{band}"
-            inputs, nb_channels = [x], {x: get_nbchannels(x)}
+            fake_exp = f"{repr(x)}b{band}"
+            inputs, nb_channels = [x], {repr(x): get_nbchannels(x)}
 
         return fake_exp, inputs, nb_channels
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         """Return a nice string representation with operator and object id."""
         return f"<pyotb.Operation `{self.operator}` object, id {id(self)}>"
 
@@ -1083,9 +1083,9 @@ class Input(App):
         self.propagate_dtype()
         self.execute()
 
-    def __str__(self) -> str:
-        """Return a nice string representation with file path."""
-        return f"<pyotb.Input object from {self.filepath}>"
+    def __repr__(self) -> str:
+        """Return a string representation with file path, used in Operation to store file ref."""
+        return f"<pyotb.Input object, from {self.filepath}>"
 
 
 class Output(OTBObject):
