@@ -163,8 +163,7 @@ class OTBObject(ABC):
 
         """
         data = self.export(key, preserve_dtype)
-        array = data["array"]
-        return array.copy() if copy else array
+        return data["array"].copy() if copy else data["array"]
 
     def to_rasterio(self) -> tuple[np.ndarray, dict[str, Any]]:
         """Export image as a numpy array and its metadata compatible with rasterio.
@@ -374,7 +373,7 @@ class OTBObject(ABC):
             result_dic = image_dic
             result_dic["array"] = result_array
             # Importing back to OTB, pass the result_dic just to keep reference
-            pyotb_app = App("ExtractROI", image_dic=result_dic, frozen=True, quiet=True)
+            pyotb_app = App("ExtractROI", frozen=True, quiet=True)
             if result_array.shape[2] == 1:
                 pyotb_app.app.ImportImage("in", result_dic)
             else:
@@ -387,7 +386,7 @@ class OTBObject(ABC):
 class App(OTBObject):
     """Base class that gathers common operations for any OTB application."""
 
-    def __init__(self, name: str, *args, frozen: bool = False, quiet: bool = False, image_dic: dict = None, **kwargs):
+    def __init__(self, name: str, *args, frozen: bool = False, quiet: bool = False, **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
@@ -399,32 +398,28 @@ class App(OTBObject):
                            - list, useful when the user wants to specify the input list 'il'
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             quiet: whether to print logs of the OTB app
-            image_dic: enables to keep a reference to image_dic. image_dic is a dictionary, such as
-                       the result of app.ExportImage(). Use it when the app takes a numpy array as input.
-                       See this related issue for why it is necessary to keep reference of object:
-                       https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/1824
 
             **kwargs: used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
-        self.name, self.image_dic = name, image_dic
+        self.name = name
         self.quiet, self.frozen = quiet, frozen
-        self._time_start, self._time_end = 0., 0.
-        self.data, self.parameters, self.outputs, self.exports_dic = {}, {}, {}, {}
-        # Initialize app, set parameters and execute if not frozen
-        create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
-        self.app = create(name)
+        self.data, self.parameters = {}, {}  # params from self.app.GetParameterValue()
+        self.outputs, self.exports_dic = {}, {}  # Outputs objects and numpy arrays exports
+        self.app = otb.Registry.CreateApplicationWithoutLogger(name) if quiet else otb.Registry.CreateApplication(name)
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
         self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
+        # Init, execute and write (auto flush only when output param was provided)
+        self._time_start, self._time_end = 0., 0.
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
             self.execute()
             if any(key in self.parameters for key in self._out_param_types):
-                self.flush()  # auto flush if any output param was provided during app init
+                self.flush()
 
     def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
         """Get the first param key for specific file types, try each list in args."""
@@ -733,7 +728,7 @@ class App(OTBObject):
         We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer
         """
         if isinstance(key, tuple):
-            return super().__getitem__(key)
+            return super().__getitem__(key)  # to read pixel values, or slice
         if isinstance(key, str):
             if key in self.data:
                 return self.data[key]
