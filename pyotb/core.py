@@ -175,9 +175,9 @@ class OTBObject(ABC):
         """
         profile = {}
         array = self.to_numpy(preserve_dtype=True, copy=False)
-        height, width, count = array.shape
         proj = self.app.GetImageProjection(self.output_image_key)
         profile.update({"crs": proj, "dtype": array.dtype, "transform": self.transform})
+        height, width, count = array.shape
         profile.update({"count": count, "height": height, "width": width})
         return np.moveaxis(array, 2, 0), profile
 
@@ -378,7 +378,7 @@ class OTBObject(ABC):
         return Slicer(self, *key)
 
     def __repr__(self) -> str:
-        """Return a nice string representation with object id."""
+        """Return a string representation with object id, this is a key used to store image ref in Operation dicts."""
         return f"<pyotb.{self.__class__.__name__} object, id {id(self)}>"
 
 
@@ -742,7 +742,7 @@ class App(OTBObject):
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
-    def __init__(self, obj: App | str, rows: int, cols: int, channels: int):
+    def __init__(self, obj: App | str, rows: slice, cols: slice, channels: slice | list[int] | int):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
 
         It contains :
