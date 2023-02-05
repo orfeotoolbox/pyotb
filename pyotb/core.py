@@ -259,12 +259,11 @@ class OTBObject(ABC):
         # Accessing pixel value(s) using Y/X coordinates
         if isinstance(key, tuple) and len(key) >= 2:
             row, col = key[0], key[1]
-            if not isinstance(row, int) or not isinstance(col, int):
-                raise TypeError(f"{self.name}: cannnot read pixel values using {type(row)} and {type(col)}")
-            if row < 0 or col < 0:
-                raise ValueError(f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})")
-            channels = key[2] if len(key) == 3 else None
-            return self.get_values_at_coords(row, col, channels)
+            if isinstance(row, int) and isinstance(col, int):
+                if row < 0 or col < 0:
+                    raise ValueError(f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})")
+                channels = key[2] if len(key) == 3 else None
+                return self.get_values_at_coords(row, col, channels)
         # Slicing
         if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
             raise ValueError(f'"{key}" cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
@@ -425,12 +424,10 @@ class App(OTBObject):
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
-        self.name = name
-        self.frozen = frozen
-        self.quiet = quiet
-        self.image_dic = image_dic
+        self.name, self.image_dic = name, image_dic
+        self.quiet, self.frozen = quiet, frozen
         self._time_start, self._time_end = 0., 0.
-        self.data, self.parameters, self.exports_dic = {}, {}, {}
+        self.data, self.parameters, self.outputs, self.exports_dic = {}, {}, {}, {}
         # Initialize app, set parameters and execute if not frozen
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self.app = create(name)
@@ -486,7 +483,7 @@ class App(OTBObject):
     @property
     def used_outputs(self) -> list[str]:
         """List of used application outputs."""
-        return [getattr(self, key) for key in self._out_param_types if key in self.parameters]
+        return [self.outputs[key] for key in self._out_param_types if key in self.parameters]
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -527,7 +524,7 @@ class App(OTBObject):
                 ) from e
         # Update param dict and save values as object attributes
         self.parameters.update(parameters)
-        self.save_objects()
+        self.save_objects(list(parameters))
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
         """Propagate a pixel type from main input to every outputs, or to a target output key only.
@@ -559,18 +556,20 @@ class App(OTBObject):
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
-    def save_objects(self):
-        """Saving OTB app parameters and outputs in data and parameters dict."""
-        for key in self.parameters_keys:
+    def save_objects(self, keys: list[str] = None):
+        """Save OTB app values in data, parameters and outputs dict, for a list of keys or all parameters."""
+        keys = keys or self.parameters_keys
+        for key in keys:
             value = self.parameters.get(key)
             if value is None:
                 try:
                     value = self.app.GetParameterValue(key)  # any other app attribute (e.g. ReadImageInfo results)
-                    if isinstance(value, otb.ApplicationProxy):
-                        continue
                 except RuntimeError:
                     continue  # this is when there is no value for key
-            # Save app data output or update parameters dict with otb.Application values
+            if value is None or isinstance(value, otb.ApplicationProxy):
+                continue
+            if self._out_param_types.get(key) == otb.ParameterType_OutputImage:
+                self.outputs[key] = Output(self, key, value)
             if isinstance(value, OTBObject) or bool(value) or value == 0:
                 if self.app.GetParameterRole(key) == 0:
                     self.parameters[key] = value
@@ -674,21 +673,14 @@ class App(OTBObject):
                 self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: output_filename})
         self.flush()
-
-    def find_outputs(self) -> tuple[str]:
-        """Find output files on disk using path found in parameters.
-
-        Returns:
-            list of files found on disk
-
-        """
         files, missing = [], []
         for out in self.used_outputs:
             dest = files if out.exists() else missing
             dest.append(str(out.filepath.absolute()))
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
-        return tuple(files)
+            raise Exception
+        return bool(files) and not missing
 
     # Private functions
     def __parse_args(self, args: list[str | OTBObject | dict | list]) -> dict[str, Any]:
@@ -744,16 +736,17 @@ class App(OTBObject):
 
         We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer
         """
+        if isinstance(key, tuple):
+            return super().__getitem__(key)
         if isinstance(key, str):
-            if key in self._out_param_types:
-                return Output(self, key, self.parameters.get(key))
-            if key in self.parameters:
-                return self.parameters[key]
             if key in self.data:
                 return self.data[key]
-            raise KeyError(f"{self.name}: unknown parameter '{key}'")
-        return super().__getitem__(key)
-
+            if key in self.outputs:
+                return self.outputs[key]
+            if key in self.parameters:
+                return self.parameters[key]
+            raise KeyError(f"{self.name}: unknown or undefined parameter '{key}'")
+        raise TypeError(f"{self.name}: cannot access object item or slice using {type(key)} object")
 
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
