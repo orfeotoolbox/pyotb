@@ -69,14 +69,12 @@ def test_xy_to_rowcol():
 
 
 def test_write():
-    INPUT.write("/tmp/test_write.tif", ext_fname="nodata=0")
-    assert INPUT["out"].exists()
+    assert INPUT.write("/tmp/test_write.tif", ext_fname="nodata=0")
     INPUT["out"].filepath.unlink()
 
 
 def test_output_write():
-    INPUT["out"].write("/tmp/test_output_write.tif")
-    assert INPUT["out"].exists()
+    assert INPUT["out"].write("/tmp/test_output_write.tif")
     INPUT["out"].filepath.unlink()
 
 
@@ -151,28 +149,21 @@ def test_ndvi_comparison():
     ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (INPUT[:, :, -1] + INPUT[:, :, 0])
     ndvi_indices = pyotb.RadiometricIndices(INPUT, {"list": ["Vegetation:NDVI"], "channels.red": 1, "channels.nir": 4})
     assert ndvi_bandmath.exp == "((im1b4 - im1b1) / (im1b4 + im1b1))"
-
-    ndvi_bandmath.write("/tmp/ndvi_bandmath.tif", pixel_type="float")
-    assert ndvi_bandmath["out"].exists()
-    ndvi_indices.write("/tmp/ndvi_indices.tif", pixel_type="float")
-    assert ndvi_indices["out"].exists()
+    assert ndvi_bandmath.write("/tmp/ndvi_bandmath.tif", pixel_type="float")
+    assert ndvi_indices.write("/tmp/ndvi_indices.tif", pixel_type="float")
 
     compared = pyotb.CompareImages({"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"})
     assert (compared["count"], compared["mse"]) == (0, 0)
-
     thresholded_indices = pyotb.where(ndvi_indices >= 0.3, 1, 0)
     assert thresholded_indices.exp == "((im1b1 >= 0.3) ? 1 : 0)"
-
     thresholded_bandmath = pyotb.where(ndvi_bandmath >= 0.3, 1, 0)
     assert thresholded_bandmath.exp == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
 
 
 def test_output_in_arg():
-    o = pyotb.Output(INPUT, "out")
-    t = pyotb.ReadImageInfo(o)
-    assert t
+    t = pyotb.ReadImageInfo(INPUT["out"])
+    assert t.data
 
 
 def test_output_summary():
-    o = pyotb.Output(INPUT, "out")
-    assert o.summarize()
+    assert INPUT["out"].summarize()

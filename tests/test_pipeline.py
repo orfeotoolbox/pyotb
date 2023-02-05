@@ -123,18 +123,16 @@ def test_pipeline_write(pipe):
         out = f"/tmp/out_{i}.tif"
         if os.path.isfile(out):
             os.remove(out)
-        app.write(out)
-        assert os.path.isfile(out)
+        assert app.write(out)
 
 
 @pytest.mark.parametrize("pipe", PIPELINES, ids=NAMES)
 def test_pipeline_write_nointermediate(pipe):
     app = [pipe[-1]][0]
-    out = f"/tmp/out_0.tif"
+    out = "/tmp/out_0.tif"
     if os.path.isfile(out):
         os.remove(out)
-    app.write(out)
-    assert os.path.isfile(out)
+    assert app.write(out)
 
 
 @pytest.mark.parametrize("pipe", PIPELINES, ids=NAMES)
@@ -143,5 +141,4 @@ def test_pipeline_write_backward(pipe):
         out = f"/tmp/out_{i}.tif"
         if os.path.isfile(out):
             os.remove(out)
-        app.write(out)
-        assert os.path.isfile(out)
+        assert app.write(out)

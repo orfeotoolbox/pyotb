@@ -676,8 +676,9 @@ class App(OTBObject):
         # Search and log missing files
         files, missing = [], []
         for key, output_filename in parameters.items():
-            dest = files if Path(output_filename).exists() else missing
-            dest.append(str(Path(output_filename).absolute()))
+            filepath = Path(output_filename.split("?")[0])
+            dest = files if filepath.exists() else missing
+            dest.append(str(filepath.absolute()))
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
         return bool(files) and not missing
