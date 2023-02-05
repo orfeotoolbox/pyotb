@@ -549,7 +549,7 @@ class App(OTBObject):
                 try:
                     value = self.app.GetParameterValue(key)  # any other app attribute (e.g. ReadImageInfo results)
                 except RuntimeError:
-                    pass # this is when there is no value for key
+                    pass  # undefined parameter
             if self._out_param_types.get(key) == otb.ParameterType_OutputImage:
                 self.outputs[key] = Output(self, key, value)
             if value is None or isinstance(value, otb.ApplicationProxy):
