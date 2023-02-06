@@ -1217,7 +1217,7 @@ def parse_pixel_type(pixel_type: str | int) -> int:
             "float": "float",
             "double": "double",
         }
-        if pixel_type in datatype_to_pixeltype.keys():
+        if pixel_type in datatype_to_pixeltype.values():
             return getattr(otb, f"ImagePixelType_{pixel_type}")
         if pixel_type in datatype_to_pixeltype:
             return getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[pixel_type]}")
