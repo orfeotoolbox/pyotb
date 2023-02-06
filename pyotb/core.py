@@ -426,7 +426,7 @@ class App(OTBObject):
             for key, value in sorted(self._all_param_types.items()):
                 if value in param_types:
                     return key
-        raise KeyError(f"{self.name}: could not find any parameter key matching the provided types")
+        raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
 
     @property
     def input_key(self) -> str:
