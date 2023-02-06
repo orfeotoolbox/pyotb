@@ -5,7 +5,6 @@ from __future__ import annotations
 from ast import literal_eval
 from pathlib import Path
 from time import perf_counter
-from itertools import chain
 from typing import Any
 from abc import ABC, abstractmethod
 
