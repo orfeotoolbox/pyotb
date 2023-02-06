@@ -423,35 +423,36 @@ class App(OTBObject):
     def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
         """Get the first param key for specific file types, try each list in args."""
         for param_types in type_lists:
-            types = [getattr(otb, "ParameterType_" + key) for key in param_types]
             for key, value in sorted(self._all_param_types.items()):
-                if value in types:
+                if value in param_types:
                     return key
-        raise TypeError(f"{self.name}: could not find any parameter of type {tuple(chain(*type_lists))}")
+        raise KeyError(f"{self.name}: could not find any parameter key matching the provided types")
 
     @property
     def input_key(self) -> str:
         """Get the name of first input parameter, raster > vector > file."""
         return self.get_first_key(
-            ["InputImage", "InputImageList"],
-            ["InputVectorData", "InputVectorDataList"],
-            ["InputFilename", "InputFilenameList"],
+            [otb.ParameterType_InputImage, otb.ParameterType_InputImageList],
+            [otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList],
+            [otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList],
         )
 
     @property
     def input_image_key(self) -> str:
         """Name of the first input image parameter."""
-        return self.get_first_key(["InputImage", "InputImageList"])
+        return self.get_first_key([otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
 
     @property
     def output_key(self) -> str:
         """Name of the first output parameter, raster > vector > file."""
-        return self.get_first_key(["OutputImage"], ["OutputVectorData"], ["OutputFilename"])
+        return self.get_first_key(
+            [otb.ParameterType_OutputImage], [otb.ParameterType_OutputVectorData], [otb.ParameterType_OutputFilename]
+        )
 
     @property
     def output_image_key(self) -> str:
         """Get the name of first output image parameter."""
-        return self.get_first_key(["OutputImage"])
+        return self.get_first_key([otb.ParameterType_OutputImage])
 
     @property
     def elapsed_time(self) -> float:
