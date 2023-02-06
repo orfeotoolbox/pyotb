@@ -72,6 +72,22 @@ class OTBObject(ABC):
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
 
+    def summarize(self) -> dict[str, str | dict[str, Any]]:
+        """Serialize an object and its pipeline into a dictionary.
+
+        Returns:
+            nested dictionary summarizing the pipeline
+
+        """
+        parameters = self.parameters.copy()
+        for key, param in parameters.items():
+            # In the following, we replace each parameter which is an OTBObject, with its summary.
+            if isinstance(param, OTBObject):  # single parameter
+                parameters[key] = param.summarize()
+            elif isinstance(param, list):  # parameter list
+                parameters[key] = [p.summarize() if isinstance(p, OTBObject) else p for p in param]
+        return {"name": self.app.GetName(), "parameters": parameters}
+
     def get_info(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ReadImageInfo for the first image output."""
         return App("ReadImageInfo", self, quiet=True).data
@@ -657,22 +673,6 @@ class App(OTBObject):
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
         return bool(files) and not missing
 
-    def summarize(self) -> dict[str, str | dict[str, Any]]:
-        """Serialize an object and its pipeline into a dictionary.
-
-        Returns:
-            nested dictionary summarizing the pipeline
-
-        """
-        parameters = self.parameters.copy()
-        for key, param in parameters.items():
-            # In the following, we replace each parameter which is an OTBObject, with its summary.
-            if isinstance(param, OTBObject):  # single parameter
-                parameters[key] = param.summarize()
-            elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, OTBObject) else p for p in param]
-        return {"name": self.app.GetName(), "parameters": parameters}
-
     # Private functions
     def __parse_args(self, args: list[str | OTBObject | dict | list]) -> dict[str, Any]:
         """Gather all input arguments in kwargs dict.
@@ -1136,10 +1136,6 @@ class Output(OTBObject):
         if filepath is None and self.filepath:
             return self.parent_pyotb_app.write({self.output_image_key: self.filepath}, **kwargs)
         return self.parent_pyotb_app.write({self.output_image_key: filepath}, **kwargs)
-
-    def summarize(self):
-        """Summarize parent pyotb App."""
-        return self.parent_pyotb_app.summarize()
 
     def __str__(self) -> str:
         """Return string representation of Output filepath."""
