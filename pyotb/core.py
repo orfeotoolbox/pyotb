@@ -1109,7 +1109,7 @@ class Output(OTBObject):
         self.param_key = param_key
         self.parameters = self.parent_pyotb_app.parameters
         self.filepath = filepath
-        if not filepath.startswith("/vsi"):
+        if filepath and not filepath.startswith("/vsi"):
             self.filepath = Path(filepath.split("?")[0])
             if mkdir:
                 self.make_parent_dirs()
