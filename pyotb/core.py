@@ -1189,20 +1189,7 @@ def get_pixel_type(inp: str | Path | OTBObject) -> str:
         except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
             raise TypeError(f"Could not get the pixel type of `{inp}` ({info_err})") from info_err
         if datatype:
-            datatype_to_pixeltype = {
-                "unsigned_char": "uint8",
-                "short": "int16",
-                "unsigned_short": "uint16",
-                "int": "int32",
-                "unsigned_int": "uint32",
-                "long": "int32",
-                "ulong": "uint32",
-                "float": "float",
-                "double": "double",
-            }
-            if datatype not in datatype_to_pixeltype:
-                raise TypeError(f"Unknown data type `{datatype}`. Available ones: {datatype_to_pixeltype}")
-            return getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[datatype]}")
+            return parse_pixel_type(datatype)
     raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
 
 
@@ -1216,11 +1203,26 @@ def parse_pixel_type(pixel_type: str | int) -> int:
         pixel_type integer value
 
     """
-    if isinstance(pixel_type, str):  # this correspond to 'uint8' etc...
-        return getattr(otb, f"ImagePixelType_{pixel_type}")
-    if isinstance(pixel_type, int):
+    if isinstance(pixel_type, int):  # normal OTB int enum
         return pixel_type
-    raise ValueError(f"Bad pixel type specification ({pixel_type})")
+    if isinstance(pixel_type, str):  # correspond to 'uint8' etc...
+        datatype_to_pixeltype = {
+            "unsigned_char": "uint8",
+            "short": "int16",
+            "unsigned_short": "uint16",
+            "int": "int32",
+            "unsigned_int": "uint32",
+            "long": "int32",
+            "ulong": "uint32",
+            "float": "float",
+            "double": "double",
+        }
+        if pixel_type in datatype_to_pixeltype.keys():
+            return getattr(otb, f"ImagePixelType_{pixel_type}")
+        if pixel_type in datatype_to_pixeltype:
+            return getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[pixel_type]}")
+        raise KeyError(f"Unknown data type `{pixel_type}`. Available ones: {datatype_to_pixeltype}")
+    raise TypeError(f"Bad pixel type specification ({pixel_type} of type {type(pixel_type)})")
 
 
 def is_key_list(pyotb_app: OTBObject, key: str) -> bool:
