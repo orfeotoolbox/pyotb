@@ -639,19 +639,20 @@ class App(OTBObject):
             self.propagate_dtype()  # all outputs will have the same type as the main input raster
 
         # Set parameters and flush to disk
-        for key, output_filename in parameters.items():
-            if Path(output_filename.split("?")[0]).exists():
-                logger.warning("%s: overwriting file %s", self.name, output_filename)
+        for key, filepath in parameters.items():
+            if Path(filepath.split("?")[0]).exists():
+                logger.warning("%s: overwriting file %s", self.name, filepath)
             if key in data_types:
                 self.propagate_dtype(key, data_types[key])
-            self.set_parameters({key: output_filename})
+            self.set_parameters({key: filepath})
         self.flush()
         # Search and log missing files
         files, missing = [], []
-        for key, output_filename in parameters.items():
-            filepath = Path(output_filename.split("?")[0])
-            dest = files if filepath.exists() else missing
-            dest.append(str(filepath.absolute()))
+        for key, filepath in parameters.items():
+            if not filepath.startswith("/vsi"):
+                filepath = Path(filepath.split("?")[0])
+                dest = files if filepath.exists() else missing
+                dest.append(str(filepath.absolute()))
         for filename in missing:
             logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
         return bool(files) and not missing
@@ -1079,7 +1080,7 @@ class Input(App):
         """
         super().__init__("ExtractROI", {"in": filepath}, frozen=True)
         self.name = f"Input from {filepath}"
-        self.filepath = Path(filepath)
+        self.filepath = Path(filepath) if not filepath.startswith("/vsi") else filepath
         self.propagate_dtype()
         self.execute()
 
@@ -1091,7 +1092,7 @@ class Input(App):
 class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
-    def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = None, mkdir: bool = True):
+    def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = "", mkdir: bool = True):
         """Constructor for an Output object.
 
         Args:
@@ -1107,11 +1108,9 @@ class Output(OTBObject):
         self.exports_dic = pyotb_app.exports_dic
         self.param_key = param_key
         self.parameters = self.parent_pyotb_app.parameters
-        self.filepath = None
-        if filepath:
-            if "?" in filepath:
-                filepath = filepath.split("?")[0]
-            self.filepath = Path(filepath)
+        self.filepath = filepath
+        if not filepath.startswith("/vsi"):
+            self.filepath = Path(filepath.split("?")[0])
             if mkdir:
                 self.make_parent_dirs()
 
@@ -1122,14 +1121,14 @@ class Output(OTBObject):
 
     def exists(self) -> bool:
         """Check file exist."""
-        if self.filepath is None:
-            raise ValueError("Filepath is not set")
+        if not isinstance(self.filepath, Path):
+            raise ValueError("Filepath is not set or points to a remote URL")
         return self.filepath.exists()
 
     def make_parent_dirs(self):
         """Create missing parent directories."""
-        if self.filepath is None:
-            raise ValueError("Filepath is not set")
+        if not isinstance(self.filepath, Path):
+            raise ValueError("Filepath is not set or points to a remote URL")
         self.filepath.parent.mkdir(parents=True, exist_ok=True)
 
     def write(self, filepath: None | str | Path = None, **kwargs):
