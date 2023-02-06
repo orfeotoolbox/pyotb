@@ -625,7 +625,7 @@ class App(OTBObject):
                     parameters[key] = value + ext_fname
         # Manage output pixel types
         data_types = {}
-        if pixel_type is not None:
+        if pixel_type:
             if isinstance(pixel_type, str):
                 dtype = parse_pixel_type(pixel_type)
                 type_name = self.app.ConvertPixelTypeToNumpy(dtype)
