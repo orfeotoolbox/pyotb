@@ -16,16 +16,30 @@ from .helpers import logger
 
 class OTBObject(ABC):
     """Abstraction of an image object."""
-
-    name: str
-    app: otb.Application
-    parameters: dict
-    exports_dic: dict
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """By default, should return the application name, but a custom name may be passed during init."""
 
     @property
     @abstractmethod
-    def output_image_key(self):
-        """Returns the name of a parameter associated to an image. Property defined in App and Output."""
+    def app(self) -> otb.Application:
+        """Reference to the main (or last in pipeline) otb.Application instance linked to this object."""
+
+    @property
+    @abstractmethod
+    def parameters(self) -> dict[str, Any]:
+        """Should return every input parameters of the main otb.Application instance linked to this object."""
+
+    @property
+    @abstractmethod
+    def output_image_key(self) -> str:
+        """Return the name of a parameter key associated to the main output image of the object."""
+
+    @property
+    @abstractmethod
+    def exports_dic(self) -> dict[str, dict]:
+        """Return an internal dict object containing np.array exports, to avoid duplicated ExportImage() calls."""
 
     @abstractmethod
     def write(self):
@@ -118,7 +132,7 @@ class OTBObject(ABC):
             elif isinstance(bands, slice):
                 channels = self.channels_list_from_slice(bands)
             elif not isinstance(bands, list):
-                raise TypeError(f"{self.app.GetName()}: type '{type(bands)}' cannot be interpreted as a valid slicing")
+                raise TypeError(f"{self.name}: type '{type(bands)}' cannot be interpreted as a valid slicing")
             if channels:
                 app.app.Execute()
                 app.set_parameters({"cl": [f"Channel{n + 1}" for n in channels]})
@@ -141,7 +155,7 @@ class OTBObject(ABC):
             return list(range(0, stop, step))
         if start is None and stop is None:
             return list(range(0, nb_channels, step))
-        raise ValueError(f"{self.app.GetName()}: '{bands}' cannot be interpreted as valid slicing.")
+        raise ValueError(f"{self.name}: '{bands}' cannot be interpreted as valid slicing.")
 
     def export(self, key: str = None, preserve_dtype: bool = True) -> dict[str, dict[str, np.ndarray]]:
         """Export a specific output image as numpy array and store it in object exports_dic.
@@ -400,11 +414,11 @@ class OTBObject(ABC):
 class App(OTBObject):
     """Base class that gathers common operations for any OTB application."""
 
-    def __init__(self, name: str, *args, frozen: bool = False, quiet: bool = False, **kwargs):
+    def __init__(self, appname: str, *args, frozen: bool = False, quiet: bool = False, name: str = "", **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
-            name: name of the app, e.g. 'BandMath'
+            appname: name of the OTB application to initialize, e.g. 'BandMath'
             *args: used for passing application parameters. Can be :
                            - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
                              (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
@@ -412,22 +426,26 @@ class App(OTBObject):
                            - list, useful when the user wants to specify the input list 'il'
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             quiet: whether to print logs of the OTB app
+            name: custom name that will show up in logs, appname will be used if not provided
 
             **kwargs: used for passing application parameters.
                       e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
 
         """
-        self.name = name
+        # Attributes and data structures used by properties
+        create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
+        self._app = create(appname)
+        self._name = name or appname
+        self._time_start, self._time_end = 0.0, 0.0
+        self._parameters, self._exports_dic = {}, {}
+        self.data, self.outputs = {}, {}
         self.quiet, self.frozen = quiet, frozen
-        self.data, self.parameters = {}, {}  # params from self.app.GetParameterValue()
-        self.outputs, self.exports_dic = {}, {}  # Outputs objects and numpy arrays exports
-        self.app = otb.Registry.CreateApplicationWithoutLogger(name) if quiet else otb.Registry.CreateApplication(name)
+        # Param keys and types
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
         self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
         # Init, execute and write (auto flush only when output param was provided)
-        self._time_start, self._time_end = 0., 0.
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
@@ -435,13 +453,30 @@ class App(OTBObject):
             if any(key in self.parameters for key in self._out_param_types):
                 self.flush()
 
-    def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
-        """Get the first param key for specific file types, try each list in args."""
-        for param_types in type_lists:
-            for key, value in sorted(self._all_param_types.items()):
-                if value in param_types:
-                    return key
-        raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
+    @property
+    def name(self) -> str:
+        """Returns appname by default, or a custom name if passed during App init."""
+        return self._name
+
+    @property
+    def app(self) -> otb.Application:
+        """Property to return an internal _app instance."""
+        return self._app
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """Property to return an internal _parameters dict instance."""
+        return self._parameters
+
+    @property
+    def output_image_key(self) -> str:
+        """Get the name of first output image parameter."""
+        return self.get_first_key([otb.ParameterType_OutputImage])
+
+    @property
+    def exports_dic(self) -> dict[str, dict]:
+        """Returns internal _exports_dic object that contains numpy array exports."""
+        return self._exports_dic
 
     @property
     def input_key(self) -> str:
@@ -465,14 +500,17 @@ class App(OTBObject):
         )
 
     @property
-    def output_image_key(self) -> str:
-        """Get the name of first output image parameter."""
-        return self.get_first_key([otb.ParameterType_OutputImage])
-
-    @property
     def elapsed_time(self) -> float:
         """Get elapsed time between app init and end of exec or file writing."""
         return self._time_end - self._time_start
+
+    def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
+        """Get the first param key for specific file types, try each list in args."""
+        for param_types in type_lists:
+            for key, value in sorted(self._all_param_types.items()):
+                if value in param_types:
+                    return key
+        raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -512,7 +550,7 @@ class App(OTBObject):
                     f"(while setting parameter '{key}' to '{obj}': {e})"
                 ) from e
         # Update param dict and save values as object attributes
-        self.parameters.update(parameters)
+        self._parameters.update(parameters)
         self.save_objects(list(parameters))
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
@@ -561,7 +599,7 @@ class App(OTBObject):
                 continue
             if isinstance(value, OTBObject) or bool(value) or value == 0:
                 if self.app.GetParameterRole(key) == 0:
-                    self.parameters[key] = value
+                    self._parameters[key] = value
                 else:
                     if isinstance(value, str):
                         try:
@@ -743,7 +781,7 @@ class App(OTBObject):
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
-    def __init__(self, obj: App | str, rows: slice, cols: slice, channels: slice | list[int] | int):
+    def __init__(self, obj: App, rows: slice, cols: slice, channels: slice | list[int] | int):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
 
         It contains :
@@ -757,8 +795,7 @@ class Slicer(App):
             channels: channels, can be slicing, list or int
 
         """
-        super().__init__("ExtractROI", obj, mode="extent", quiet=True, frozen=True)
-        self.name = "Slicer"
+        super().__init__("ExtractROI", obj, mode="extent", quiet=True, frozen=True, name=f"Slicer from {obj.name}")
         self.rows, self.cols = rows, cols
         parameters = {}
 
@@ -864,9 +901,8 @@ class Operation(App):
         self.unique_inputs = [map_repr_to_input[id_str] for id_str in sorted(self.im_dic, key=self.im_dic.get)]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
-        # Execute app
-        super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True)
-        self.name = name or f'Operation exp="{self.exp}"'
+        name = f'Operation exp="{self.exp}"'
+        super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True, name=name)
 
     def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
         """Create a list of 'fake' expressions, one for each band.
@@ -1079,7 +1115,7 @@ class Input(App):
 
         """
         super().__init__("ExtractROI", {"in": filepath}, frozen=True)
-        self.name = f"Input from {filepath}"
+        self._name = f"Input from {filepath}"
         self.filepath = Path(filepath) if not filepath.startswith("/vsi") else filepath
         self.propagate_dtype()
         self.execute()
@@ -1102,17 +1138,33 @@ class Output(OTBObject):
             mkdir: create missing parent directories
 
         """
-        self.name = f"Output {param_key} from {pyotb_app.name}"
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
-        self.app = pyotb_app.app
-        self.exports_dic = pyotb_app.exports_dic
         self.param_key = param_key
-        self.parameters = self.parent_pyotb_app.parameters
         self.filepath = filepath
         if filepath and not filepath.startswith("/vsi"):
             self.filepath = Path(filepath.split("?")[0])
             if mkdir:
                 self.make_parent_dirs()
+
+    @property
+    def name(self):
+        """Return Output name containing filepath."""
+        return f"Output {self.param_key} from {self.parent_pyotb_app.name}"
+
+    @property
+    def app(self) -> otb.Application:
+        """Reference to the parent pyotb otb.Application instance."""
+        return self.parent_pyotb_app.app
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """Reference to the parent pyotb App parameters."""
+        return self.parent_pyotb_app.parameters
+
+    @property
+    def exports_dic(self) -> dict[str, dict]:
+        """Returns internal _exports_dic object that contains numpy array exports."""
+        return self.parent_pyotb_app.exports_dic
 
     @property
     def output_image_key(self) -> str:
@@ -1131,7 +1183,7 @@ class Output(OTBObject):
             raise ValueError("Filepath is not set or points to a remote URL")
         self.filepath.parent.mkdir(parents=True, exist_ok=True)
 
-    def write(self, filepath: None | str | Path = None, **kwargs):
+    def write(self, filepath: None | str | Path = None, **kwargs) -> bool:
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
         if filepath is None and self.filepath:
             return self.parent_pyotb_app.write({self.output_image_key: self.filepath}, **kwargs)
