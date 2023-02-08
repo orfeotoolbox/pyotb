@@ -15,6 +15,11 @@ def test_wrong_key():
 
 
 # OTBObject properties
+def test_name():
+    app = pyotb.App("BandMath", [INPUT], exp="im1b1", name="TestName")
+    assert app.name == "TestName"
+
+
 def test_key_input():
     assert INPUT.input_key == INPUT.input_image_key == "in"
 
