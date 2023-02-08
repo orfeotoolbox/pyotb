@@ -12,8 +12,8 @@ def test_export():
 
 
 def test_output_export():
-    INPUT.out.export()
-    assert INPUT.out.output_image_key in INPUT.out.exports_dic
+    INPUT["out"].export()
+    assert INPUT["out"].output_image_key in INPUT["out"].exports_dic
 
 
 def test_to_numpy():

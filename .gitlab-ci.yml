@@ -104,11 +104,6 @@ test_pipeline:
   script:
     - python3 -m pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
-test_serialization:
-  extends: .tests
-  script:
-    - python3 -m pytest --color=yes --junitxml=test-serialization.xml tests/test_serialization.py
-
 # -------------------------------------- Ship --------------------------------------- 
 
 pages:

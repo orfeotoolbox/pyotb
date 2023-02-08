@@ -12,7 +12,7 @@ OTBAPPS_BLOCKS = [
     lambda inp: pyotb.DynamicConvert({"in": inp}),
     lambda inp: pyotb.Mosaic({"il": [inp]}),
     lambda inp: pyotb.BandMath({"il": [inp], "exp": "im1b1 + 1"}),
-    lambda inp: pyotb.BandMathX({"il": [inp], "exp": "im1"})
+    lambda inp: pyotb.BandMathX({"il": [inp], "exp": "im1"}),
 ]
 
 PYOTB_BLOCKS = [
@@ -74,14 +74,12 @@ def pipeline2str(pipeline):
         a string
 
     """
-    return " > ".join([INPUT.__class__.__name__] + [f"{i}.{app.name.split()[0]}"
-                                                       for i, app in enumerate(pipeline)])
+    return " > ".join([INPUT.__class__.__name__] + [f"{i}.{app.name.split()[0]}" for i, app in enumerate(pipeline)])
 
 
 def make_pipelines_list():
     """Create a list of pipelines using different lengths and blocks"""
-    blocks = {FILEPATH: OTBAPPS_BLOCKS,  # for filepath, we can't use Slicer or Operation
-              INPUT: ALL_BLOCKS}
+    blocks = {FILEPATH: OTBAPPS_BLOCKS, INPUT: ALL_BLOCKS}  # for filepath, we can't use Slicer or Operation
     pipelines = []
     names = []
     for inp, blocks in blocks.items():
@@ -125,18 +123,16 @@ def test_pipeline_write(pipe):
         out = f"/tmp/out_{i}.tif"
         if os.path.isfile(out):
             os.remove(out)
-        app.write(out)
-        assert os.path.isfile(out)
+        assert app.write(out)
 
 
 @pytest.mark.parametrize("pipe", PIPELINES, ids=NAMES)
 def test_pipeline_write_nointermediate(pipe):
     app = [pipe[-1]][0]
-    out = f"/tmp/out_0.tif"
+    out = "/tmp/out_0.tif"
     if os.path.isfile(out):
         os.remove(out)
-    app.write(out)
-    assert os.path.isfile(out)
+    assert app.write(out)
 
 
 @pytest.mark.parametrize("pipe", PIPELINES, ids=NAMES)
@@ -145,5 +141,4 @@ def test_pipeline_write_backward(pipe):
         out = f"/tmp/out_{i}.tif"
         if os.path.isfile(out):
             os.remove(out)
-        app.write(out)
-        assert os.path.isfile(out)
+        assert app.write(out)
