@@ -45,7 +45,7 @@ def test_metadata():
 
 def test_nonraster_property():
     with pytest.raises(TypeError):
-        pyotb.ReadImageInfo(INPUT).dtype
+        assert pyotb.ReadImageInfo(INPUT).dtype == "uint8"
 
 
 def test_elapsed_time():
@@ -79,12 +79,8 @@ def test_output_write():
 
 
 def test_output_in_arg():
-    t = pyotb.ReadImageInfo(INPUT["out"])
-    assert t.data
-
-
-def test_output_summary():
-    assert INPUT["out"].summarize()
+    info = pyotb.ReadImageInfo(INPUT["out"])
+    assert info.data
 
 
 # Slicer
@@ -109,6 +105,44 @@ def test_slicer_in_output():
 
 
 # Arithmetic
+def test_rational_operators():
+    def _test(func, exp):
+        meas = func(INPUT)
+        ref = pyotb.BandMathX({"il": [FILEPATH], "exp": exp})
+        for i in range(1, 5):
+            compared = pyotb.CompareImages({"ref.in": ref, "meas.in": meas, "ref.channel": i, "meas.channel": i})
+            assert (compared["count"], compared["mse"]) == (0, 0)
+
+    _test(lambda x: x + x, "im1 + im1")
+    _test(lambda x: x - x, "im1 - im1")
+    _test(lambda x: x / x, "im1 div im1")
+    _test(lambda x: x * x, "im1 mult im1")
+    _test(lambda x: x + FILEPATH, "im1 + im1")
+    _test(lambda x: x - FILEPATH, "im1 - im1")
+    _test(lambda x: x / FILEPATH, "im1 div im1")
+    _test(lambda x: x * FILEPATH, "im1 mult im1")
+    _test(lambda x: FILEPATH + x, "im1 + im1")
+    _test(lambda x: FILEPATH - x, "im1 - im1")
+    _test(lambda x: FILEPATH / x, "im1 div im1")
+    _test(lambda x: FILEPATH * x, "im1 mult im1")
+    _test(lambda x: x + 2, "im1 + {2;2;2;2}")
+    _test(lambda x: x - 2, "im1 - {2;2;2;2}")
+    _test(lambda x: x / 2, "0.5 * im1")
+    _test(lambda x: x * 2, "im1 * 2")
+    _test(lambda x: x + 2.0, "im1 + {2.0;2.0;2.0;2.0}")
+    _test(lambda x: x - 2.0, "im1 - {2.0;2.0;2.0;2.0}")
+    _test(lambda x: x / 2.0, "0.5 * im1")
+    _test(lambda x: x * 2.0, "im1 * 2.0")
+    _test(lambda x: 2 + x, "{2;2;2;2} + im1")
+    _test(lambda x: 2 - x, "{2;2;2;2} - im1")
+    _test(lambda x: 2 / x, "{2;2;2;2} div im1")
+    _test(lambda x: 2 * x, "2 * im1")
+    _test(lambda x: 2.0 + x, "{2.0;2.0;2.0;2.0} + im1")
+    _test(lambda x: 2.0 - x, "{2.0;2.0;2.0;2.0} - im1")
+    _test(lambda x: 2.0 / x, "{2.0;2.0;2.0;2.0} div im1")
+    _test(lambda x: 2.0 * x, "2.0 * im1")
+
+
 def test_operation():
     op = INPUT / 255 * 128
     assert op.exp == "((im1b1 / 255) * 128);((im1b2 / 255) * 128);((im1b3 / 255) * 128);((im1b4 / 255) * 128)"
@@ -164,9 +198,13 @@ def test_ndvi_comparison():
     compared = pyotb.CompareImages({"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"})
     assert (compared["count"], compared["mse"]) == (0, 0)
     thresholded_indices = pyotb.where(ndvi_indices >= 0.3, 1, 0)
-    assert thresholded_indices.exp == "((im1b1 >= 0.3) ? 1 : 0)"
+    assert thresholded_indices["exp"] == "((im1b1 >= 0.3) ? 1 : 0)"
     thresholded_bandmath = pyotb.where(ndvi_bandmath >= 0.3, 1, 0)
-    assert thresholded_bandmath.exp == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
+    assert thresholded_bandmath["exp"] == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
+
+
+def test_output_summary():
+    assert INPUT["out"].summarize()
 
 
 def test_pipeline_simple():
