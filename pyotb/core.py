@@ -36,10 +36,6 @@ class OTBObject(ABC):
     def exports_dic(self) -> dict[str, dict]:
         """Return an internal dict object containing np.array exports, to avoid duplicated ExportImage() calls."""
 
-    @abstractmethod
-    def write(self):
-        """Write image, this is defined in App. Output will use App.write for a specific key."""
-
     @property
     def metadata(self) -> dict[str, (str, float, list[float])]:
         """Return first output image metadata dictionary."""
