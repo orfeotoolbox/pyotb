@@ -28,11 +28,6 @@ class OTBObject(ABC):
 
     @property
     @abstractmethod
-    def parameters(self) -> dict[str, Any]:
-        """Should return every input parameters of the main otb.Application instance linked to this object."""
-
-    @property
-    @abstractmethod
     def output_image_key(self) -> str:
         """Return the name of a parameter key associated to the main output image of the object."""
 
@@ -85,22 +80,6 @@ class OTBObject(ABC):
         # Shift image origin since OTB is giving coordinates of pixel center instead of corners
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
-
-    def summarize(self) -> dict[str, str | dict[str, Any]]:
-        """Serialize an object and its pipeline into a dictionary.
-
-        Returns:
-            nested dictionary summarizing the pipeline
-
-        """
-        parameters = self.parameters.copy()
-        for key, param in parameters.items():
-            # In the following, we replace each parameter which is an OTBObject, with its summary.
-            if isinstance(param, OTBObject):  # single parameter
-                parameters[key] = param.summarize()
-            elif isinstance(param, list):  # parameter list
-                parameters[key] = [p.summarize() if isinstance(p, OTBObject) else p for p in param]
-        return {"name": self.app.GetName(), "parameters": parameters}
 
     def get_info(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ReadImageInfo for the first image output."""
@@ -436,8 +415,9 @@ class App(OTBObject):
         create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
         self._app = create(appname)
         self._name = name or appname
+        self._exports_dic = {}
+        self._settings, self._auto_parameters = {}, {}
         self._time_start, self._time_end = 0.0, 0.0
-        self._parameters, self._exports_dic = {}, {}
         self.data, self.outputs = {}, {}
         self.quiet, self.frozen = quiet, frozen
         # Param keys and types
@@ -445,12 +425,14 @@ class App(OTBObject):
         self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
         self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
+        for key in self._out_param_types:
+            self.outputs[key] = Output(self, key, self._settings.get(key))
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         if not self.frozen:
             self.execute()
-            if any(key in self.parameters for key in self._out_param_types):
+            if any(key in self._settings for key in self._out_param_types):
                 self.flush()
 
     @property
@@ -464,19 +446,22 @@ class App(OTBObject):
         return self._app
 
     @property
-    def parameters(self) -> dict[str, Any]:
-        """Property to return an internal _parameters dict instance."""
-        return self._parameters
-
-    @property
-    def output_image_key(self) -> str:
-        """Get the name of first output image parameter."""
-        return self.get_first_key([otb.ParameterType_OutputImage])
+    def parameters(self):
+        """Return used OTB applications parameters."""
+        return {**self.app.GetParameters(), **self._auto_parameters, **self._settings}
 
     @property
     def exports_dic(self) -> dict[str, dict]:
         """Returns internal _exports_dic object that contains numpy array exports."""
         return self._exports_dic
+
+    def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
+        """Get the first param key for specific file types, try each list in args."""
+        for param_types in type_lists:
+            for key, value in sorted(self._all_param_types.items()):
+                if value in param_types:
+                    return key
+        raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
 
     @property
     def input_key(self) -> str:
@@ -500,17 +485,14 @@ class App(OTBObject):
         )
 
     @property
+    def output_image_key(self) -> str:
+        """Get the name of first output image parameter."""
+        return self.get_first_key([otb.ParameterType_OutputImage])
+
+    @property
     def elapsed_time(self) -> float:
         """Get elapsed time between app init and end of exec or file writing."""
         return self._time_end - self._time_start
-
-    def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
-        """Get the first param key for specific file types, try each list in args."""
-        for param_types in type_lists:
-            for key, value in sorted(self._all_param_types.items()):
-                if value in param_types:
-                    return key
-        raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
 
     def set_parameters(self, *args, **kwargs):
         """Set some parameters of the app.
@@ -546,12 +528,12 @@ class App(OTBObject):
                 self.__set_param(key, obj)
             except (RuntimeError, TypeError, ValueError, KeyError) as e:
                 raise RuntimeError(
-                    f"{self.name}: something went wrong before execution "
-                    f"(while setting parameter '{key}' to '{obj}': {e})"
+                    f"{self.name}: error before execution, while setting parameter '{key}' to '{obj}': {e})"
                 ) from e
-        # Update param dict and save values as object attributes
-        self._parameters.update(parameters)
-        self.save_objects(list(parameters))
+            # Save / update setting value and update the Output object initialized in __init__ without a filepath
+            self._settings[key] = obj
+            if key in self._out_param_types:
+                self.outputs[key].filepath = obj
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
         """Propagate a pixel type from main input to every outputs, or to a target output key only.
@@ -565,7 +547,7 @@ class App(OTBObject):
 
         """
         if not dtype:
-            param = self.parameters.get(self.input_image_key)
+            param = self._settings.get(self.input_image_key)
             if not param:
                 logger.warning("%s: could not propagate pixel type from inputs to output", self.name)
                 return
@@ -583,30 +565,28 @@ class App(OTBObject):
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
-    def save_objects(self, keys: list[str] = None):
+    def save_objects(self):
         """Save OTB app values in data, parameters and outputs dict, for a list of keys or all parameters."""
-        keys = keys or self.parameters_keys
-        for key in keys:
-            value = self.parameters.get(key)
-            if value is None:
-                try:
-                    value = self.app.GetParameterValue(key)  # any other app attribute (e.g. ReadImageInfo results)
-                except RuntimeError:
-                    pass  # undefined parameter
-            if self._out_param_types.get(key) == otb.ParameterType_OutputImage:
-                self.outputs[key] = Output(self, key, value)
-            if value is None or isinstance(value, otb.ApplicationProxy):
+        for key in self.parameters_keys:
+            if not self.app.HasValue(key):
                 continue
-            if isinstance(value, OTBObject) or bool(value) or value == 0:
-                if self.app.GetParameterRole(key) == 0:
-                    self._parameters[key] = value
-                else:
-                    if isinstance(value, str):
-                        try:
-                            value = literal_eval(value)
-                        except (ValueError, SyntaxError):
-                            pass
-                    self.data[key] = value
+            value = self.app.GetParameterValue(key)
+            # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
+            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(key):
+                try:
+                    value = str(value)  # some default str values like "mode" or "interpolator"
+                    self._auto_parameters[key] = value
+                    continue
+                except RuntimeError:
+                    continue  # grouped parameters
+            # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
+            elif self.app.GetParameterRole(key) == 1 and bool(value) or value == 0:
+                if isinstance(value, str):
+                    try:
+                        value = literal_eval(value)
+                    except (ValueError, SyntaxError):
+                        pass
+                self.data[key] = value
 
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
@@ -781,7 +761,7 @@ class App(OTBObject):
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
-    def __init__(self, obj: App, rows: slice, cols: slice, channels: slice | list[int] | int):
+    def __init__(self, obj: OTBObject, rows: slice, cols: slice, channels: slice | list[int] | int):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
 
         It contains :
@@ -1127,8 +1107,9 @@ class Input(App):
 
 class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
+    _filepath: str | Path = None
 
-    def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = "", mkdir: bool = True):
+    def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = None, mkdir: bool = True):
         """Constructor for an Output object.
 
         Args:
@@ -1141,13 +1122,11 @@ class Output(OTBObject):
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
         self.param_key = param_key
         self.filepath = filepath
-        if filepath and not filepath.startswith("/vsi"):
-            self.filepath = Path(filepath.split("?")[0])
-            if mkdir:
-                self.make_parent_dirs()
+        if mkdir and filepath is not None:
+            self.make_parent_dirs()
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return Output name containing filepath."""
         return f"Output {self.param_key} from {self.parent_pyotb_app.name}"
 
@@ -1155,11 +1134,6 @@ class Output(OTBObject):
     def app(self) -> otb.Application:
         """Reference to the parent pyotb otb.Application instance."""
         return self.parent_pyotb_app.app
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        """Reference to the parent pyotb App parameters."""
-        return self.parent_pyotb_app.parameters
 
     @property
     def exports_dic(self) -> dict[str, dict]:
@@ -1170,6 +1144,20 @@ class Output(OTBObject):
     def output_image_key(self) -> str:
         """Force the right key to be used when accessing the OTBObject."""
         return self.param_key
+
+    @property
+    def filepath(self) -> str | Path:
+        """Property to manage output URL."""
+        if self._filepath is None:
+            raise ValueError("Filepath is not set")
+        return self._filepath
+
+    @filepath.setter
+    def filepath(self, path: str):
+        if isinstance(path, str):
+            if path and not path.startswith("/vsi"):
+                path = Path(path.split("?")[0])
+            self._filepath = path
 
     def exists(self) -> bool:
         """Check file exist."""
@@ -1185,7 +1173,7 @@ class Output(OTBObject):
 
     def write(self, filepath: None | str | Path = None, **kwargs) -> bool:
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
-        if filepath is None and self.filepath:
+        if filepath is None:
             return self.parent_pyotb_app.write({self.output_image_key: self.filepath}, **kwargs)
         return self.parent_pyotb_app.write({self.output_image_key: filepath}, **kwargs)
 
@@ -1293,3 +1281,21 @@ def is_key_images_list(pyotb_app: OTBObject, key: str) -> bool:
 def get_out_images_param_keys(app: OTBObject) -> list[str]:
     """Return every output parameter keys of an OTB app."""
     return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]
+
+
+def summarize(obj: App | Output | Any) -> dict[str, str | dict[str, Any]]:
+    """Recursively summarize application parameters, and every App or Output found upstream in the pipeline.
+
+    Returns:
+        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
+
+    """
+    if isinstance(obj, Output):
+        return summarize(obj.parent_pyotb_app)
+    if not isinstance(obj, App):
+        return obj
+    parameters = {
+        key: [summarize(p) for p in param] if isinstance(param, list) else summarize(param)
+        for key, param in obj.parameters.items()
+    }
+    return {"name": obj.app.GetName(), "parameters": parameters}

@@ -9,7 +9,8 @@ from .core import (
     Input,
     Output,
     get_nbchannels,
-    get_pixel_type
+    get_pixel_type,
+    summarize
 )
 from .functions import (  # pylint: disable=redefined-builtin
     all,

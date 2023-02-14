@@ -208,8 +208,8 @@ def test_ndvi_comparison():
     assert thresholded_bandmath["exp"] == "((((im1b4 - im1b1) / (im1b4 + im1b1)) >= 0.3) ? 1 : 0)"
 
 
-def test_output_summary():
-    assert INPUT["out"].summarize()
+def test_summarize_output():
+    assert pyotb.summarize(INPUT["out"])
 
 
 def test_pipeline_simple():
@@ -217,7 +217,7 @@ def test_pipeline_simple():
     app1 = pyotb.BandMath({"il": [FILEPATH], "exp": "im1b1"})
     app2 = pyotb.OrthoRectification({"io.in": app1})
     app3 = pyotb.ManageNoData({"in": app2})
-    summary = app3.summarize()
+    summary = pyotb.summarize(app3)
     assert summary == SIMPLE_SERIALIZATION
 
 
@@ -227,5 +227,5 @@ def test_pipeline_diamond():
     app2 = pyotb.OrthoRectification({"io.in": app1})
     app3 = pyotb.ManageNoData({"in": app2})
     app4 = pyotb.BandMathX({"il": [app2, app3], "exp": "im1+im2"})
-    summary = app4.summarize()
+    summary = pyotb.summarize(app4)
     assert summary == COMPLEX_SERIALIZATION
