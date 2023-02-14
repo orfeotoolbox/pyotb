@@ -425,11 +425,12 @@ class App(OTBObject):
         self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
         self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
-        for key in self._out_param_types:
-            self.outputs[key] = Output(self, key, self._settings.get(key))
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
+        # Create Output image objects
+        for key in filter(lambda k: self._out_param_types[k] == types[0], self._out_param_types.keys()):
+            self.outputs[key] = Output(self, key, self._settings.get(key))
         if not self.frozen:
             self.execute()
             if any(key in self._settings for key in self._out_param_types):
