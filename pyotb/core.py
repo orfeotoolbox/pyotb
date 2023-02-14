@@ -529,7 +529,7 @@ class App(OTBObject):
                 ) from e
             # Save / update setting value and update the Output object initialized in __init__ without a filepath
             self._settings[key] = obj
-            if key in self._out_param_types:
+            if key in self.outputs:
                 self.outputs[key].filepath = obj
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
@@ -640,7 +640,7 @@ class App(OTBObject):
                 logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, path)
             elif isinstance(path, (str, Path)) and self.output_key:
                 kwargs.update({self.output_key: str(path)})
-        if not (kwargs or self.output_key in self._settings):
+        if not (kwargs or any(k in self._settings for k in self._out_param_types)):
             raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
         parameters = kwargs.copy()
 
@@ -676,7 +676,11 @@ class App(OTBObject):
             if key in data_types:
                 self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: filepath})
+        if self.frozen:
+            self.execute()
         self.flush()
+        if not parameters:
+            return True
         # Search and log missing files
         files, missing = [], []
         for key, filepath in parameters.items():
