@@ -609,15 +609,15 @@ class App(OTBObject):
             self.app.ExecuteAndWriteOutput()
         self._time_end = perf_counter()
 
-    def write(self, *args, ext_fname: str = "", pixel_type: dict[str, str] | str = None,
-              preserve_dtype: bool = False, **kwargs, ) -> bool:
+    def write(self, path: str | Path | dict[str, str] = None, ext_fname: str = "",
+              pixel_type: dict[str, str] | str = None, preserve_dtype: bool = False, **kwargs, ) -> bool:
         """Set output pixel type and write the output raster files.
 
         Args:
-            *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key contains
-                              non-standard characters such as a point, e.g. {'io.out':'output.tif'}
-                            - filepath, useful when there is only one output, e.g. 'output.tif'
-                            - None if output file was passed during App init
+            path: Can be : - filepath, useful when there is only one output, e.g. 'output.tif'
+                           - dictionary containing key-arguments enumeration. Useful when a key contains
+                             non-standard characters such as a point, e.g. {'io.out':'output.tif'}
+                           - None if output file was passed during App init
             ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
                                 Will be used for all outputs (Default value = "")
             pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
@@ -633,14 +633,14 @@ class App(OTBObject):
 
         """
         # Gather all input arguments in kwargs dict
-        for arg in args:
-            if isinstance(arg, dict):
-                kwargs.update(arg)
-            elif isinstance(arg, str) and kwargs:
-                logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
-            elif isinstance(arg, (str, Path)) and self.output_key:
-                kwargs.update({self.output_key: str(arg)})
-        if not kwargs:
+        if path is not None:
+            if isinstance(path, dict):
+                kwargs.update(path)
+            elif isinstance(path, str) and kwargs:
+                logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, path)
+            elif isinstance(path, (str, Path)) and self.output_key:
+                kwargs.update({self.output_key: str(path)})
+        if not (kwargs or self.output_key in self._settings):
             raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
         parameters = kwargs.copy()
 
