@@ -633,15 +633,16 @@ class App(OTBObject):
 
         """
         # Gather all input arguments in kwargs dict
-        if path is not None:
-            if isinstance(path, dict):
-                kwargs.update(path)
-            elif isinstance(path, str) and kwargs:
-                logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, path)
-            elif isinstance(path, (str, Path)) and self.output_key:
-                kwargs.update({self.output_key: str(path)})
+        if isinstance(path, dict):
+            kwargs.update(path)
+        elif isinstance(path, str) and kwargs:
+            logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, path)
+        elif isinstance(path, (str, Path)) and self.output_key:
+            kwargs.update({self.output_key: str(path)})
+        elif path is not None:
+            raise TypeError(f"{self.name}: unsupported filepath type ({type(path)})")
         if not (kwargs or any(k in self._settings for k in self._out_param_types)):
-            raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
+            raise KeyError(f"{self.name}: at least one filepath is required, if not provided during App init")
         parameters = kwargs.copy()
 
         # Append filename extension to filenames
