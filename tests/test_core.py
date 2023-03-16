@@ -78,9 +78,25 @@ def test_write():
     INPUT["out"].filepath.unlink()
 
 
+def test_frozen_app_write():
+    app = pyotb.BandMath(INPUT, exp="im1b1", frozen=True)
+    assert app.write("/tmp/test_frozen_app_write.tif")
+    app["out"].filepath.unlink()
+
+    app = pyotb.BandMath(INPUT, exp="im1b1", out="/tmp/test_frozen_app_write.tif", frozen=True)
+    assert app.write()
+    app["out"].filepath.unlink()
+
+
 def test_output_write():
     assert INPUT["out"].write("/tmp/test_output_write.tif")
     INPUT["out"].filepath.unlink()
+
+
+def test_frozen_output_write():
+    app = pyotb.BandMath(INPUT, exp="im1b1", frozen=True)
+    assert app["out"].write("/tmp/test_frozen_app_write.tif")
+    app["out"].filepath.unlink()
 
 
 def test_output_in_arg():
