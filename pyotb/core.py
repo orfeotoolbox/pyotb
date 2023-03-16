@@ -425,7 +425,7 @@ class App(OTBObject):
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         # Create Output image objects
-        for key in filter(lambda k: self._out_param_types[k] == types[0], self._out_param_types.keys()):
+        for key in filter(lambda k: self._out_param_types[k] == otb.ParameterType_OutputImage, self._out_param_types):
             self.outputs[key] = Output(self, key, self._settings.get(key))
         if not self.frozen:
             self.execute()
