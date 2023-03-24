@@ -562,29 +562,6 @@ class App(OTBObject):
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
-    def __sync_parameters(self):
-        """Save OTB parameters in _settings, data and outputs dict, for a list of keys or all parameters."""
-        for key in self.parameters_keys:
-            if not self.app.HasValue(key):
-                continue
-            value = self.app.GetParameterValue(key)
-            # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
-            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(key):
-                try:
-                    value = str(value)  # some default str values like "mode" or "interpolator"
-                    self._auto_parameters[key] = value
-                    continue
-                except RuntimeError:
-                    continue  # grouped parameters
-            # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
-            elif self.app.GetParameterRole(key) == 1 and bool(value) or value == 0:
-                if isinstance(value, str):
-                    try:
-                        value = literal_eval(value)
-                    except (ValueError, SyntaxError):
-                        pass
-                self.data[key] = value
-
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
@@ -740,6 +717,29 @@ class App(OTBObject):
         # List of any other types (str, int...)
         else:
             self.app.SetParameterValue(key, obj)
+
+    def __sync_parameters(self):
+        """Save OTB parameters in _settings, data and outputs dict, for a list of keys or all parameters."""
+        for key in self.parameters_keys:
+            if not self.app.HasValue(key):
+                continue
+            value = self.app.GetParameterValue(key)
+            # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
+            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(key):
+                try:
+                    value = str(value)  # some default str values like "mode" or "interpolator"
+                    self._auto_parameters[key] = value
+                    continue
+                except RuntimeError:
+                    continue  # grouped parameters
+            # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
+            elif self.app.GetParameterRole(key) == 1 and bool(value) or value == 0:
+                if isinstance(value, str):
+                    try:
+                        value = literal_eval(value)
+                    except (ValueError, SyntaxError):
+                        pass
+                self.data[key] = value
 
     # Special functions
     def __getitem__(self, key: str) -> Any | list[int | float] | int | float | Slicer:
