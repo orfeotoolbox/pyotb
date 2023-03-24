@@ -36,10 +36,6 @@ class OTBObject(ABC):
     def exports_dic(self) -> dict[str, dict]:
         """Return an internal dict object containing np.array exports, to avoid duplicated ExportImage() calls."""
 
-    @abstractmethod
-    def write(self):
-        """Write image, this is defined in App. Output will use App.write for a specific key."""
-
     @property
     def metadata(self) -> dict[str, (str, float, list[float])]:
         """Return first output image metadata dictionary."""
@@ -425,11 +421,12 @@ class App(OTBObject):
         self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
         types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
         self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
-        for key in self._out_param_types:
-            self.outputs[key] = Output(self, key, self._settings.get(key))
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
+        # Create Output image objects
+        for key in filter(lambda k: self._out_param_types[k] == otb.ParameterType_OutputImage, self._out_param_types):
+            self.outputs[key] = Output(self, key, self._settings.get(key))
         if not self.frozen:
             self.execute()
             if any(key in self._settings for key in self._out_param_types):
@@ -447,8 +444,8 @@ class App(OTBObject):
 
     @property
     def parameters(self):
-        """Return used OTB applications parameters."""
-        return {**self.app.GetParameters(), **self._auto_parameters, **self._settings}
+        """Return used OTB application parameters."""
+        return {**self._auto_parameters, **self.app.GetParameters(), **self._settings}
 
     @property
     def exports_dic(self) -> dict[str, dict]:
@@ -532,7 +529,7 @@ class App(OTBObject):
                 ) from e
             # Save / update setting value and update the Output object initialized in __init__ without a filepath
             self._settings[key] = obj
-            if key in self._out_param_types:
+            if key in self.outputs:
                 self.outputs[key].filepath = obj
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
@@ -565,29 +562,6 @@ class App(OTBObject):
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
-    def save_objects(self):
-        """Save OTB app values in data, parameters and outputs dict, for a list of keys or all parameters."""
-        for key in self.parameters_keys:
-            if not self.app.HasValue(key):
-                continue
-            value = self.app.GetParameterValue(key)
-            # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
-            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(key):
-                try:
-                    value = str(value)  # some default str values like "mode" or "interpolator"
-                    self._auto_parameters[key] = value
-                    continue
-                except RuntimeError:
-                    continue  # grouped parameters
-            # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
-            elif self.app.GetParameterRole(key) == 1 and bool(value) or value == 0:
-                if isinstance(value, str):
-                    try:
-                        value = literal_eval(value)
-                    except (ValueError, SyntaxError):
-                        pass
-                self.data[key] = value
-
     def execute(self):
         """Execute and write to disk if any output parameter has been set during init."""
         logger.debug("%s: run execute() with parameters=%s", self.name, self.parameters)
@@ -599,7 +573,7 @@ class App(OTBObject):
         self.frozen = False
         self._time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
-        self.save_objects()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
+        self.__sync_parameters()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
 
     def flush(self):
         """Flush data to disk, this is when WriteOutput is actually called."""
@@ -612,15 +586,15 @@ class App(OTBObject):
             self.app.ExecuteAndWriteOutput()
         self._time_end = perf_counter()
 
-    def write(self, *args, ext_fname: str = "", pixel_type: dict[str, str] | str = None,
-              preserve_dtype: bool = False, **kwargs, ) -> bool:
+    def write(self, path: str | Path | dict[str, str] = None, ext_fname: str = "",
+              pixel_type: dict[str, str] | str = None, preserve_dtype: bool = False, **kwargs) -> bool:
         """Set output pixel type and write the output raster files.
 
         Args:
-            *args: Can be : - dictionary containing key-arguments enumeration. Useful when a key contains
-                              non-standard characters such as a point, e.g. {'io.out':'output.tif'}
-                            - filepath, useful when there is only one output, e.g. 'output.tif'
-                            - None if output file was passed during App init
+            path: Can be : - filepath, useful when there is only one output, e.g. 'output.tif'
+                           - dictionary containing key-arguments enumeration. Useful when a key contains
+                             non-standard characters such as a point, e.g. {'io.out':'output.tif'}
+                           - None if output file was passed during App init
             ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
                                 Will be used for all outputs (Default value = "")
             pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
@@ -636,15 +610,16 @@ class App(OTBObject):
 
         """
         # Gather all input arguments in kwargs dict
-        for arg in args:
-            if isinstance(arg, dict):
-                kwargs.update(arg)
-            elif isinstance(arg, str) and kwargs:
-                logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, arg)
-            elif isinstance(arg, (str, Path)) and self.output_key:
-                kwargs.update({self.output_key: str(arg)})
-        if not kwargs:
-            raise KeyError(f"{self.name}: at least one filepath is required, if not passed to App during init")
+        if isinstance(path, dict):
+            kwargs.update(path)
+        elif isinstance(path, str) and kwargs:
+            logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, path)
+        elif isinstance(path, (str, Path)) and self.output_key:
+            kwargs.update({self.output_key: str(path)})
+        elif path is not None:
+            raise TypeError(f"{self.name}: unsupported filepath type ({type(path)})")
+        if not (kwargs or any(k in self._settings for k in self._out_param_types)):
+            raise KeyError(f"{self.name}: at least one filepath is required, if not provided during App init")
         parameters = kwargs.copy()
 
         # Append filename extension to filenames
@@ -679,7 +654,11 @@ class App(OTBObject):
             if key in data_types:
                 self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: filepath})
+        if self.frozen:
+            self.execute()
         self.flush()
+        if not parameters:
+            return True
         # Search and log missing files
         files, missing = [], []
         for key, filepath in parameters.items():
@@ -738,6 +717,29 @@ class App(OTBObject):
         # List of any other types (str, int...)
         else:
             self.app.SetParameterValue(key, obj)
+
+    def __sync_parameters(self):
+        """Save OTB parameters in _settings, data and outputs dict, for a list of keys or all parameters."""
+        for key in self.parameters_keys:
+            if not self.app.HasValue(key):
+                continue
+            value = self.app.GetParameterValue(key)
+            # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
+            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(key):
+                try:
+                    value = str(value)  # some default str values like "mode" or "interpolator"
+                    self._auto_parameters[key] = value
+                    continue
+                except RuntimeError:
+                    continue  # grouped parameters
+            # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
+            elif self.app.GetParameterRole(key) == 1 and bool(value) or value == 0:
+                if isinstance(value, str):
+                    try:
+                        value = literal_eval(value)
+                    except (ValueError, SyntaxError):
+                        pass
+                self.data[key] = value
 
     # Special functions
     def __getitem__(self, key: str) -> Any | list[int | float] | int | float | Slicer:
