@@ -480,9 +480,7 @@ class App(OTBObject):
         return self._exports_dic
 
     def __is_one_of_types(self, key: str, param_types: list[int]) -> bool:
-        """
-        Helper to factor is_input and is_output
-        """
+        """Helper to factor is_input and is_output."""
         if key not in self._all_param_types:
             raise KeyError(
                 f"key {key} not found in the application parameters types"
@@ -490,8 +488,7 @@ class App(OTBObject):
         return self._all_param_types[key] in param_types
 
     def is_input(self, key: str) -> bool:
-        """
-        Returns True if the key is an input
+        """Returns True if the key is an input.
 
         Args:
             key: parameter key
@@ -505,8 +502,7 @@ class App(OTBObject):
         )
 
     def is_output(self, key: str) -> bool:
-        """
-        Returns True if the key is an output
+        """Returns True if the key is an output.
 
         Args:
             key: parameter key
@@ -1353,8 +1349,7 @@ def summarize(
     strip_input_paths: bool = False,
     strip_output_paths: bool = False,
 ) -> dict[str, str | dict[str, Any]]:
-    """Recursively summarize application parameters, and every App or Output
-    found upstream in the pipeline.
+    """Recursively summarize parameters of an App or Output object and its parents.
 
     Args:
         obj: input object to summarize
