@@ -20,6 +20,16 @@ def test_input_vsi():
     info = pyotb.ReadImageInfo("https://fake.com/image.tif.zip", frozen=True)
     assert info.app.GetParameterValue("in") == "/vsizip//vsicurl/https://fake.com/image.tif.zip"
     assert info.parameters["in"] == "https://fake.com/image.tif.zip"
+    # Piped curl --> zip --> tiff
+    ziped_tif_urls = (
+        "https://github.com/OSGeo/gdal/raw/master"
+        "/autotest/gcore/data/byte.tif.zip",  # without /vsi
+        "/vsizip/vsicurl/https://github.com/OSGeo/gdal/raw/master"
+        "/autotest/gcore/data/byte.tif.zip",  # with /vsi
+    )
+    for ziped_tif_url in ziped_tif_urls:
+        info = pyotb.ReadImageInfo(ziped_tif_url)
+        assert info["sizex"] == 20
 
 
 def test_input_vsi_from_user():
