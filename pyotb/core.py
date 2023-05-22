@@ -1251,11 +1251,11 @@ class Output(OTBObject):
 def add_vsi_prefix(filepath: str | Path) -> str:
     """Append vsi prefixes to file URL or path if needed.
 
-        Args:
-            filepath: file path or URL
+    Args:
+        filepath: file path or URL
 
-        Returns:
-            string with new /vsi prefix(es)
+    Returns:
+        string with new /vsi prefix(es)
 
     """
     if isinstance(filepath, Path):
