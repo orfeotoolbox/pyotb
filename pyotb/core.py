@@ -1409,15 +1409,17 @@ def summarize(
             return summarize(param)
         return param.split("?")[0]
 
+    if isinstance(obj, list):
+        return [summarize(o) for o in obj]
     if isinstance(obj, Output):
         return summarize(obj.parent_pyotb_app)
     if not isinstance(obj, App):
         return obj
-    # If we are here, "obj" is an App
+
     parameters = {}
     for key, param in obj.parameters.items():
         if strip_input_paths and obj.is_input(key) or strip_output_paths and obj.is_output(key):
             parameters[key] = [strip_path(p) for p in param] if isinstance(param, list) else strip_path(param)
         else:
-            parameters[key] = [summarize(p) for p in param] if isinstance(param, list) else summarize(param)
+            parameters[key] = summarize(param)
     return {"name": obj.app.GetName(), "parameters": parameters}
