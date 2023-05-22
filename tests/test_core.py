@@ -11,8 +11,19 @@ def test_parameters():
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
 
 
-def test_input_with_vsi():
-    # Ensure old way is still working - this should raise RuntimeError when the path is malformed
+def test_input_vsi():
+    # Simple remote file
+    info = pyotb.ReadImageInfo("https://fake.com/image.tif", frozen=True)
+    assert info.app.GetParameterValue("in") == "/vsicurl/https://fake.com/image.tif"
+    assert info.parameters["in"] == "https://fake.com/image.tif"
+    # Compressed remote file
+    info = pyotb.ReadImageInfo("https://fake.com/image.tif.zip", frozen=True)
+    assert info.app.GetParameterValue("in") == "/vsizip//vsicurl/https://fake.com/image.tif.zip"
+    assert info.parameters["in"] == "https://fake.com/image.tif.zip"
+
+
+def test_input_vsi_from_user():
+    # Ensure old way is still working: ExtractROI will raise RuntimeError if a path is malformed
     pyotb.Input("/vsicurl/" + FILEPATH)
 
 
