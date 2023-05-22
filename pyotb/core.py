@@ -489,7 +489,6 @@ class App(OTBObject):
             )
         return self._all_param_types[key] in param_types
 
-    @property
     def is_input(self, key) -> bool:
         """
         Returns True if the key is an input
@@ -506,7 +505,6 @@ class App(OTBObject):
             param_types=self.INPUT_PARAM_TYPES
         )
 
-    @property
     def is_output(self, key) -> bool:
         """
         Returns True if the key is an output
