@@ -1180,7 +1180,7 @@ class Input(App):
         """
         super().__init__("ExtractROI", {"in": filepath}, frozen=True)
         self._name = f"Input from {filepath}"
-        if not filepath.startswith(("/vsi", "http", "ftp")):
+        if not filepath.startswith(("/vsi", "http://", "https://", "ftp://")):
             filepath = Path(filepath)
         self.filepath = filepath
         self.propagate_dtype()
@@ -1241,7 +1241,7 @@ class Output(OTBObject):
     @filepath.setter
     def filepath(self, path: str):
         if isinstance(path, str):
-            if path and not path.startswith(("/vsi", "http", "ftp")):
+            if path and not path.startswith(("/vsi", "http://", "https://", "ftp://")):
                 path = Path(path.split("?")[0])
             self._filepath = path
 
