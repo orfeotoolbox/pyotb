@@ -389,6 +389,33 @@ class OTBObject(ABC):
 class App(OTBObject):
     """Base class that gathers common operations for any OTB application."""
 
+    INPUT_IMAGE_TYPES = [
+        # Images only
+        otb.ParameterType_InputImage,
+        otb.ParameterType_InputImageList
+    ]
+
+    INPUT_PARAM_TYPES = INPUT_IMAGE_TYPES + [
+        # Vectors
+        otb.ParameterType_InputVectorData,
+        otb.ParameterType_InputVectorDataList,
+        # Filenames
+        otb.ParameterType_InputFilename,
+        otb.ParameterType_InputFilenameList,
+    ]
+
+    OUTPUT_IMAGES_TYPES = [
+        # Images only
+        otb.ParameterType_OutputImage
+    ]
+
+    OUTPUT_PARAM_TYPES = OUTPUT_IMAGES_TYPES + [
+        # Vectors
+        otb.ParameterType_OutputVectorData,
+        # Filenames
+        otb.ParameterType_OutputFilename,
+    ]
+
     def __init__(self, appname: str, *args, frozen: bool = False, quiet: bool = False, name: str = "", **kwargs):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
@@ -452,39 +479,71 @@ class App(OTBObject):
         """Returns internal _exports_dic object that contains numpy array exports."""
         return self._exports_dic
 
-    def get_first_key(self, *type_lists: tuple[list[int]]) -> str:
+    def __is_one_of_types(self, key: str, param_types: list[int]) -> bool:
+        """Helper to factor is_input and is_output."""
+        if key not in self._all_param_types:
+            raise KeyError(
+                f"key {key} not found in the application parameters types"
+            )
+        return self._all_param_types[key] in param_types
+
+    def is_input(self, key: str) -> bool:
+        """Returns True if the key is an input.
+
+        Args:
+            key: parameter key
+
+        Returns:
+            True if the parameter is an input, else False
+
+        """
+        return self.__is_one_of_types(
+            key=key, param_types=self.INPUT_PARAM_TYPES
+        )
+
+    def is_output(self, key: str) -> bool:
+        """Returns True if the key is an output.
+
+        Args:
+            key: parameter key
+
+        Returns:
+            True if the parameter is an output, else False
+
+        """
+        return self.__is_one_of_types(
+            key=key, param_types=self.OUTPUT_PARAM_TYPES
+        )
+
+    def get_first_key(self, param_types: list[int]) -> str:
         """Get the first param key for specific file types, try each list in args."""
-        for param_types in type_lists:
+        for param_type in param_types:
+            # Return the first key, from the alphabetically sorted keys of the
+            # application, which has the parameter type matching param_type.
             for key, value in sorted(self._all_param_types.items()):
-                if value in param_types:
+                if value == param_type:
                     return key
         raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
 
     @property
     def input_key(self) -> str:
         """Get the name of first input parameter, raster > vector > file."""
-        return self.get_first_key(
-            [otb.ParameterType_InputImage, otb.ParameterType_InputImageList],
-            [otb.ParameterType_InputVectorData, otb.ParameterType_InputVectorDataList],
-            [otb.ParameterType_InputFilename, otb.ParameterType_InputFilenameList],
-        )
+        return self.get_first_key(self.INPUT_PARAM_TYPES)
 
     @property
     def input_image_key(self) -> str:
         """Name of the first input image parameter."""
-        return self.get_first_key([otb.ParameterType_InputImage, otb.ParameterType_InputImageList])
+        return self.get_first_key(self.INPUT_IMAGE_TYPES)
 
     @property
     def output_key(self) -> str:
         """Name of the first output parameter, raster > vector > file."""
-        return self.get_first_key(
-            [otb.ParameterType_OutputImage], [otb.ParameterType_OutputVectorData], [otb.ParameterType_OutputFilename]
-        )
+        return self.get_first_key(self.OUTPUT_PARAM_TYPES)
 
     @property
     def output_image_key(self) -> str:
         """Get the name of first output image parameter."""
-        return self.get_first_key([otb.ParameterType_OutputImage])
+        return self.get_first_key(self.OUTPUT_IMAGES_TYPES)
 
     @property
     def elapsed_time(self) -> float:
@@ -1285,19 +1344,43 @@ def get_out_images_param_keys(app: OTBObject) -> list[str]:
     return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]
 
 
-def summarize(obj: App | Output | Any) -> dict[str, str | dict[str, Any]]:
-    """Recursively summarize application parameters, and every App or Output found upstream in the pipeline.
+def summarize(
+    obj: App | Output | Any,
+    strip_input_paths: bool = False,
+    strip_output_paths: bool = False,
+) -> dict[str, str | dict[str, Any]]:
+    """Recursively summarize parameters of an App or Output object and its parents.
+
+    Args:
+        obj: input object to summarize
+        strip_input_paths: strip all input paths: If enabled, paths related to
+            inputs are truncated after the first "?" character. Can be useful
+            to remove URLs tokens (e.g. SAS or S3 credentials).
+        strip_output_paths: strip all output paths: If enabled, paths related
+            to outputs are truncated after the first "?" character. Can be
+            useful to remove extended filenames.
 
     Returns:
-        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
+        nested dictionary with serialized App(s) containing name and
+        parameters of an app and its parents
 
     """
+
+    def strip_path(key: str, param: str | Any):
+        """Truncate text after the first "?" character in filepath."""
+        param_summary = summarize(param)
+        if strip_input_paths and obj.is_input(key) or strip_output_paths and obj.is_output(key):
+            if isinstance(param, str) and "?" in param_summary:
+                param_summary = param_summary.split("?")[0]
+        return param_summary
+
     if isinstance(obj, Output):
         return summarize(obj.parent_pyotb_app)
     if not isinstance(obj, App):
         return obj
+    # If we are here, "obj" is an App
     parameters = {
-        key: [summarize(p) for p in param] if isinstance(param, list) else summarize(param)
+        key: [strip_path(key, p) for p in param] if isinstance(param, list) else strip_path(key, param)
         for key, param in obj.parameters.items()
     }
     return {"name": obj.app.GetName(), "parameters": parameters}
