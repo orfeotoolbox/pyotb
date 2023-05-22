@@ -1285,15 +1285,18 @@ def add_vsi_prefix(filepath: str | Path) -> str:
         if filepath.startswith(("https://", "http://", "ftp://")):
             filepath = "/vsicurl/" + filepath
         # Compressed file
+        prefixes = {
+            ".tar": "vsitar",
+            ".tgz": "vsitar",
+            ".gz": "vsigzip",
+            ".7z": "vsi7z",
+            ".zip": "vsizip",
+            ".rar": "vsirar"
+        }
         basename = filepath.split("?")[0]
-        if basename.endswith((".tar", ".tar.gz", ".tgz")):
-            filepath = "/vsitar/" + filepath
-        elif basename.endswith(".gz"):
-            filepath = "/vsigzip/" + filepath
-        elif basename.endswith(".7z"):
-            filepath = "/vsi7z/" + filepath
-        elif basename.endswith(".zip"):
-            filepath = "/vsizip/" + filepath
+        ext = Path(basename).suffix
+        if ext in prefixes:
+           filepath = f"/{prefixes[ext]}/{filepath}"
     return filepath
 
 
