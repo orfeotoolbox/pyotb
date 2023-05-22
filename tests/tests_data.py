@@ -7,7 +7,7 @@ try:
     INPUT = pyotb.Input(FILEPATH)
 except RuntimeError as err:
     if str(err.__cause__).startswith("Cannot open image "):
-        raise Exception("Unable to access the remote image, GitLab could be offline.") from err
+        raise Exception("Unable to access the remote image, GitLab might be offline.") from err
     raise Exception("Unexpected error while fetching test data.") from err
 
 TEST_IMAGE_STATS = {
