@@ -6,7 +6,14 @@ from tests_data import *
 
 # Input settings
 def test_parameters():
+    assert INPUT.parameters
+    assert INPUT.parameters["in"] == FILEPATH
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
+
+
+def test_input_with_vsi():
+    # Ensure old way is still working - this should raise RuntimeError when the path is malformed
+    pyotb.Input("/vsicurl/" + FILEPATH)
 
 
 def test_wrong_key():
