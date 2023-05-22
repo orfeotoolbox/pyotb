@@ -1350,9 +1350,9 @@ def get_out_images_param_keys(app: OTBObject) -> list[str]:
 
 
 def summarize(
-        obj: App | Output | Any,
-        strip_input_paths: bool = False,
-        strip_output_paths: bool = False,
+    obj: App | Output | Any,
+    strip_input_paths: bool = False,
+    strip_output_paths: bool = False,
 ) -> dict[str, str | dict[str, Any]]:
     """Recursively summarize application parameters, and every App or Output
     found upstream in the pipeline.
@@ -1371,33 +1371,22 @@ def summarize(
         parameters of an app and its parents
 
     """
+
+    def strip_path(key: str, param: str | Any):
+        """Truncate text after the first "?" character in filepath."""
+        param_summary = summarize(param)
+        if strip_input_paths and obj.is_input(key) or strip_output_paths and obj.is_output(key):
+            if isinstance(param, str) and "?" in param_summary:
+                param_summary = param_summary.split("?")[0]
+        return param_summary
+
     if isinstance(obj, Output):
         return summarize(obj.parent_pyotb_app)
     if not isinstance(obj, App):
         return obj
-
     # If we are here, "obj" is an App
-
-    def _summarize_single_param(key, param):
-        """
-        This function truncates inputs or outputs paths, before the first
-        occurrence of character "?".
-        """
-        param_summary = summarize(param)
-        if isinstance(param, str):
-            # If we are here, "param" could be any str parameter value
-            if strip_input_paths and obj.is_input(
-                    key) or strip_output_paths and obj.is_output(key):
-                # If we are here, "param" is a path to an input or output
-                # image, vector, or filename
-                param_summary = param_summary.split("?")[0]
-
-        return param_summary
-
     parameters = {
-        key: [
-            _summarize_single_param(key, p) for p in param
-        ] if isinstance(param, list) else _summarize_single_param(key, param)
+        key: [strip_path(key, p) for p in param] if isinstance(param, list) else strip_path(key, param)
         for key, param in obj.parameters.items()
     }
     return {"name": obj.app.GetName(), "parameters": parameters}
