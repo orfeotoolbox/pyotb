@@ -1239,7 +1239,7 @@ class Output(OTBObject):
     @filepath.setter
     def filepath(self, path: str):
         if isinstance(path, str):
-            if path and not path.startswith("/vsi"):
+            if path and not path.startswith(["/vsi", "http", "ftp"]):
                 path = Path(path.split("?")[0])
             self._filepath = path
 
@@ -1279,17 +1279,18 @@ def add_vsi_prefix(filepath: str | Path) -> str:
     if isinstance(filepath, Path):
         filepath = str(filepath)
     if isinstance(filepath, str) and not filepath.startswith("/vsi"):
-        # Remote file. TODO: add support for S3 and GCP URLs
-        if filepath.startswith("https://") or filepath.startswith("http://"):
+        # Remote file. TODO: add support for S3 / GS / AZ
+        if filepath.startswith(["https://", "http://", "ftp://"]):
             filepath = "/vsicurl/" + filepath
         # Compressed file
-        if filepath.endswith(".tar") or filepath.endswith(".tar.gz") or filepath.endswith(".tgz"):
+        basename = filepath.split("?")[0]
+        if basename.endswith([".tar", ".tar.gz", ".tgz"]):
             filepath = "/vsitar/" + filepath
-        elif filepath.endswith(".gz"):
+        elif basename.endswith(".gz"):
             filepath = "/vsigzip/" + filepath
-        elif filepath.endswith(".7z"):
+        elif basename.endswith(".7z"):
             filepath = "/vsi7z/" + filepath
-        elif filepath.endswith(".zip"):
+        elif basename.endswith(".zip"):
             filepath = "/vsizip/" + filepath
     return filepath
 
