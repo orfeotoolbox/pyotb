@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import pyotb
 
-FILEPATH = "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+FILEPATH = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
 INPUT = pyotb.Input(FILEPATH)
 TEST_IMAGE_STATS = {
     'out.mean': [79.5505, 109.225, 115.456, 249.349],
