@@ -580,8 +580,13 @@ class App(OTBObject):
                 obj = [obj]
                 logger.info('%s: argument for parameter "%s" was converted to list', self.name, key)
             try:
-                # This is when we actually call self.app.SetParameter*
-                self.__set_param(key, obj)
+                if self.is_input(key):
+                    if is_key_images_list(self, key):
+                        self.__set_param(key, [add_vsi_prefix(p) for p in obj])
+                    else:
+                        self.__set_param(key, add_vsi_prefix(obj))
+                else:
+                    self.__set_param(key, obj)
             except (RuntimeError, TypeError, ValueError, KeyError) as e:
                 raise RuntimeError(
                     f"{self.name}: error before execution, while setting parameter '{key}' to '{obj}': {e})"
@@ -1241,6 +1246,34 @@ class Output(OTBObject):
     def __str__(self) -> str:
         """Return string representation of Output filepath."""
         return str(self.filepath)
+
+
+def add_vsi_prefix(filepath: str | Path) -> str:
+    """Append vsi prefixes to file URL or path if needed.
+
+        Args:
+            filepath: file path or URL
+
+        Returns:
+            string with new /vsi prefix(es)
+
+    """
+    if isinstance(filepath, Path):
+        filepath = str(filepath)
+    if isinstance(filepath, str) and not filepath.startswith("/vsi"):
+        # Remote file
+        if filepath.startswith("https://") or filepath.startswith("http://"):
+            filepath = "/vsicurl/" + filepath
+        # Compressed file
+        if filepath.endswith(".tar") or filepath.endswith(".tar.gz") or filepath.endswith(".tgz"):
+            filepath = "/vsitar/" + filepath
+        elif filepath.endswith(".gz"):
+            filepath = "/vsigzip/" + filepath
+        elif filepath.endswith(".7z"):
+            filepath = "/vsi7z/" + filepath
+        elif filepath.endswith(".zip"):
+            filepath = "/vsizip/" + filepath
+    return filepath
 
 
 def get_nbchannels(inp: str | Path | OTBObject) -> int:
