@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import pyotb
 
-FILEPATH = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tiff"
+FILEPATH = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
 try:
     INPUT = pyotb.Input(FILEPATH)
 except RuntimeError as err:
