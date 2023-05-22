@@ -2,8 +2,14 @@ import json
 from pathlib import Path
 import pyotb
 
-FILEPATH = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
-INPUT = pyotb.Input(FILEPATH)
+FILEPATH = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tiff"
+try:
+    INPUT = pyotb.Input(FILEPATH)
+except RuntimeError as err:
+    if str(err.__cause__).startswith("Cannot open image "):
+        raise Exception("Unable to access the remote image, GitLab could be offline.") from err
+    raise Exception("Unexpected error while fetching test data.") from err
+
 TEST_IMAGE_STATS = {
     'out.mean': [79.5505, 109.225, 115.456, 249.349],
     'out.min': [33, 64, 91, 47],
