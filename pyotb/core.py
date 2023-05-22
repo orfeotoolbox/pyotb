@@ -1296,7 +1296,7 @@ def add_vsi_prefix(filepath: str | Path) -> str:
         basename = filepath.split("?")[0]
         ext = Path(basename).suffix
         if ext in prefixes:
-           filepath = f"/{prefixes[ext]}/{filepath}"
+            filepath = f"/{prefixes[ext]}/{filepath}"
     return filepath
 
 
