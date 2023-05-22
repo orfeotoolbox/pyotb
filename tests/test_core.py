@@ -265,5 +265,3 @@ def test_pipeline_diamond():
     app4 = pyotb.BandMathX({"il": [app2, app3], "exp": "im1+im2"})
     summary = pyotb.summarize(app4)
     assert summary == COMPLEX_SERIALIZATION
-
-test_summarize_strip_output()
