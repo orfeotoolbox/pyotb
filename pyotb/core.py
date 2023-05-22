@@ -1180,7 +1180,9 @@ class Input(App):
         """
         super().__init__("ExtractROI", {"in": filepath}, frozen=True)
         self._name = f"Input from {filepath}"
-        self.filepath = Path(filepath) if not filepath.startswith("/vsi") else filepath
+        if not filepath.startswith(("/vsi", "http", "ftp")):
+            filepath = Path(filepath)
+        self.filepath = filepath
         self.propagate_dtype()
         self.execute()
 
@@ -1239,7 +1241,7 @@ class Output(OTBObject):
     @filepath.setter
     def filepath(self, path: str):
         if isinstance(path, str):
-            if path and not path.startswith(["/vsi", "http", "ftp"]):
+            if path and not path.startswith(("/vsi", "http", "ftp")):
                 path = Path(path.split("?")[0])
             self._filepath = path
 
@@ -1280,11 +1282,11 @@ def add_vsi_prefix(filepath: str | Path) -> str:
         filepath = str(filepath)
     if isinstance(filepath, str) and not filepath.startswith("/vsi"):
         # Remote file. TODO: add support for S3 / GS / AZ
-        if filepath.startswith(["https://", "http://", "ftp://"]):
+        if filepath.startswith(("https://", "http://", "ftp://")):
             filepath = "/vsicurl/" + filepath
         # Compressed file
         basename = filepath.split("?")[0]
-        if basename.endswith([".tar", ".tar.gz", ".tgz"]):
+        if basename.endswith((".tar", ".tar.gz", ".tgz")):
             filepath = "/vsitar/" + filepath
         elif basename.endswith(".gz"):
             filepath = "/vsigzip/" + filepath
