@@ -479,7 +479,7 @@ class App(OTBObject):
         """Returns internal _exports_dic object that contains numpy array exports."""
         return self._exports_dic
 
-    def _is_one_of_types(self, key: str, param_types: list[int]) -> bool:
+    def __is_one_of_types(self, key: str, param_types: list[int]) -> bool:
         """
         Helper to factor is_input and is_output
         """
@@ -489,7 +489,7 @@ class App(OTBObject):
             )
         return self._all_param_types[key] in param_types
 
-    def is_input(self, key) -> bool:
+    def is_input(self, key: str) -> bool:
         """
         Returns True if the key is an input
 
@@ -500,12 +500,11 @@ class App(OTBObject):
             True if the parameter is an input, else False
 
         """
-        return self._is_one_of_types(
-            key=key,
-            param_types=self.INPUT_PARAM_TYPES
+        return self.__is_one_of_types(
+            key=key, param_types=self.INPUT_PARAM_TYPES
         )
 
-    def is_output(self, key) -> bool:
+    def is_output(self, key: str) -> bool:
         """
         Returns True if the key is an output
 
@@ -516,10 +515,10 @@ class App(OTBObject):
             True if the parameter is an output, else False
 
         """
-        return self._is_one_of_types(
-            key=key,
-            param_types=self.OUTPUT_PARAM_TYPES
+        return self.__is_one_of_types(
+            key=key, param_types=self.OUTPUT_PARAM_TYPES
         )
+
     def get_first_key(self, param_types: list[int]) -> str:
         """Get the first param key for specific file types, try each list in args."""
         for param_type in param_types:
