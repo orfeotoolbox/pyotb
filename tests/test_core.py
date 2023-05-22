@@ -228,6 +228,26 @@ def test_summarize_output():
     assert pyotb.summarize(INPUT["out"])
 
 
+def test_summarize_strip_output():
+    in_fn = FILEPATH
+    in_fn_w_ext = FILEPATH + "?&skipcarto=1"
+    out_fn = "/tmp/output.tif"
+    out_fn_w_ext = out_fn + "?&box=10:10:10:10"
+
+    baseline = [
+        (in_fn, out_fn_w_ext, "out", {}, out_fn_w_ext),
+        (in_fn, out_fn_w_ext, "out", {"strip_output_paths": True}, out_fn),
+        (in_fn_w_ext, out_fn, "in", {}, in_fn_w_ext),
+        (in_fn_w_ext, out_fn, "in", {"strip_input_paths": True}, in_fn)
+    ]
+
+    for inp, out, key, extra_args, expected in baseline:
+        app = pyotb.ExtractROI({"in": inp, "out": out})
+        summary = pyotb.summarize(app, **extra_args)
+        assert summary["parameters"][key] == expected, \
+            f"Failed for input {inp}, output {out}, args {extra_args}"
+
+
 def test_pipeline_simple():
     # BandMath -> OrthoRectification -> ManageNoData
     app1 = pyotb.BandMath({"il": [FILEPATH], "exp": "im1b1"})
@@ -245,3 +265,5 @@ def test_pipeline_diamond():
     app4 = pyotb.BandMathX({"il": [app2, app3], "exp": "im1+im2"})
     summary = pyotb.summarize(app4)
     assert summary == COMPLEX_SERIALIZATION
+
+test_summarize_strip_output()
