@@ -1261,7 +1261,7 @@ def add_vsi_prefix(filepath: str | Path) -> str:
     if isinstance(filepath, Path):
         filepath = str(filepath)
     if isinstance(filepath, str) and not filepath.startswith("/vsi"):
-        # Remote file
+        # Remote file. TODO: add support for S3 and GCP URLs
         if filepath.startswith("https://") or filepath.startswith("http://"):
             filepath = "/vsicurl/" + filepath
         # Compressed file
