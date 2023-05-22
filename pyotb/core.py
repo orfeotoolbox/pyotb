@@ -394,7 +394,6 @@ class App(OTBObject):
         otb.ParameterType_InputImage,
         otb.ParameterType_InputImageList
     ]
-
     INPUT_PARAM_TYPES = INPUT_IMAGE_TYPES + [
         # Vectors
         otb.ParameterType_InputVectorData,
@@ -404,16 +403,27 @@ class App(OTBObject):
         otb.ParameterType_InputFilenameList,
     ]
 
-    OUTPUT_IMAGES_TYPES = [
+    OUTPUT_IMAGE_TYPES = [
         # Images only
         otb.ParameterType_OutputImage
     ]
-
-    OUTPUT_PARAM_TYPES = OUTPUT_IMAGES_TYPES + [
+    OUTPUT_PARAM_TYPES = OUTPUT_IMAGE_TYPES + [
         # Vectors
         otb.ParameterType_OutputVectorData,
         # Filenames
         otb.ParameterType_OutputFilename,
+    ]
+
+    INPUT_LIST_TYPES = [
+        otb.ParameterType_InputImageList,
+        otb.ParameterType_StringList,
+        otb.ParameterType_InputFilenameList,
+        otb.ParameterType_ListView,
+        otb.ParameterType_InputVectorDataList,
+    ]
+    INPUT_IMAGES_LIST_TYPES = [
+        otb.ParameterType_InputImageList,
+        otb.ParameterType_InputFilenameList,
     ]
 
     def __init__(self, appname: str, *args, frozen: bool = False, quiet: bool = False, name: str = "", **kwargs):
@@ -515,6 +525,14 @@ class App(OTBObject):
             key=key, param_types=self.OUTPUT_PARAM_TYPES
         )
 
+    def is_key_list(self, key: str) -> bool:
+        """Check if a parameter key is an input parameter list."""
+        return self.app.GetParameterType(key) in self.INPUT_LIST_TYPES
+
+    def is_key_images_list(self, key: str) -> bool:
+        """Check if a parameter key is an input parameter image list."""
+        return self.app.GetParameterType(key) in self.INPUT_IMAGES_LIST_TYPES
+
     def get_first_key(self, param_types: list[int]) -> str:
         """Get the first param key for specific file types, try each list in args."""
         for param_type in param_types:
@@ -543,7 +561,7 @@ class App(OTBObject):
     @property
     def output_image_key(self) -> str:
         """Get the name of first output image parameter."""
-        return self.get_first_key(self.OUTPUT_IMAGES_TYPES)
+        return self.get_first_key(self.OUTPUT_IMAGE_TYPES)
 
     @property
     def elapsed_time(self) -> float:
@@ -576,12 +594,12 @@ class App(OTBObject):
                     f"{self.name}: parameter '{key}' was not recognized. Available keys are {self.parameters_keys}"
                 )
             # When the parameter expects a list, if needed, change the value to list
-            if is_key_list(self, key) and not isinstance(obj, (list, tuple)):
+            if self.is_key_list(key) and not isinstance(obj, (list, tuple)):
                 obj = [obj]
                 logger.info('%s: argument for parameter "%s" was converted to list', self.name, key)
             try:
                 if self.is_input(key):
-                    if is_key_images_list(self, key):
+                    if self.is_key_images_list(key):
                         self.__set_param(key, [add_vsi_prefix(p) for p in obj])
                     else:
                         self.__set_param(key, add_vsi_prefix(obj))
@@ -749,7 +767,7 @@ class App(OTBObject):
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and is_key_list(self, self.input_key):
+            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and self.is_key_list(self.input_key):
                 kwargs.update({self.input_key: arg})
         return kwargs
 
@@ -768,7 +786,7 @@ class App(OTBObject):
         elif not isinstance(obj, list):  # any other parameters (str, int...)
             self.app.SetParameterValue(key, obj)
         # Images list
-        elif is_key_images_list(self, key):
+        elif self.is_key_images_list(key):
             # To enable possible in-memory connections, we go through the list and set the parameters one by one
             for inp in obj:
                 if isinstance(inp, OTBObject):
@@ -1352,24 +1370,6 @@ def parse_pixel_type(pixel_type: str | int) -> int:
             return getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[pixel_type]}")
         raise KeyError(f"Unknown data type `{pixel_type}`. Available ones: {datatype_to_pixeltype}")
     raise TypeError(f"Bad pixel type specification ({pixel_type} of type {type(pixel_type)})")
-
-
-def is_key_list(pyotb_app: OTBObject, key: str) -> bool:
-    """Check if a key of the OTBObject is an input parameter list."""
-    types = (
-        otb.ParameterType_InputImageList,
-        otb.ParameterType_StringList,
-        otb.ParameterType_InputFilenameList,
-        otb.ParameterType_ListView,
-        otb.ParameterType_InputVectorDataList,
-    )
-    return pyotb_app.app.GetParameterType(key) in types
-
-
-def is_key_images_list(pyotb_app: OTBObject, key: str) -> bool:
-    """Check if a key of the OTBObject is an input parameter image list."""
-    types = (otb.ParameterType_InputImageList, otb.ParameterType_InputFilenameList)
-    return pyotb_app.app.GetParameterType(key) in types
 
 
 def get_out_images_param_keys(app: OTBObject) -> list[str]:
