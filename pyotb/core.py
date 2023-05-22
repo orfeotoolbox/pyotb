@@ -1404,22 +1404,20 @@ def summarize(
         parameters of an app and its parents
 
     """
-
-    def strip_path(key: str, param: str | Any):
-        """Truncate text after the first "?" character in filepath."""
-        param_summary = summarize(param)
-        if strip_input_paths and obj.is_input(key) or strip_output_paths and obj.is_output(key):
-            if isinstance(param, str) and "?" in param_summary:
-                param_summary = param_summary.split("?")[0]
-        return param_summary
+    def strip_path(param: str | Any):
+        if not isinstance(param, str):
+            return summarize(param)
+        return param.split("?")[0]
 
     if isinstance(obj, Output):
         return summarize(obj.parent_pyotb_app)
     if not isinstance(obj, App):
         return obj
     # If we are here, "obj" is an App
-    parameters = {
-        key: [strip_path(key, p) for p in param] if isinstance(param, list) else strip_path(key, param)
-        for key, param in obj.parameters.items()
-    }
+    parameters = {}
+    for key, param in obj.parameters.items():
+        if strip_input_paths and obj.is_input(key) or strip_output_paths and obj.is_output(key):
+            parameters[key] = [strip_path(p) for p in param] if isinstance(param, list) else strip_path(param)
+        else:
+            parameters[key] = [summarize(p) for p in param] if isinstance(param, list) else summarize(param)
     return {"name": obj.app.GetName(), "parameters": parameters}
