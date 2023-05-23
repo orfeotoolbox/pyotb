@@ -86,7 +86,7 @@ pages_test:
       junit: test-*.xml
   before_script:
     - wget $IMAGE_URL -O $TEST_INPUT_IMAGE
-    - pip install pytest
+    - pip install pytest requests
 
 test_core:
   extends: .tests
