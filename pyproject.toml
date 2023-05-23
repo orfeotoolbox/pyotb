@@ -26,7 +26,7 @@ classifiers=[
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pylint", "codespell", "pydocstyle", "tomli"]
+dev = ["pytest", "pylint", "codespell", "pydocstyle", "tomli", "requests"]
 
 [project.urls]
 documentation = "https://pyotb.readthedocs.io"

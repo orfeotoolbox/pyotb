@@ -6,7 +6,35 @@ from tests_data import *
 
 # Input settings
 def test_parameters():
+    assert INPUT.parameters
+    assert INPUT.parameters["in"] == FILEPATH
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
+
+
+def test_input_vsi():
+    # Simple remote file
+    info = pyotb.ReadImageInfo("https://fake.com/image.tif", frozen=True)
+    assert info.app.GetParameterValue("in") == "/vsicurl/https://fake.com/image.tif"
+    assert info.parameters["in"] == "https://fake.com/image.tif"
+    # Compressed remote file
+    info = pyotb.ReadImageInfo("https://fake.com/image.tif.zip", frozen=True)
+    assert info.app.GetParameterValue("in") == "/vsizip//vsicurl/https://fake.com/image.tif.zip"
+    assert info.parameters["in"] == "https://fake.com/image.tif.zip"
+    # Piped curl --> zip --> tiff
+    ziped_tif_urls = (
+        "https://github.com/OSGeo/gdal/raw/master"
+        "/autotest/gcore/data/byte.tif.zip",  # without /vsi
+        "/vsizip/vsicurl/https://github.com/OSGeo/gdal/raw/master"
+        "/autotest/gcore/data/byte.tif.zip",  # with /vsi
+    )
+    for ziped_tif_url in ziped_tif_urls:
+        info = pyotb.ReadImageInfo(ziped_tif_url)
+        assert info["sizex"] == 20
+
+
+def test_input_vsi_from_user():
+    # Ensure old way is still working: ExtractROI will raise RuntimeError if a path is malformed
+    pyotb.Input("/vsicurl/" + FILEPATH)
 
 
 def test_wrong_key():
@@ -265,5 +293,3 @@ def test_pipeline_diamond():
     app4 = pyotb.BandMathX({"il": [app2, app3], "exp": "im1+im2"})
     summary = pyotb.summarize(app4)
     assert summary == COMPLEX_SERIALIZATION
-
-test_summarize_strip_output()
