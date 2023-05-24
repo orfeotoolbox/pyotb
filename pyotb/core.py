@@ -589,6 +589,8 @@ class App(OTBObject):
         parameters.update(self.__parse_args(args))
         # Going through all arguments
         for key, obj in parameters.items():
+            if "_" in key:
+                key = key.replace("_", ".")
             if key not in self.parameters_keys:
                 raise KeyError(
                     f"{self.name}: parameter '{key}' was not recognized. Available keys are {self.parameters_keys}"

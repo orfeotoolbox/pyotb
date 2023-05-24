@@ -37,6 +37,11 @@ def test_input_vsi_from_user():
     pyotb.Input("/vsicurl/" + FILEPATH)
 
 
+def test_param_with_underscore():
+    app = pyotb.OrthoRectification(io_in=INPUT, map_epsg_code=2154)
+    assert app.parameters["map.epsg.code"] == 2154
+
+
 def test_wrong_key():
     with pytest.raises(KeyError):
         pyotb.BandMath(INPUT, expression="im1b1")
