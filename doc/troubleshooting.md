@@ -1,4 +1,4 @@
-## Troubleshooting: Known limitations
+## Troubleshooting: known limitations
 
 ### Failure of intermediate writing
 
@@ -7,8 +7,9 @@ the writings are requested. Some examples can be found below:
 
 #### Example of failures involving slicing
 
-For some applications (non-exhaustive know list: OpticalCalibration, DynamicConvert, BandMath), we can face unexpected 
-failures when using channels slicing
+For some applications (non-exhaustive know list: OpticalCalibration, DynamicConvert, BandMath), we can face unexpected
+ failures when using channels slicing
+
 ```python
 import pyotb
 
@@ -28,6 +29,7 @@ one_band.write('one_band.tif')  # Failure here
 ```
 
 When writing is triggered right after the application declaration, no problem occurs:
+
 ```python
 import pyotb
 
@@ -50,7 +52,6 @@ one_band = inp[:100, :100, :]
 inp.write('stretched.tif')
 one_band.write('one_band.tif')
 ```
-
 
 #### Example of failures involving arithmetic operation
 

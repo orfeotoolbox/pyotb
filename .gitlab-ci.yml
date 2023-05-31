@@ -20,13 +20,21 @@ stages:
   allow_failure: true
 
 codespell:
+  rules:
+    - changes:
+      - pyotb/*.py
+      - tests/*.py
+      - README.md
   extends: .static_analysis
   before_script:
     - pip install codespell
   script:
-    - codespell {pyotb,tests}
+    - codespell {pyotb,tests,doc,README.md}
 
 flake8:
+  rules:
+    - changes:
+      - pyotb/*.py
   extends: .static_analysis
   before_script:
     - pip install flake8
@@ -34,6 +42,9 @@ flake8:
     - flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
 
 pydocstyle:
+  rules:
+    - changes:
+      - pyotb/*.py
   extends: .static_analysis
   before_script:
     - pip install pydocstyle tomli
@@ -41,6 +52,9 @@ pydocstyle:
     - pydocstyle $PWD/pyotb
 
 pylint:
+  rules:
+    - changes:
+      - pyotb/*.py
   extends: .static_analysis
   before_script:
     - pip install pylint
@@ -73,6 +87,10 @@ pages_test:
 
 .tests:
   stage: Tests
+  rules:
+    - changes:
+      - pyotb/*.py
+      - tests/*.py
   allow_failure: false
   variables:
     OTB_ROOT: /opt/otb

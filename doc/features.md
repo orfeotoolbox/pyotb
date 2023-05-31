@@ -1,8 +1,10 @@
 ## Arithmetic operations
+
 Every pyotb object supports arithmetic operations, such as addition, subtraction, comparison...
 Consider an example where we want to compute a vegeteation mask from NDVI, i.e. the arithmetic operation `(nir - red) / (nir + red) > 0.3`
 
 With pyotb, one can simply do :
+
 ```python
 import pyotb
 
@@ -15,6 +17,7 @@ res.write('vegetation_mask.tif', pixel_type='uint8')
 ```
 
 ## Slicing
+
 pyotb objects support slicing in a Python fashion :
 
 ```python
@@ -30,6 +33,7 @@ inp[:100, :100].write('my_image_roi.tif')  # write cropped image to disk
 ```
 
 ## Shape attributes
+
 You can access the shape of any in-memory pyotb object.
 
 ```python
@@ -39,6 +43,3 @@ import pyotb
 inp = pyotb.Input('my_image.tif')
 print(inp[:1000, :500].shape)  # (1000, 500, 4)
 ```
-
-
-
