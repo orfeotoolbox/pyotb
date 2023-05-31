@@ -1,7 +1,9 @@
 ## Comparison between otbApplication and pyotb
 
 ### Single application execution
+
 Using OTB, the code would be like :
+
 ```python
 import otbApplication
 
@@ -12,66 +14,123 @@ resampled.SetParameterString('interpolator', 'linear')
 resampled.SetParameterFloat('transform.type.id.scalex', 0.5)
 resampled.SetParameterFloat('transform.type.id.scaley', 0.5)
 resampled.SetParameterString('out', 'output.tif')
-resampled.SetParameterOutputImagePixelType('out', otbApplication.ImagePixelType_uint16)
+resampled.SetParameterOutputImagePixelType(
+    'out', otbApplication.ImagePixelType_uint16
+)
+
 resampled.ExecuteAndWriteOutput()
 ```
 
 Using pyotb:
+
 ```python
 import pyotb
-resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear',
-                                          'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
+
+resampled = pyotb.RigidTransformResample({
+    'in': 'my_image.tif', 
+    'interpolator': 'linear',
+    'transform.type.id.scaley': 0.5,
+    'transform.type.id.scalex': 0.5
+})
+
 resampled.write('output.tif', pixel_type='uint16')
 ```
 
 ### In-memory connections
 
-Using OTB :
+<table>
+<tr>
+<th> OTB </th>
+<th> pyotb </th>
+</tr>
+<tr>
+<td>
+
 ```python
 import otbApplication
 
-resampled = otbApplication.Registry.CreateApplication('RigidTransformResample')
-resampled.SetParameterString('in', 'my_image.tif')
-resampled.SetParameterString('interpolator', 'linear')
-resampled.SetParameterFloat('transform.type.id.scalex', 0.5)
-resampled.SetParameterFloat('transform.type.id.scaley', 0.5)
-resampled.Execute()
+app1 = otbApplication.Registry.CreateApplication(
+    'RigidTransformResample'
+)
+app1.SetParameterString('in', 'my_image.tif')
+app1.SetParameterString('interpolator', 'linear')
+app1.SetParameterFloat(
+    'transform.type.id.scalex',
+    0.5
+)
+app1.SetParameterFloat(
+    'transform.type.id.scaley',
+    0.5
+)
+app1.Execute()
 
-calibrated = otbApplication.Registry.CreateApplication('OpticalCalibration')
-calibrated.ConnectImage('in', resampled, 'out')
-calibrated.SetParameterString('level', 'toa')
-calibrated.Execute()
+app2 = otbApplication.Registry.CreateApplication(
+    'OpticalCalibration'
+)
+app2.ConnectImage('in', app1, 'out')
+app2.SetParameterString('level', 'toa')
+app2.Execute()
 
-dilated = otbApplication.Registry.CreateApplication('BinaryMorphologicalOperation')
-dilated.ConnectImage('in', calibrated, 'out')
-dilated.SetParameterString("filter", 'dilate')
-dilated.SetParameterString("structype", 'ball')
-dilated.SetParameterInt("xradius", 3)
-dilated.SetParameterInt("yradius", 3)
-dilated.SetParameterString('out', 'output.tif')
-dilated.SetParameterOutputImagePixelType('out', otbApplication.ImagePixelType_uint16)
-dilated.ExecuteAndWriteOutput()
+app3 = otbApplication.Registry.CreateApplication(
+    'BinaryMorphologicalOperation'
+)
+app3.ConnectImage('in', app2, 'out')
+app3.SetParameterString('filter', 'dilate')
+app3.SetParameterString('structype', 'ball')
+app3.SetParameterInt('xradius', 3)
+app3.SetParameterInt('yradius', 3)
+app3.SetParameterString('out', 'output.tif')
+app3.SetParameterOutputImagePixelType(
+    'out', 
+    otbApplication.ImagePixelType_uint16
+)
+app3.ExecuteAndWriteOutput()
 ```
 
-Using pyotb:
+</td>
+<td>
+
 ```python
 import pyotb
 
-resampled = pyotb.RigidTransformResample({'in': 'my_image.tif', 'interpolator': 'linear', 
-                                          'transform.type.id.scaley': 0.5, 'transform.type.id.scalex': 0.5})
+app1 = pyotb.RigidTransformResample({
+    'in': 'my_image.tif', 
+    'interpolator': 'linear',
+    'transform.type.id.scaley': 0.5, 
+    'transform.type.id.scalex': 0.5
+})
 
-calibrated = pyotb.OpticalCalibration({'in': resampled, 'level': 'toa'}) 
+app2 = pyotb.OpticalCalibration({
+    'in': app1, 
+    'level': 'toa'
+}) 
 
-dilated = pyotb.BinaryMorphologicalOperation({'in': calibrated, 'out': 'output.tif', 'filter': 'dilate', 
-                                              'structype': 'ball', 'xradius': 3, 'yradius': 3})
-dilated.write('result.tif', pixel_type='uint16')
+app3 = pyotb.BinaryMorphologicalOperation({
+    'in': app2, 
+    'out': 'output.tif', 
+    'filter': 'dilate',
+    'structype': 'ball', 
+    'xradius': 3, 
+    'yradius': 3
+})
+
+app3.write(
+    'result.tif', 
+    pixel_type='uint16'
+)
 ```
 
+</td>
+</tr>
+</table>
+
 ### Arithmetic operations
+
 Every pyotb object supports arithmetic operations, such as addition, subtraction, comparison...
 Consider an example where we want to perform the arithmetic operation `image1 * image2 - 2*image3`
 
 Using OTB, the following code works for 3-bands images :
+
 ```python
 import otbApplication
 
@@ -85,6 +144,7 @@ bmx.ExecuteAndWriteOutput()
 ```
 
 With pyotb, the following works with images of any number of bands :
+
 ```python
 import pyotb
 
@@ -98,6 +158,7 @@ res.write('output.tif', pixel_type='uint8')
 ### Slicing
 
 Using OTB, for selection bands or ROI, the code looks like:
+
 ```python
 import otbApplication
 
@@ -119,7 +180,7 @@ extracted.SetParameterFloat('mode.extent.lry', 999)
 extracted.Execute()
 ```
 
-Instead, using pyotb: 
+Instead, using pyotb:
 
 ```python
 import pyotb

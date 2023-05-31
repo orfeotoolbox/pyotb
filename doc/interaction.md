@@ -1,15 +1,14 @@
 ## Export to Numpy
 
 pyotb objects can be exported to numpy array.
+
 ```python
 import pyotb
 import numpy as np
 
 calibrated = pyotb.OpticalCalibration('image.tif', level='toa')  # this is a pyotb object
 arr = np.asarray(calibrated)  # same as calibrated.to_numpy()
-
 ```
-
 
 ## Interaction with Numpy
 
@@ -31,13 +30,14 @@ noisy_image = inp + white_noise  # magic: this is a pyotb object that has the sa
                                  # `np.add(inp, white_noise)` would have worked the same
 noisy_image.write('image_plus_noise.tif')
 ```
-Limitations : 
+
+Limitations :
 
 - The whole image is loaded into memory
 - The georeference can not be modified. Thus, numpy operations can not change the image or pixel size
 
-
 ## Export to rasterio
+
 pyotb objects can also be exported in a format that is usable by rasterio.
 
 For example:
@@ -62,16 +62,14 @@ labeled_mask_array, nb_groups = ndimage.label(mask_array)
 # Writing the result to disk
 with rasterio.open('labeled_bare_soil.tif', 'w', **profile) as f:
     f.write(labeled_mask_array)
-
 ```
+
 This way of exporting pyotb objects is more flexible that exporting to numpy, as the user gets the `profile` dictionary. 
 If the georeference or pixel size is modified, the user can update the `profile` accordingly.
-
 
 ## Interaction with Tensorflow
 
 We saw that numpy operations had some limitations. To bypass those limitations, it is possible to use some Tensorflow operations on pyotb objects.
-
 
 You need a working installation of OTBTF >=3.0 for this and then the code is like this:
 
@@ -89,6 +87,7 @@ res.write('scalar_product.tif')
 ```
 
 For some easy syntax, one can use `pyotb.run_tf_function` as a function decorator, such as:
+
 ```python
 import pyotb
 
@@ -107,5 +106,5 @@ Advantages :
 
 Limitations :
 
-- It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues 
-between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script where OTBTF apps have been initialized
+- It is not possible to use the tensorflow python API inside a script where OTBTF is used because of compilation issues
+ between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't work in a script where OTBTF apps have been initialized
