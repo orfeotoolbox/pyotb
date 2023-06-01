@@ -3,10 +3,6 @@ default:
   tags:
     - light
   interruptible: true
-  before_script:
-    - apt update && apt install -y virtualenv python3.8-venv
-    - python3 -m install -U pip setuptools wheel build twine
-    - python3 -m pip install ".[dev]"
 
 workflow:
   rules:
@@ -23,6 +19,8 @@ stages:
 .static_analysis:
   stage: Static Analysis
   allow_failure: true
+  before_script:
+    - python3 -m pip install ".[dev]"
 
 codespell:
   #rules:
@@ -73,8 +71,8 @@ pylint:
     LD_LIBRARY_PATH: /opt/otb/lib
     OTB_LOGGER_LEVEL: INFO
     PYOTB_LOGGER_LEVEL: DEBUG
-    IMAGE_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false
-    TEST_INPUT_IMAGE: tests/image.tif
+  before_script:
+    - pip install .
   artifacts:
     reports:
       junit: test-*.xml
@@ -99,6 +97,7 @@ test_pipeline:
 
 .docs:
   before_script:
+    - apt-get update && apt-get -y install virtualenv
     - virtualenv doc_env
     - source doc_env/bin/activate
     - pip install -U -r doc/doc_requirements.txt
@@ -131,6 +130,9 @@ pypi:
   stage: Ship
   #only:
   # - master
+  before_script:
+   - apt update && apt install -y python3.8-venv
+   - python3 -m pip install --upgrade build twine
   script:
     - python3 -m build
     #- python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
