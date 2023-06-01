@@ -28,9 +28,9 @@ stages:
 .static_analysis:
   stage: Static Analysis
   allow_failure: true
-  #rules:
-  #  - changes:
-  #      - pyotb/*.py
+  rules:
+    - changes:
+        - pyotb/*.py
   before_script:
     - pip install ".[dev]"
 
@@ -46,12 +46,12 @@ pylint:
 
 codespell:
   extends: .static_analysis
-  #rules:
-  #  - changes:
-  #      - pyotb/*.py
-  #      - tests/*.py
-  #      - doc/*.md
-  #      - README.md
+  rules:
+    - changes:
+        - pyotb/*.py
+        - tests/*.py
+        - doc/*.md
+        - README.md
   script:
     - codespell {pyotb,tests,doc,README.md}
 
@@ -60,10 +60,10 @@ codespell:
 .tests:
   stage: Tests
   allow_failure: false
-  #rules:
-  #  - changes:
-  #      - pyotb/*.py
-  #      - tests/*.py
+  rules:
+    - changes:
+        - pyotb/*.py
+        - tests/*.py
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
@@ -110,8 +110,8 @@ docs:
 pypi:
   stage: Ship
   when: manual
-  #only:
-  #  - master
+  only:
+    - master
   before_script:
     - apt update && apt install -y python3.8-venv
     - pip install --upgrade build twine
