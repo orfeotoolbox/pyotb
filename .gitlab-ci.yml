@@ -14,7 +14,11 @@ cache:
 
 workflow:
   rules:
-    - if: $CI_COMMIT_REF_NAME == "master" || $CI_COMMIT_REF_NAME == "develop" || $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_REF_PROTECTED && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_REF_PROTECTED
 
 stages:
   - Static Analysis
@@ -99,10 +103,9 @@ test_pipeline:
 
 docs:
   stage: Ship
-  #when: manual
+  when: manual
   only:
-    - master
-    - develop
+    - tags
   before_script:
     - apt update && apt install -y python3.8-venv
     - python3 -m venv docs_venv
@@ -117,14 +120,13 @@ docs:
 
 pypi:
   stage: Ship
-  #when: manual
+  when: manual
   only:
-    - master
-    - develop
+    - tags
 
   before_script:
     - apt update && apt install -y python3.8-venv
-    - pip install --upgrade build twine
+    - pip install build twine
   script:
     - python3 -m build
     - python3 -m twine upload --non-interactive -u __token__ -p $pypi_token dist/*
