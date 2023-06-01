@@ -48,6 +48,7 @@ codespell:
   extends: .static_analysis
   rules:
     - changes:
+        - .gitlab-ci.yml
         - pyotb/*.py
         - tests/*.py
         - doc/*.md
@@ -115,7 +116,10 @@ pypi:
   stage: Ship
   when: manual
   only:
+    - tags
     - master
+    - develop
+
   before_script:
     - apt update && apt install -y python3.8-venv
     - pip install --upgrade build twine
