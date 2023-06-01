@@ -33,7 +33,7 @@ stages:
 pydocstyle:
   extends: .static_analysis
   before_script:
-    - pip install pydocstyle
+    - pip install pydocstyle tomli
   script:
     - pydocstyle $PWD/pyotb
 
