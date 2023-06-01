@@ -1,5 +1,7 @@
 default:
   image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+  tags:
+    - light
   interruptible: true
   before_script:
     - apt update && apt install -y virtualenv python3.8-venv
