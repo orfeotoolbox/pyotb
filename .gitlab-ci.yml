@@ -4,42 +4,45 @@ default:
   tags:
     - light
   interruptible: true
-  before_script:
-    - source venv/bin/activate
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 cache:
-  key: $CI_COMMIT_SHA
+  key: $CI_COMMIT_REF_SLUG
   paths:
-    - venv
+    - .cache/pip
 
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_REF_NAME =~ /master/
 
 stages:
-  - Install
   - Static Analysis
   - Tests
   - Documentation test
   - Ship
 
-#  ------------------------------ Installation in venv ------------------------------
-
-install:
-  stage: Install
-  before_script:
-    - apt update && apt install -y python3.8-venv
-    - python3 -m venv venv
-    - source venv/bin/activate
-  script:
-    - pip install ".[dev]"
-
 #  -------------------------------- Static analysis --------------------------------
 
 .static_analysis:
   stage: Static Analysis
-  needs: ["install"]
   allow_failure: true
+  #rules:
+  #  - changes:
+  #      - pyotb/*.py
+  before_script:
+    - pip install ".[dev]"
+
+pydocstyle:
+  extends: .static_analysis
+  script:
+    - pydocstyle $PWD/pyotb
+
+pylint:
+  extends: .static_analysis
+  script:
+    - pylint $PWD/pyotb
 
 codespell:
   extends: .static_analysis
@@ -52,27 +55,10 @@ codespell:
   script:
     - codespell {pyotb,tests,doc,README.md}
 
-pydocstyle:
-  extends: .static_analysis
-  #rules:
-  #  - changes:
-  #      - pyotb/*.py
-  script:
-    - pydocstyle $PWD/pyotb
-
-pylint:
-  extends: .static_analysis
-  #rules:
-  #  - changes:
-  #      - pyotb/*.py
-  script:
-    - pylint $PWD/pyotb
-
 # -------------------------------------- Tests --------------------------------------
 
 .tests:
   stage: Tests
-  needs: ["install"]
   allow_failure: false
   #rules:
   #  - changes:
@@ -86,6 +72,8 @@ pylint:
   artifacts:
     reports:
       junit: test-*.xml
+  before_script:
+    - pip install ".[dev]"
 
 test_core:
   extends: .tests
@@ -105,6 +93,7 @@ test_pipeline:
 # ---------------------------------- Documentation  ----------------------------------
 .docs:
   before_script:
+    - apt update && apt install -y python3.8-venv
     - python3 -m venv docs_venv
     - source docs_venv/bin/activate
     - pip install -U -r doc/doc_requirements.txt
@@ -139,6 +128,7 @@ pypi:
   #only:
   # - master
   before_script:
+    - apt update && apt install -y python3.8-venv
     - pip install --upgrade build twine
   script:
     - python3 -m build
