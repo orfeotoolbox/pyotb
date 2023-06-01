@@ -25,7 +25,7 @@ install:
   stage: Install
   script:
     - apt update && apt install -y python3.8-venv
-    - venv venv
+    - python3 -m venv venv
     - source venv/bin/activate
     - pip install ".[dev]"
 
@@ -104,7 +104,7 @@ test_pipeline:
 # ---------------------------------- Documentation  ----------------------------------
 .docs:
   before_script:
-    - venv docs_venv
+    - python3 -m venv docs_venv
     - source docs_venv/bin/activate
     - pip install -U -r doc/doc_requirements.txt
   cache:
@@ -115,7 +115,6 @@ test_pipeline:
 docs_test:
   stage: Documentation test
   extends: .docs
-  needs: []
   when: manual
   script:
     - mkdocs build --site-dir public_test
