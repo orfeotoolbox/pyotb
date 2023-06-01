@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """This module provides convenient python wrapping of otbApplications."""
-__version__ = "2.0.0.dev1"
+__version__ = "2.0.0.dev2"
 
 from .helpers import logger, set_logger_level
 from .apps import *
