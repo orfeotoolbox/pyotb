@@ -1,9 +1,10 @@
-image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
-
-before_script:
-  - apt update && apt install -y virtualenv python3.8-venv
-  - python3 -m install -U pip setuptools wheel build twine
-  - python3 -m pip install ".[dev]"
+default:
+  image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+  interruptible: true
+  before_script:
+    - apt update && apt install -y virtualenv python3.8-venv
+    - python3 -m install -U pip setuptools wheel build twine
+    - python3 -m pip install ".[dev]"
 
 workflow:
   rules:
@@ -22,36 +23,36 @@ stages:
   allow_failure: true
 
 codespell:
-  rules:
-    - changes:
-        - pyotb/*.py
-        - tests/*.py
-        - doc/*.md
-        - README.md
+  #rules:
+  #  - changes:
+  #      - pyotb/*.py
+  #      - tests/*.py
+  #      - doc/*.md
+  #      - README.md
   extends: .static_analysis
   script:
     - codespell {pyotb,tests,doc,README.md}
 
 flake8:
-  rules:
-    - changes:
-        - pyotb/*.py
+  #rules:
+  #  - changes:
+  #      - pyotb/*.py
   extends: .static_analysis
   script:
     - flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
 
 pydocstyle:
-  rules:
-    - changes:
-        - pyotb/*.py
+  #rules:
+  #  - changes:
+  #      - pyotb/*.py
   extends: .static_analysis
   script:
     - pydocstyle $PWD/pyotb
 
 pylint:
-  rules:
-    - changes:
-        - pyotb/*.py
+  #rules:
+  #  - changes:
+  #      - pyotb/*.py
   extends: .static_analysis
   script:
     - pylint $PWD/pyotb
@@ -60,10 +61,10 @@ pylint:
 
 .tests:
   stage: Tests
-  rules:
-    - changes:
-        - pyotb/*.py
-        - tests/*.py
+  #rules:
+  #  - changes:
+  #      - pyotb/*.py
+  #      - tests/*.py
   allow_failure: false
   variables:
     OTB_ROOT: /opt/otb
