@@ -4,6 +4,10 @@ default:
   tags:
     - light
   interruptible: true
+  cache:
+    key: $CI_COMMIT_SHA
+    paths:
+      - venv
 
 workflow:
   rules:
