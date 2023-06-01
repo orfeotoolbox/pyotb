@@ -103,9 +103,9 @@ test_pipeline:
 
 docs:
   stage: Ship
-  when: manual
   only:
-    - tags
+    - master
+    - develop
   before_script:
     - apt update && apt install -y python3.8-venv
     - python3 -m venv docs_venv
@@ -120,7 +120,7 @@ docs:
 
 pypi:
   stage: Ship
-  when: manual
+  # when: manual
   only:
     - tags
 
