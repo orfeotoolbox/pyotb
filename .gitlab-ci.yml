@@ -95,9 +95,6 @@ test_pipeline:
 docs:
   stage: Ship
   when: manual
-  only:
-    - master
-    - develop
   before_script:
     - apt update && apt install -y python3.8-venv
     - python3 -m venv docs_venv
@@ -112,14 +109,12 @@ docs:
 
 pypi:
   stage: Ship
+  when: manual
   #only:
-  # - master
+  #  - master
   before_script:
     - apt update && apt install -y python3.8-venv
     - pip install --upgrade build twine
   script:
     - python3 -m build
-    #- python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
-  artifacts:
-    paths:
-      - dist/
+    - python3 -m twine upload --non-interactive -u __token__ -p $pypi_token dist/*
