@@ -14,7 +14,7 @@ cache:
 
 workflow:
   rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_REF_NAME =~ /master/
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 stages:
   - Static Analysis
@@ -62,11 +62,11 @@ codespell:
 .tests:
   stage: Tests
   allow_failure: false
+  rules:
     - changes:
         - .gitlab-ci.yml
         - pyotb/*.py
         - tests/*.py
-  rules:
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
