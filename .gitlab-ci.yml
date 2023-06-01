@@ -3,6 +3,15 @@ default:
   tags:
     - light
   interruptible: true
+  before_script:
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install ".[dev]"
+  cache:
+    key: $CI_COMMIT_SHA
+    paths:
+      - venv
 
 workflow:
   rules:
@@ -19,8 +28,6 @@ stages:
 .static_analysis:
   stage: Static Analysis
   allow_failure: true
-  before_script:
-    - python3 -m pip install ".[dev]"
 
 codespell:
   #rules:
@@ -71,8 +78,6 @@ pylint:
     LD_LIBRARY_PATH: /opt/otb/lib
     OTB_LOGGER_LEVEL: INFO
     PYOTB_LOGGER_LEVEL: DEBUG
-  before_script:
-    - pip install .
   artifacts:
     reports:
       junit: test-*.xml
@@ -80,33 +85,37 @@ pylint:
 test_core:
   extends: .tests
   script:
-    - python3 -m pytest --color=yes --junitxml=test-core.xml tests/test_core.py
+    - pytest --color=yes --junitxml=test-core.xml tests/test_core.py
 
 test_numpy:
   extends: .tests
   script:
-    - python3 -m pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
+    - pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
   #when: manual
   extends: .tests
   script:
-    - python3 -m pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
+    - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
 # ---------------------------------- Documentation  ----------------------------------
-
 .docs:
   before_script:
-    - apt-get update && apt-get -y install virtualenv
-    - virtualenv doc_env
-    - source doc_env/bin/activate
+    - pip install -U pip virutalenv
+    - virtualenv docs_venv
+    - source docs_venv/bin/activate
     - pip install -U -r doc/doc_requirements.txt
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - docs_venv
 
-pages_test:
+docs_test:
   stage: Documentation test
   extends: .docs
   when: manual
   script:
+    - pip install -U -r doc/doc_requirements.txt
     - mkdocs build --site-dir public_test
   artifacts:
     paths:
@@ -114,7 +123,7 @@ pages_test:
 
 # -------------------------------------- Ship ---------------------------------------
 
-pages:
+docs:
   stage: Ship
   extends: .docs
   when: manual
@@ -131,8 +140,7 @@ pypi:
   #only:
   # - master
   before_script:
-   - apt update && apt install -y python3.8-venv
-   - python3 -m pip install --upgrade build twine
+   - pip install --upgrade build twine
   script:
     - python3 -m build
     #- python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
