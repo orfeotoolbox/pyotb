@@ -4,10 +4,6 @@ default:
   tags:
     - light
   interruptible: true
-  cache:
-    key: $CI_COMMIT_SHA
-    paths:
-      - venv
 
 workflow:
   rules:
@@ -35,8 +31,6 @@ install:
   stage: Static Analysis
   needs: ["install"]
   allow_failure: true
-  before_script:
-    - source venv/bin/activate
 
 codespell:
   extends: .static_analysis
@@ -47,6 +41,7 @@ codespell:
   #      - doc/*.md
   #      - README.md
   script:
+    - source venv/bin/activate
     - codespell {pyotb,tests,doc,README.md}
 
 pydocstyle:
@@ -55,6 +50,7 @@ pydocstyle:
   #  - changes:
   #      - pyotb/*.py
   script:
+    - source venv/bin/activate
     - pydocstyle $PWD/pyotb
 
 pylint:
@@ -63,6 +59,7 @@ pylint:
   #  - changes:
   #      - pyotb/*.py
   script:
+    - source venv/bin/activate
     - pylint $PWD/pyotb
 
 # -------------------------------------- Tests --------------------------------------
@@ -83,22 +80,23 @@ pylint:
   artifacts:
     reports:
       junit: test-*.xml
-  before_script:
-    - source venv/bin/activate
 
 test_core:
   extends: .tests
   script:
+    - source venv/bin/activate
     - pytest --color=yes --junitxml=test-core.xml tests/test_core.py
 
 test_numpy:
   extends: .tests
   script:
+    - source venv/bin/activate
     - pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
   extends: .tests
   script:
+    - source venv/bin/activate
     - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
 # ---------------------------------- Documentation  ----------------------------------
