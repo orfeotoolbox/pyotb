@@ -1,11 +1,13 @@
+image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+
+before_script:
+  - apt update && apt install -y virtualenv python3.8-venv
+  - python3 -m install -U pip setuptools wheel build twine
+  - python3 -m pip install ".[dev]"
+
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_REF_NAME =~ /master/
-
-default:
-  image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
-  tags:
-    - light
 
 stages:
   - Static Analysis
@@ -22,75 +24,46 @@ stages:
 codespell:
   rules:
     - changes:
-      - pyotb/*.py
-      - tests/*.py
-      - README.md
+        - pyotb/*.py
+        - tests/*.py
+        - doc/*.md
+        - README.md
   extends: .static_analysis
-  before_script:
-    - pip install codespell
   script:
     - codespell {pyotb,tests,doc,README.md}
 
 flake8:
   rules:
     - changes:
-      - pyotb/*.py
+        - pyotb/*.py
   extends: .static_analysis
-  before_script:
-    - pip install flake8
   script:
     - flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
 
 pydocstyle:
   rules:
     - changes:
-      - pyotb/*.py
+        - pyotb/*.py
   extends: .static_analysis
-  before_script:
-    - pip install pydocstyle tomli
   script:
     - pydocstyle $PWD/pyotb
 
 pylint:
   rules:
     - changes:
-      - pyotb/*.py
+        - pyotb/*.py
   extends: .static_analysis
-  before_script:
-    - pip install pylint
   script:
     - pylint $PWD/pyotb
 
-# ---------------------------------- Documentation  ----------------------------------
-
-.docs:
-  before_script:
-    - apt-get update && apt-get -y install virtualenv
-    - virtualenv doc_env
-    - source doc_env/bin/activate
-    - pip install -U pip
-    - pip install -U -r doc/doc_requirements.txt
-
-pages_test:
-  stage: Documentation test
-  extends: .docs
-  except:
-    - master
-  when: manual
-  script:
-    - mkdocs build --site-dir public_test
-  artifacts:
-    paths:
-      - public_test
-
-# -------------------------------------- Tests -------------------------------------- 
+# -------------------------------------- Tests --------------------------------------
 
 .tests:
   stage: Tests
   rules:
     - changes:
-      - pyotb/*.py
-      - tests/*.py
+        - pyotb/*.py
+        - tests/*.py
   allow_failure: false
   variables:
     OTB_ROOT: /opt/otb
@@ -102,9 +75,6 @@ pages_test:
   artifacts:
     reports:
       junit: test-*.xml
-  before_script:
-    - wget $IMAGE_URL -O $TEST_INPUT_IMAGE
-    - pip install pytest requests
 
 test_core:
   extends: .tests
@@ -122,11 +92,30 @@ test_pipeline:
   script:
     - python3 -m pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
-# -------------------------------------- Ship --------------------------------------- 
+# ---------------------------------- Documentation  ----------------------------------
+
+.docs:
+  before_script:
+    - virtualenv doc_env
+    - source doc_env/bin/activate
+    - pip install -U -r doc/doc_requirements.txt
+
+pages_test:
+  stage: Documentation test
+  extends: .docs
+  when: manual
+  script:
+    - mkdocs build --site-dir public_test
+  artifacts:
+    paths:
+      - public_test
+
+# -------------------------------------- Ship ---------------------------------------
 
 pages:
   stage: Ship
   extends: .docs
+  when: manual
   only:
     - master
   script:
@@ -137,11 +126,11 @@ pages:
 
 pypi:
   stage: Ship
-  only:
-   - master
-  before_script:
-   - apt update && apt install -y python3.8-venv
-   - python3 -m pip install --upgrade build twine
+  #only:
+  # - master
   script:
-   - python3 -m build
-   - python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
+    - python3 -m build
+    #- python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
+  artifacts:
+    paths:
+      - dist/
