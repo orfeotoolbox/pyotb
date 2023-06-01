@@ -1,13 +1,10 @@
 default:
-  image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+  image: 
+    name: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+    pull_policy: if-not-present
   tags:
     - light
   interruptible: true
-  before_script:
-    - pip install virtualenv
-    - virtualenv venv
-    - source venv/bin/activate
-    - pip install ".[dev]"
   cache:
     key: $CI_COMMIT_SHA
     paths:
@@ -18,49 +15,54 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_REF_NAME =~ /master/
 
 stages:
+  - Install
   - Static Analysis
-  - Documentation test
   - Tests
+  - Documentation test
   - Ship
+
+#  ------------------------------ Installation in venv ------------------------------
+install:
+  stage: Install
+  script:
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip install ".[dev]"
 
 #  -------------------------------- Static analysis --------------------------------
 
 .static_analysis:
   stage: Static Analysis
+  needs: ["install"]
   allow_failure: true
+  before_script:
+    - source venv/bin/activate
 
 codespell:
+  extends: .static_analysis
   #rules:
   #  - changes:
   #      - pyotb/*.py
   #      - tests/*.py
   #      - doc/*.md
   #      - README.md
-  extends: .static_analysis
   script:
     - codespell {pyotb,tests,doc,README.md}
 
-flake8:
-  #rules:
-  #  - changes:
-  #      - pyotb/*.py
-  extends: .static_analysis
-  script:
-    - flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
-
 pydocstyle:
+  extends: .static_analysis
   #rules:
   #  - changes:
   #      - pyotb/*.py
-  extends: .static_analysis
   script:
     - pydocstyle $PWD/pyotb
 
 pylint:
+  extends: .static_analysis
   #rules:
   #  - changes:
   #      - pyotb/*.py
-  extends: .static_analysis
   script:
     - pylint $PWD/pyotb
 
@@ -68,11 +70,12 @@ pylint:
 
 .tests:
   stage: Tests
+  needs: ["install"]
+  allow_failure: false
   #rules:
   #  - changes:
   #      - pyotb/*.py
   #      - tests/*.py
-  allow_failure: false
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
@@ -81,6 +84,8 @@ pylint:
   artifacts:
     reports:
       junit: test-*.xml
+  before_script:
+    - source venv/bin/activate
 
 test_core:
   extends: .tests
@@ -93,7 +98,6 @@ test_numpy:
     - pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
-  #when: manual
   extends: .tests
   script:
     - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
@@ -113,6 +117,7 @@ test_pipeline:
 docs_test:
   stage: Documentation test
   extends: .docs
+  needs: []
   when: manual
   script:
     - pip install -U -r doc/doc_requirements.txt
@@ -137,6 +142,7 @@ docs:
 
 pypi:
   stage: Ship
+  #when: manual
   #only:
   # - master
   before_script:
