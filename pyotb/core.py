@@ -2,11 +2,11 @@
 """This module is the core of pyotb."""
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from ast import literal_eval
 from pathlib import Path
 from time import perf_counter
 from typing import Any
-from abc import ABC, abstractmethod
 
 import numpy as np
 import otbApplication as otb  # pylint: disable=import-error
@@ -16,6 +16,7 @@ from .helpers import logger
 
 class OTBObject(ABC):
     """Abstraction of an image object."""
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -85,7 +86,9 @@ class OTBObject(ABC):
         """Return a dict output of ComputeImagesStatistics for the first image output."""
         return App("ComputeImagesStatistics", self, quiet=True).data
 
-    def get_values_at_coords(self, row: int, col: int, bands: int = None) -> list[int | float] | int | float:
+    def get_values_at_coords(
+        self, row: int, col: int, bands: int = None
+    ) -> list[int | float] | int | float:
         """Get pixel value(s) at a given YX coordinates.
 
         Args:
@@ -107,7 +110,9 @@ class OTBObject(ABC):
             elif isinstance(bands, slice):
                 channels = self.channels_list_from_slice(bands)
             elif not isinstance(bands, list):
-                raise TypeError(f"{self.name}: type '{type(bands)}' cannot be interpreted as a valid slicing")
+                raise TypeError(
+                    f"{self.name}: type '{type(bands)}' cannot be interpreted as a valid slicing"
+                )
             if channels:
                 app.app.Execute()
                 app.set_parameters({"cl": [f"Channel{n + 1}" for n in channels]})
@@ -130,9 +135,13 @@ class OTBObject(ABC):
             return list(range(0, stop, step))
         if start is None and stop is None:
             return list(range(0, nb_channels, step))
-        raise ValueError(f"{self.name}: '{bands}' cannot be interpreted as valid slicing.")
+        raise ValueError(
+            f"{self.name}: '{bands}' cannot be interpreted as valid slicing."
+        )
 
-    def export(self, key: str = None, preserve_dtype: bool = True) -> dict[str, dict[str, np.ndarray]]:
+    def export(
+        self, key: str = None, preserve_dtype: bool = True
+    ) -> dict[str, dict[str, np.ndarray]]:
         """Export a specific output image as numpy array and store it in object exports_dic.
 
         Args:
@@ -149,10 +158,14 @@ class OTBObject(ABC):
         if key not in self.exports_dic:
             self.exports_dic[key] = self.app.ExportImage(key)
         if preserve_dtype:
-            self.exports_dic[key]["array"] = self.exports_dic[key]["array"].astype(self.dtype)
+            self.exports_dic[key]["array"] = self.exports_dic[key]["array"].astype(
+                self.dtype
+            )
         return self.exports_dic[key]
 
-    def to_numpy(self, key: str = None, preserve_dtype: bool = True, copy: bool = False) -> np.ndarray:
+    def to_numpy(
+        self, key: str = None, preserve_dtype: bool = True, copy: bool = False
+    ) -> np.ndarray:
         """Export a pyotb object to numpy array.
 
         Args:
@@ -370,12 +383,18 @@ class OTBObject(ABC):
             row, col = key[0], key[1]
             if isinstance(row, int) and isinstance(col, int):
                 if row < 0 or col < 0:
-                    raise ValueError(f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})")
+                    raise ValueError(
+                        f"{self.name} cannot read pixel value at negative coordinates ({row}, {col})"
+                    )
                 channels = key[2] if len(key) == 3 else None
                 return self.get_values_at_coords(row, col, channels)
         # Slicing
-        if not isinstance(key, tuple) or (isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)):
-            raise ValueError(f'"{key}" cannot be interpreted as valid slicing. Slicing should be 2D or 3D.')
+        if not isinstance(key, tuple) or (
+            isinstance(key, tuple) and (len(key) < 2 or len(key) > 3)
+        ):
+            raise ValueError(
+                f'"{key}" cannot be interpreted as valid slicing. Slicing should be 2D or 3D.'
+            )
         if isinstance(key, tuple) and len(key) == 2:
             # Adding a 3rd dimension
             key = key + (slice(None, None, None),)
@@ -392,7 +411,7 @@ class App(OTBObject):
     INPUT_IMAGE_TYPES = [
         # Images only
         otb.ParameterType_InputImage,
-        otb.ParameterType_InputImageList
+        otb.ParameterType_InputImageList,
     ]
     INPUT_PARAM_TYPES = INPUT_IMAGE_TYPES + [
         # Vectors
@@ -426,7 +445,15 @@ class App(OTBObject):
         otb.ParameterType_InputFilenameList,
     ]
 
-    def __init__(self, appname: str, *args, frozen: bool = False, quiet: bool = False, name: str = "", **kwargs):
+    def __init__(
+        self,
+        appname: str,
+        *args,
+        frozen: bool = False,
+        quiet: bool = False,
+        name: str = "",
+        **kwargs,
+    ):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
         Args:
@@ -445,7 +472,11 @@ class App(OTBObject):
 
         """
         # Attributes and data structures used by properties
-        create = otb.Registry.CreateApplicationWithoutLogger if quiet else otb.Registry.CreateApplication
+        create = (
+            otb.Registry.CreateApplicationWithoutLogger
+            if quiet
+            else otb.Registry.CreateApplication
+        )
         self._app = create(appname)
         self._name = name or appname
         self._exports_dic = {}
@@ -455,14 +486,25 @@ class App(OTBObject):
         self.quiet, self.frozen = quiet, frozen
         # Param keys and types
         self.parameters_keys = tuple(self.app.GetParametersKeys())
-        self._all_param_types = {k: self.app.GetParameterType(k) for k in self.parameters_keys}
-        types = (otb.ParameterType_OutputImage, otb.ParameterType_OutputVectorData, otb.ParameterType_OutputFilename)
-        self._out_param_types = {k: v for k, v in self._all_param_types.items() if v in types}
+        self._all_param_types = {
+            k: self.app.GetParameterType(k) for k in self.parameters_keys
+        }
+        types = (
+            otb.ParameterType_OutputImage,
+            otb.ParameterType_OutputVectorData,
+            otb.ParameterType_OutputFilename,
+        )
+        self._out_param_types = {
+            k: v for k, v in self._all_param_types.items() if v in types
+        }
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         # Create Output image objects
-        for key in filter(lambda k: self._out_param_types[k] == otb.ParameterType_OutputImage, self._out_param_types):
+        for key in filter(
+            lambda k: self._out_param_types[k] == otb.ParameterType_OutputImage,
+            self._out_param_types,
+        ):
             self.outputs[key] = Output(self, key, self._settings.get(key))
         if not self.frozen:
             self.execute()
@@ -492,9 +534,7 @@ class App(OTBObject):
     def __is_one_of_types(self, key: str, param_types: list[int]) -> bool:
         """Helper to factor is_input and is_output."""
         if key not in self._all_param_types:
-            raise KeyError(
-                f"key {key} not found in the application parameters types"
-            )
+            raise KeyError(f"key {key} not found in the application parameters types")
         return self._all_param_types[key] in param_types
 
     def is_input(self, key: str) -> bool:
@@ -507,9 +547,7 @@ class App(OTBObject):
             True if the parameter is an input, else False
 
         """
-        return self.__is_one_of_types(
-            key=key, param_types=self.INPUT_PARAM_TYPES
-        )
+        return self.__is_one_of_types(key=key, param_types=self.INPUT_PARAM_TYPES)
 
     def is_output(self, key: str) -> bool:
         """Returns True if the key is an output.
@@ -521,9 +559,7 @@ class App(OTBObject):
             True if the parameter is an output, else False
 
         """
-        return self.__is_one_of_types(
-            key=key, param_types=self.OUTPUT_PARAM_TYPES
-        )
+        return self.__is_one_of_types(key=key, param_types=self.OUTPUT_PARAM_TYPES)
 
     def is_key_list(self, key: str) -> bool:
         """Check if a parameter key is an input parameter list."""
@@ -541,7 +577,9 @@ class App(OTBObject):
             for key, value in sorted(self._all_param_types.items()):
                 if value == param_type:
                     return key
-        raise TypeError(f"{self.name}: could not find any parameter key matching the provided types")
+        raise TypeError(
+            f"{self.name}: could not find any parameter key matching the provided types"
+        )
 
     @property
     def input_key(self) -> str:
@@ -598,7 +636,11 @@ class App(OTBObject):
             # When the parameter expects a list, if needed, change the value to list
             if self.is_key_list(key) and not isinstance(obj, (list, tuple)):
                 obj = [obj]
-                logger.info('%s: argument for parameter "%s" was converted to list', self.name, key)
+                logger.info(
+                    '%s: argument for parameter "%s" was converted to list',
+                    self.name,
+                    key,
+                )
             try:
                 if self.is_input(key):
                     if self.is_key_images_list(key):
@@ -630,19 +672,28 @@ class App(OTBObject):
         if not dtype:
             param = self._settings.get(self.input_image_key)
             if not param:
-                logger.warning("%s: could not propagate pixel type from inputs to output", self.name)
+                logger.warning(
+                    "%s: could not propagate pixel type from inputs to output",
+                    self.name,
+                )
                 return
             if isinstance(param, (list, tuple)):
                 param = param[0]  # first image in "il"
             try:
                 dtype = get_pixel_type(param)
             except (TypeError, RuntimeError):
-                logger.warning('%s: unable to identify pixel type of key "%s"', self.name, param)
+                logger.warning(
+                    '%s: unable to identify pixel type of key "%s"', self.name, param
+                )
                 return
         if target_key:
             keys = [target_key]
         else:
-            keys = [k for k, v in self._out_param_types.items() if v == otb.ParameterType_OutputImage]
+            keys = [
+                k
+                for k, v in self._out_param_types.items()
+                if v == otb.ParameterType_OutputImage
+            ]
         for key in keys:
             self.app.SetParameterOutputImagePixelType(key, dtype)
 
@@ -653,7 +704,9 @@ class App(OTBObject):
         try:
             self.app.Execute()
         except (RuntimeError, FileNotFoundError) as e:
-            raise RuntimeError(f"{self.name}: error during during app execution ({e}") from e
+            raise RuntimeError(
+                f"{self.name}: error during during app execution ({e}"
+            ) from e
         self.frozen = False
         self._time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
@@ -665,13 +718,22 @@ class App(OTBObject):
             logger.debug("%s: flushing data to disk", self.name)
             self.app.WriteOutput()
         except RuntimeError:
-            logger.debug("%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput", self.name)
+            logger.debug(
+                "%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput",
+                self.name,
+            )
             self._time_start = perf_counter()
             self.app.ExecuteAndWriteOutput()
         self._time_end = perf_counter()
 
-    def write(self, path: str | Path | dict[str, str] = None, ext_fname: str = "",
-              pixel_type: dict[str, str] | str = None, preserve_dtype: bool = False, **kwargs) -> bool:
+    def write(
+        self,
+        path: str | Path | dict[str, str] = None,
+        ext_fname: str = "",
+        pixel_type: dict[str, str] | str = None,
+        preserve_dtype: bool = False,
+        **kwargs,
+    ) -> bool:
         """Set output pixel type and write the output raster files.
 
         Args:
@@ -697,24 +759,35 @@ class App(OTBObject):
         if isinstance(path, dict):
             kwargs.update(path)
         elif isinstance(path, str) and kwargs:
-            logger.warning('%s: keyword arguments specified, ignoring argument "%s"', self.name, path)
+            logger.warning(
+                '%s: keyword arguments specified, ignoring argument "%s"',
+                self.name,
+                path,
+            )
         elif isinstance(path, (str, Path)) and self.output_key:
             kwargs.update({self.output_key: str(path)})
         elif path is not None:
             raise TypeError(f"{self.name}: unsupported filepath type ({type(path)})")
         if not (kwargs or any(k in self._settings for k in self._out_param_types)):
-            raise KeyError(f"{self.name}: at least one filepath is required, if not provided during App init")
+            raise KeyError(
+                f"{self.name}: at least one filepath is required, if not provided during App init"
+            )
         parameters = kwargs.copy()
 
         # Append filename extension to filenames
         if ext_fname:
-            logger.debug("%s: using extended filename for outputs: %s", self.name, ext_fname)
+            logger.debug(
+                "%s: using extended filename for outputs: %s", self.name, ext_fname
+            )
             if not ext_fname.startswith("?"):
                 ext_fname = "?&" + ext_fname
             elif not ext_fname.startswith("?&"):
                 ext_fname = "?&" + ext_fname[1:]
             for key, value in kwargs.items():
-                if self._out_param_types[key] == otb.ParameterType_OutputImage and "?" not in value:
+                if (
+                    self._out_param_types[key] == otb.ParameterType_OutputImage
+                    and "?" not in value
+                ):
                     parameters[key] = value + ext_fname
         # Manage output pixel types
         data_types = {}
@@ -722,12 +795,16 @@ class App(OTBObject):
             if isinstance(pixel_type, str):
                 dtype = parse_pixel_type(pixel_type)
                 type_name = self.app.ConvertPixelTypeToNumpy(dtype)
-                logger.debug('%s: output(s) will be written with type "%s"', self.name, type_name)
+                logger.debug(
+                    '%s: output(s) will be written with type "%s"', self.name, type_name
+                )
                 for key in parameters:
                     if self._out_param_types[key] == otb.ParameterType_OutputImage:
                         data_types[key] = dtype
             elif isinstance(pixel_type, dict):
-                data_types = {key: parse_pixel_type(dtype) for key, dtype in pixel_type.items()}
+                data_types = {
+                    key: parse_pixel_type(dtype) for key, dtype in pixel_type.items()
+                }
         elif preserve_dtype:
             self.propagate_dtype()  # all outputs will have the same type as the main input raster
 
@@ -751,7 +828,11 @@ class App(OTBObject):
                 dest = files if filepath.exists() else missing
                 dest.append(str(filepath.absolute()))
         for filename in missing:
-            logger.error("%s: execution seems to have failed, %s does not exist", self.name, filename)
+            logger.error(
+                "%s: execution seems to have failed, %s does not exist",
+                self.name,
+                filename,
+            )
         return bool(files) and not missing
 
     # Private functions
@@ -769,11 +850,17 @@ class App(OTBObject):
         for arg in args:
             if isinstance(arg, dict):
                 kwargs.update(arg)
-            elif isinstance(arg, (str, OTBObject)) or isinstance(arg, list) and self.is_key_list(self.input_key):
+            elif (
+                isinstance(arg, (str, OTBObject))
+                or isinstance(arg, list)
+                and self.is_key_list(self.input_key)
+            ):
                 kwargs.update({self.input_key: arg})
         return kwargs
 
-    def __set_param(self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]):
+    def __set_param(
+        self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]
+    ):
         """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
             self.app.ClearValue(key)
@@ -781,9 +868,13 @@ class App(OTBObject):
         # Single-parameter cases
         if isinstance(obj, OTBObject):
             self.app.ConnectImage(key, obj.app, obj.output_image_key)
-        elif isinstance(obj, otb.Application):  # this is for backward comp with plain OTB
+        elif isinstance(
+            obj, otb.Application
+        ):  # this is for backward comp with plain OTB
             self.app.ConnectImage(key, obj, get_out_images_param_keys(obj)[0])
-        elif key == "ram":  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
+        elif (
+            key == "ram"
+        ):  # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf gitlab OTB issue 2200
             self.app.SetParameterInt("ram", int(obj))
         elif not isinstance(obj, list):  # any other parameters (str, int...)
             self.app.SetParameterValue(key, obj)
@@ -793,7 +884,9 @@ class App(OTBObject):
             for inp in obj:
                 if isinstance(inp, OTBObject):
                     self.app.ConnectImage(key, inp.app, inp.output_image_key)
-                elif isinstance(inp, otb.Application):  # this is for backward comp with plain OTB
+                elif isinstance(
+                    inp, otb.Application
+                ):  # this is for backward comp with plain OTB
                     self.app.ConnectImage(key, obj, get_out_images_param_keys(inp)[0])
                 else:  # here `input` should be an image filepath
                     # Append `input` to the list, do not overwrite any previously set element of the image list
@@ -809,9 +902,13 @@ class App(OTBObject):
                 continue
             value = self.app.GetParameterValue(key)
             # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
-            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(key):
+            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(
+                key
+            ):
                 try:
-                    value = str(value)  # some default str values like "mode" or "interpolator"
+                    value = str(
+                        value
+                    )  # some default str values like "mode" or "interpolator"
                     self._auto_parameters[key] = value
                     continue
                 except RuntimeError:
@@ -841,13 +938,21 @@ class App(OTBObject):
             if key in self.parameters:
                 return self.parameters[key]
             raise KeyError(f"{self.name}: unknown or undefined parameter '{key}'")
-        raise TypeError(f"{self.name}: cannot access object item or slice using {type(key)} object")
+        raise TypeError(
+            f"{self.name}: cannot access object item or slice using {type(key)} object"
+        )
 
 
 class Slicer(App):
     """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
 
-    def __init__(self, obj: OTBObject, rows: slice, cols: slice, channels: slice | list[int] | int):
+    def __init__(
+        self,
+        obj: OTBObject,
+        rows: slice,
+        cols: slice,
+        channels: slice | list[int] | int,
+    ):
         """Create a slicer object, that can be used directly for writing or inside a BandMath.
 
         It contains :
@@ -861,7 +966,14 @@ class Slicer(App):
             channels: channels, can be slicing, list or int
 
         """
-        super().__init__("ExtractROI", obj, mode="extent", quiet=True, frozen=True, name=f"Slicer from {obj.name}")
+        super().__init__(
+            "ExtractROI",
+            obj,
+            mode="extent",
+            quiet=True,
+            frozen=True,
+            name=f"Slicer from {obj.name}",
+        )
         self.rows, self.cols = rows, cols
         parameters = {}
 
@@ -879,7 +991,9 @@ class Slicer(App):
             elif isinstance(channels, tuple):
                 channels = list(channels)
             elif not isinstance(channels, list):
-                raise ValueError(f"Invalid type for channels, should be int, slice or list of bands. : {channels}")
+                raise ValueError(
+                    f"Invalid type for channels, should be int, slice or list of bands. : {channels}"
+                )
             # Change the potential negative index values to reverse index
             channels = [c if c >= 0 else nb_channels + c for c in channels]
             parameters.update({"cl": [f"Channel{i + 1}" for i in channels]})
@@ -891,17 +1005,23 @@ class Slicer(App):
             parameters.update({"mode.extent.uly": rows.start})
             spatial_slicing = True
         if rows.stop is not None and rows.stop != -1:
-            parameters.update({"mode.extent.lry": rows.stop - 1})  # subtract 1 to respect python convention
+            parameters.update(
+                {"mode.extent.lry": rows.stop - 1}
+            )  # subtract 1 to respect python convention
             spatial_slicing = True
         if cols.start is not None:
             parameters.update({"mode.extent.ulx": cols.start})
             spatial_slicing = True
         if cols.stop is not None and cols.stop != -1:
-            parameters.update({"mode.extent.lrx": cols.stop - 1})  # subtract 1 to respect python convention
+            parameters.update(
+                {"mode.extent.lrx": cols.stop - 1}
+            )  # subtract 1 to respect python convention
             spatial_slicing = True
         # These are some attributes when the user simply wants to extract *one* band to be used in an Operation
         if not spatial_slicing and isinstance(channels, list) and len(channels) == 1:
-            self.one_band_sliced = channels[0] + 1  # OTB convention: channels start at 1
+            self.one_band_sliced = (
+                channels[0] + 1
+            )  # OTB convention: channels start at 1
             self.input = obj
 
         # Execute app
@@ -956,7 +1076,9 @@ class Operation(App):
         # NB: the keys of the dictionary are strings-only, instead of 'complex' objects, to enable easy serialization
         self.im_dic = {}
         self.im_count = 1
-        map_repr_to_input = {}  # to be able to retrieve the real python object from its string representation
+        map_repr_to_input = (
+            {}
+        )  # to be able to retrieve the real python object from its string representation
         for inp in self.inputs:
             if not isinstance(inp, (int, float)):
                 if str(inp) not in self.im_dic:
@@ -964,13 +1086,23 @@ class Operation(App):
                     map_repr_to_input[repr(inp)] = inp
                     self.im_count += 1
         # Getting unique image inputs, in the order im1, im2, im3 ...
-        self.unique_inputs = [map_repr_to_input[id_str] for id_str in sorted(self.im_dic, key=self.im_dic.get)]
+        self.unique_inputs = [
+            map_repr_to_input[id_str]
+            for id_str in sorted(self.im_dic, key=self.im_dic.get)
+        ]
         self.exp_bands, self.exp = self.get_real_exp(self.fake_exp_bands)
         appname = "BandMath" if len(self.exp_bands) == 1 else "BandMathX"
         name = f'Operation exp="{self.exp}"'
-        super().__init__(appname, il=self.unique_inputs, exp=self.exp, quiet=True, name=name)
+        super().__init__(
+            appname, il=self.unique_inputs, exp=self.exp, quiet=True, name=name
+        )
 
-    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
+    def build_fake_expressions(
+        self,
+        operator: str,
+        inputs: list[OTBObject | str | int | float],
+        nb_bands: int = None,
+    ):
         """Create a list of 'fake' expressions, one for each band.
 
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
@@ -989,12 +1121,21 @@ class Operation(App):
             pass
         # For any other operations, the output number of bands is the same as inputs
         else:
-            if any(isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced") for inp in inputs):
+            if any(
+                isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced")
+                for inp in inputs
+            ):
                 nb_bands = 1
             else:
-                nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
+                nb_bands_list = [
+                    get_nbchannels(inp)
+                    for inp in inputs
+                    if not isinstance(inp, (float, int))
+                ]
                 # check that all inputs have the same nb of bands
-                if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
+                if len(nb_bands_list) > 1 and not all(
+                    x == nb_bands_list[0] for x in nb_bands_list
+                ):
                     raise ValueError("All images do not have the same number of bands")
                 nb_bands = nb_bands_list[0]
 
@@ -1008,10 +1149,14 @@ class Operation(App):
                 if len(inputs) == 3 and k == 0:
                     # When cond is monoband whereas the result is multiband, we expand the cond to multiband
                     cond_band = 1 if nb_bands != inp.shape[2] else band
-                    fake_exp, corresponding_inputs, nb_channels = self.make_fake_exp(inp, cond_band, keep_logical=True)
+                    fake_exp, corresponding_inputs, nb_channels = self.make_fake_exp(
+                        inp, cond_band, keep_logical=True
+                    )
                 else:
                     # Any other input
-                    fake_exp, corresponding_inputs, nb_channels = self.make_fake_exp(inp, band, keep_logical=False)
+                    fake_exp, corresponding_inputs, nb_channels = self.make_fake_exp(
+                        inp, band, keep_logical=False
+                    )
                 expressions.append(fake_exp)
                 # Reference the inputs and nb of channels (only on first pass in the loop to avoid duplicates)
                 if i == 0 and corresponding_inputs and nb_channels:
@@ -1025,7 +1170,9 @@ class Operation(App):
                 # We create here the "fake" expression. For example, for a BandMathX expression such as '2 * im1 + im2',
                 # the false expression stores the expression 2 * str(input1) + str(input2)
                 fake_exp = f"({expressions[0]} {operator} {expressions[1]})"
-            elif len(inputs) == 3 and operator == "?":  # this is only for ternary expression
+            elif (
+                len(inputs) == 3 and operator == "?"
+            ):  # this is only for ternary expression
                 fake_exp = f"({expressions[0]} ? {expressions[1]} : {expressions[2]})"
             self.fake_exp_bands.append(fake_exp)
 
@@ -1052,7 +1199,9 @@ class Operation(App):
         return exp_bands, ";".join(exp_bands)
 
     @staticmethod
-    def make_fake_exp(x: OTBObject | str, band: int, keep_logical: bool = False) -> tuple[str, list[OTBObject], int]:
+    def make_fake_exp(
+        x: OTBObject | str, band: int, keep_logical: bool = False
+    ) -> tuple[str, list[OTBObject], int]:
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
@@ -1127,9 +1276,16 @@ class LogicalOperation(Operation):
         """
         self.logical_fake_exp_bands = []
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
-        self.logical_exp_bands, self.logical_exp = self.get_real_exp(self.logical_fake_exp_bands)
+        self.logical_exp_bands, self.logical_exp = self.get_real_exp(
+            self.logical_fake_exp_bands
+        )
 
-    def build_fake_expressions(self, operator: str, inputs: list[OTBObject | str | int | float], nb_bands: int = None):
+    def build_fake_expressions(
+        self,
+        operator: str,
+        inputs: list[OTBObject | str | int | float],
+        nb_bands: int = None,
+    ):
         """Create a list of 'fake' expressions, one for each band.
 
         e.g for the operation input1 > input2, we create a fake expression that is like
@@ -1142,19 +1298,30 @@ class LogicalOperation(Operation):
 
         """
         # For any other operations, the output number of bands is the same as inputs
-        if any(isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced") for inp in inputs):
+        if any(
+            isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced")
+            for inp in inputs
+        ):
             nb_bands = 1
         else:
-            nb_bands_list = [get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))]
+            nb_bands_list = [
+                get_nbchannels(inp)
+                for inp in inputs
+                if not isinstance(inp, (float, int))
+            ]
             # check that all inputs have the same nb of bands
-            if len(nb_bands_list) > 1 and not all(x == nb_bands_list[0] for x in nb_bands_list):
+            if len(nb_bands_list) > 1 and not all(
+                x == nb_bands_list[0] for x in nb_bands_list
+            ):
                 raise ValueError("All images do not have the same number of bands")
             nb_bands = nb_bands_list[0]
         # Create a list of fake exp, each item of the list corresponding to one band
         for i, band in enumerate(range(1, nb_bands + 1)):
             expressions = []
             for inp in inputs:
-                fake_exp, corresp_inputs, nb_channels = super().make_fake_exp(inp, band, keep_logical=True)
+                fake_exp, corresp_inputs, nb_channels = super().make_fake_exp(
+                    inp, band, keep_logical=True
+                )
                 expressions.append(fake_exp)
                 # Reference the inputs and nb of channels (only on first pass in the loop to avoid duplicates)
                 if i == 0 and corresp_inputs and nb_channels:
@@ -1195,9 +1362,16 @@ class Input(App):
 
 class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
+
     _filepath: str | Path = None
 
-    def __init__(self, pyotb_app: App, param_key: str = None, filepath: str = None, mkdir: bool = True):
+    def __init__(
+        self,
+        pyotb_app: App,
+        param_key: str = None,
+        filepath: str = None,
+        mkdir: bool = True,
+    ):
         """Constructor for an Output object.
 
         Args:
@@ -1262,7 +1436,9 @@ class Output(OTBObject):
     def write(self, filepath: None | str | Path = None, **kwargs) -> bool:
         """Write output to disk, filepath is not required if it was provided to parent App during init."""
         if filepath is None:
-            return self.parent_pyotb_app.write({self.output_image_key: self.filepath}, **kwargs)
+            return self.parent_pyotb_app.write(
+                {self.output_image_key: self.filepath}, **kwargs
+            )
         return self.parent_pyotb_app.write({self.output_image_key: filepath}, **kwargs)
 
     def __str__(self) -> str:
@@ -1293,7 +1469,7 @@ def add_vsi_prefix(filepath: str | Path) -> str:
             ".gz": "vsigzip",
             ".7z": "vsi7z",
             ".zip": "vsizip",
-            ".rar": "vsirar"
+            ".rar": "vsirar",
         }
         basename = filepath.split("?")[0]
         ext = Path(basename).suffix
@@ -1319,8 +1495,12 @@ def get_nbchannels(inp: str | Path | OTBObject) -> int:
         try:
             info = App("ReadImageInfo", inp, quiet=True)
             return info["numberbands"]
-        except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f"Could not get the number of channels file '{inp}' ({info_err})") from info_err
+        except (
+            RuntimeError
+        ) as info_err:  # this happens when we pass a str that is not a filepath
+            raise TypeError(
+                f"Could not get the number of channels file '{inp}' ({info_err})"
+            ) from info_err
     raise TypeError(f"Can't read number of channels of type '{type(inp)}' object {inp}")
 
 
@@ -1341,8 +1521,12 @@ def get_pixel_type(inp: str | Path | OTBObject) -> str:
         try:
             info = App("ReadImageInfo", inp, quiet=True)
             datatype = info["datatype"]  # which is such as short, float...
-        except RuntimeError as info_err:  # this happens when we pass a str that is not a filepath
-            raise TypeError(f"Could not get the pixel type of `{inp}` ({info_err})") from info_err
+        except (
+            RuntimeError
+        ) as info_err:  # this happens when we pass a str that is not a filepath
+            raise TypeError(
+                f"Could not get the pixel type of `{inp}` ({info_err})"
+            ) from info_err
         if datatype:
             return parse_pixel_type(datatype)
     raise TypeError(f"Could not get the pixel type of {type(inp)} object {inp}")
@@ -1376,13 +1560,21 @@ def parse_pixel_type(pixel_type: str | int) -> int:
             return getattr(otb, f"ImagePixelType_{pixel_type}")
         if pixel_type in datatype_to_pixeltype:
             return getattr(otb, f"ImagePixelType_{datatype_to_pixeltype[pixel_type]}")
-        raise KeyError(f"Unknown data type `{pixel_type}`. Available ones: {datatype_to_pixeltype}")
-    raise TypeError(f"Bad pixel type specification ({pixel_type} of type {type(pixel_type)})")
+        raise KeyError(
+            f"Unknown data type `{pixel_type}`. Available ones: {datatype_to_pixeltype}"
+        )
+    raise TypeError(
+        f"Bad pixel type specification ({pixel_type} of type {type(pixel_type)})"
+    )
 
 
 def get_out_images_param_keys(app: OTBObject) -> list[str]:
     """Return every output parameter keys of an OTB app."""
-    return [key for key in app.GetParametersKeys() if app.GetParameterType(key) == otb.ParameterType_OutputImage]
+    return [
+        key
+        for key in app.GetParametersKeys()
+        if app.GetParameterType(key) == otb.ParameterType_OutputImage
+    ]
 
 
 def summarize(
@@ -1406,6 +1598,7 @@ def summarize(
         parameters of an app and its parents
 
     """
+
     def strip_path(param: str | Any):
         if not isinstance(param, str):
             return summarize(param)
@@ -1420,8 +1613,17 @@ def summarize(
 
     parameters = {}
     for key, param in obj.parameters.items():
-        if strip_input_paths and obj.is_input(key) or strip_output_paths and obj.is_output(key):
-            parameters[key] = [strip_path(p) for p in param] if isinstance(param, list) else strip_path(param)
+        if (
+            strip_input_paths
+            and obj.is_input(key)
+            or strip_output_paths
+            and obj.is_output(key)
+        ):
+            parameters[key] = (
+                [strip_path(p) for p in param]
+                if isinstance(param, list)
+                else strip_path(param)
+            )
         else:
             parameters[key] = summarize(param)
     return {"name": obj.app.GetName(), "parameters": parameters}
