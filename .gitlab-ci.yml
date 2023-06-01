@@ -1,15 +1,23 @@
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || $CI_COMMIT_REF_NAME =~ /master/
-
 default:
   image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
   tags:
     - light
+  interruptible: true
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - .cache/pip
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 stages:
   - Static Analysis
-  - Documentation test
   - Tests
   - Ship
 
@@ -18,33 +26,11 @@ stages:
 .static_analysis:
   stage: Static Analysis
   allow_failure: true
-
-codespell:
   rules:
     - changes:
-      - pyotb/*.py
-      - tests/*.py
-      - README.md
-  extends: .static_analysis
-  before_script:
-    - pip install codespell
-  script:
-    - codespell {pyotb,tests,doc,README.md}
-
-flake8:
-  rules:
-    - changes:
-      - pyotb/*.py
-  extends: .static_analysis
-  before_script:
-    - pip install flake8
-  script:
-    - flake8 --max-line-length=120 $PWD/pyotb --ignore=F403,E402,F401,W503,W504
+        - pyotb/*.py
 
 pydocstyle:
-  rules:
-    - changes:
-      - pyotb/*.py
   extends: .static_analysis
   before_script:
     - pip install pydocstyle tomli
@@ -52,83 +38,74 @@ pydocstyle:
     - pydocstyle $PWD/pyotb
 
 pylint:
-  rules:
-    - changes:
-      - pyotb/*.py
   extends: .static_analysis
   before_script:
     - pip install pylint
   script:
     - pylint $PWD/pyotb
 
-# ---------------------------------- Documentation  ----------------------------------
-
-.docs:
+codespell:
+  extends: .static_analysis
+  rules:
+    - changes:
+        - .gitlab-ci.yml
+        - pyotb/*.py
+        - tests/*.py
+        - doc/*.md
+        - README.md
   before_script:
-    - apt-get update && apt-get -y install virtualenv
-    - virtualenv doc_env
-    - source doc_env/bin/activate
-    - pip install -U pip
-    - pip install -U -r doc/doc_requirements.txt
-
-pages_test:
-  stage: Documentation test
-  extends: .docs
-  except:
-    - master
-  when: manual
+    - pip install codespell
   script:
-    - mkdocs build --site-dir public_test
-  artifacts:
-    paths:
-      - public_test
+    - codespell {pyotb,tests,doc,README.md}
 
-# -------------------------------------- Tests -------------------------------------- 
+# -------------------------------------- Tests --------------------------------------
 
 .tests:
   stage: Tests
+  allow_failure: false
   rules:
     - changes:
-      - pyotb/*.py
-      - tests/*.py
-  allow_failure: false
+        - .gitlab-ci.yml
+        - pyotb/*.py
+        - tests/*.py
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
     OTB_LOGGER_LEVEL: INFO
     PYOTB_LOGGER_LEVEL: DEBUG
-    IMAGE_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif?inline=false
-    TEST_INPUT_IMAGE: tests/image.tif
   artifacts:
     reports:
       junit: test-*.xml
   before_script:
-    - wget $IMAGE_URL -O $TEST_INPUT_IMAGE
-    - pip install pytest requests
+    - pip install pytest
+    - pip install .
 
 test_core:
   extends: .tests
   script:
-    - python3 -m pytest --color=yes --junitxml=test-core.xml tests/test_core.py
+    - pytest --color=yes --junitxml=test-core.xml tests/test_core.py
 
 test_numpy:
   extends: .tests
   script:
-    - python3 -m pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
+    - pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
-  #when: manual
   extends: .tests
   script:
-    - python3 -m pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
+    - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
-# -------------------------------------- Ship --------------------------------------- 
+# -------------------------------------- Ship ---------------------------------------
 
-pages:
+docs:
   stage: Ship
-  extends: .docs
-  only:
-    - master
+  when: manual
+  before_script:
+    - apt update && apt install -y python3.8-venv
+    - python3 -m venv docs_venv
+    - source docs_venv/bin/activate
+    - python3 -m pip install -U pip
+    - python3 -m pip install -r doc/doc_requirements.txt
   script:
     - mkdocs build --site-dir public
   artifacts:
@@ -137,11 +114,15 @@ pages:
 
 pypi:
   stage: Ship
+  when: manual
   only:
-   - master
+    - tags
+    - master
+    - develop
+
   before_script:
-   - apt update && apt install -y python3.8-venv
-   - python3 -m pip install --upgrade build twine
+    - apt update && apt install -y python3.8-venv
+    - pip install --upgrade build twine
   script:
-   - python3 -m build
-   - python3 -m twine upload --repository-url https://upload.pypi.org/legacy/ --non-interactive -u __token__ -p $pypi_token dist/*
+    - python3 -m build
+    - python3 -m twine upload --non-interactive -u __token__ -p $pypi_token dist/*
