@@ -1,6 +1,5 @@
 default:
-  image:
-    name: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
+  image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
   tags:
     - light
   interruptible: true
@@ -27,30 +26,34 @@ stages:
 .static_analysis:
   stage: Static Analysis
   allow_failure: true
-  rules:
-    - changes:
-        - pyotb/*.py
-  before_script:
-    - pip install ".[dev]"
+  # rules:
+  #   - changes:
+  #       - pyotb/*.py
 
 pydocstyle:
   extends: .static_analysis
+  before_script:
+    - pip install pydocstyle
   script:
     - pydocstyle $PWD/pyotb
 
 pylint:
   extends: .static_analysis
+  before_script:
+    - pip install pylint
   script:
     - pylint $PWD/pyotb
 
 codespell:
   extends: .static_analysis
-  rules:
-    - changes:
-        - pyotb/*.py
-        - tests/*.py
-        - doc/*.md
-        - README.md
+  # rules:
+  #   - changes:
+  #       - pyotb/*.py
+  #       - tests/*.py
+  #       - doc/*.md
+  #       - README.md
+  before_script:
+    - pip install codespell
   script:
     - codespell {pyotb,tests,doc,README.md}
 
@@ -59,10 +62,10 @@ codespell:
 .tests:
   stage: Tests
   allow_failure: false
-  rules:
-    - changes:
-        - pyotb/*.py
-        - tests/*.py
+  # rules:
+  #   - changes:
+  #       - pyotb/*.py
+  #       - tests/*.py
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
@@ -72,7 +75,8 @@ codespell:
     reports:
       junit: test-*.xml
   before_script:
-    - pip install ".[dev]"
+    - pip install pytest
+    - pip install .
 
 test_core:
   extends: .tests
