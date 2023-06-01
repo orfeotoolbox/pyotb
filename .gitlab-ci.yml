@@ -4,10 +4,13 @@ default:
   tags:
     - light
   interruptible: true
-  cache:
-    key: $CI_COMMIT_SHA
-    paths:
-      - venv
+  before_script:
+    - source venv/bin/activate
+
+cache:
+  key: $CI_COMMIT_SHA
+  paths:
+    - venv
 
 workflow:
   rules:
@@ -21,12 +24,14 @@ stages:
   - Ship
 
 #  ------------------------------ Installation in venv ------------------------------
+
 install:
   stage: Install
-  script:
+  before_script:
     - apt update && apt install -y python3.8-venv
     - python3 -m venv venv
     - source venv/bin/activate
+  script:
     - pip install ".[dev]"
 
 #  -------------------------------- Static analysis --------------------------------
@@ -45,7 +50,6 @@ codespell:
   #      - doc/*.md
   #      - README.md
   script:
-    - source venv/bin/activate
     - codespell {pyotb,tests,doc,README.md}
 
 pydocstyle:
@@ -54,7 +58,6 @@ pydocstyle:
   #  - changes:
   #      - pyotb/*.py
   script:
-    - source venv/bin/activate
     - pydocstyle $PWD/pyotb
 
 pylint:
@@ -63,7 +66,6 @@ pylint:
   #  - changes:
   #      - pyotb/*.py
   script:
-    - source venv/bin/activate
     - pylint $PWD/pyotb
 
 # -------------------------------------- Tests --------------------------------------
@@ -88,19 +90,16 @@ pylint:
 test_core:
   extends: .tests
   script:
-    - source venv/bin/activate
     - pytest --color=yes --junitxml=test-core.xml tests/test_core.py
 
 test_numpy:
   extends: .tests
   script:
-    - source venv/bin/activate
     - pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
   extends: .tests
   script:
-    - source venv/bin/activate
     - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
 # ---------------------------------- Documentation  ----------------------------------
@@ -109,10 +108,6 @@ test_pipeline:
     - python3 -m venv docs_venv
     - source docs_venv/bin/activate
     - pip install -U -r doc/doc_requirements.txt
-  cache:
-    key: $CI_COMMIT_REF_SLUG
-    paths:
-      - docs_venv
 
 docs_test:
   stage: Documentation test
