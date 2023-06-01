@@ -26,9 +26,9 @@ stages:
 .static_analysis:
   stage: Static Analysis
   allow_failure: true
-  # rules:
-  #   - changes:
-  #       - pyotb/*.py
+  rules:
+    - changes:
+        - pyotb/*.py
 
 pydocstyle:
   extends: .static_analysis
@@ -46,12 +46,12 @@ pylint:
 
 codespell:
   extends: .static_analysis
-  # rules:
-  #   - changes:
-  #       - pyotb/*.py
-  #       - tests/*.py
-  #       - doc/*.md
-  #       - README.md
+  rules:
+    - changes:
+        - pyotb/*.py
+        - tests/*.py
+        - doc/*.md
+        - README.md
   before_script:
     - pip install codespell
   script:
@@ -62,10 +62,11 @@ codespell:
 .tests:
   stage: Tests
   allow_failure: false
-  # rules:
-  #   - changes:
-  #       - pyotb/*.py
-  #       - tests/*.py
+    - changes:
+        - .gitlab-ci.yml
+        - pyotb/*.py
+        - tests/*.py
+  rules:
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
