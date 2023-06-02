@@ -246,8 +246,8 @@ def test_ndvi_comparison():
     ndvi_bandmath = (INPUT[:, :, -1] - INPUT[:, :, [0]]) / (INPUT[:, :, -1] + INPUT[:, :, 0])
     ndvi_indices = pyotb.RadiometricIndices(INPUT, {"list": ["Vegetation:NDVI"], "channels.red": 1, "channels.nir": 4})
     assert ndvi_bandmath.exp == "((im1b4 - im1b1) / (im1b4 + im1b1))"
-    assert ndvi_bandmath.write("/tmp/ndvi_bandmath.tif", pixel_type="float")
-    assert ndvi_indices.write("/tmp/ndvi_indices.tif", pixel_type="float")
+    assert ndvi_bandmath.write("/tmp/ndvi_bandmath.tif", "float")
+    assert ndvi_indices.write("/tmp/ndvi_indices.tif", "float")
 
     compared = pyotb.CompareImages({"ref.in": ndvi_indices, "meas.in": "/tmp/ndvi_bandmath.tif"})
     assert (compared["count"], compared["mse"]) == (0, 0)

@@ -43,7 +43,7 @@ roi = ndvi[20:586, 9:572]
 
 # Pipeline execution
 # The actual computation happens here !
-roi.write("output.tif", pixel_type="float")
+roi.write("output.tif", "float")
 ```
 
 pyotb's objects also enable easy interoperability with 
