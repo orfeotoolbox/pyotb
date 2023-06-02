@@ -729,9 +729,9 @@ class App(OTBObject):
     def write(
         self,
         path: str | Path | dict[str, str] = None,
-        ext_fname: str = "",
         pixel_type: dict[str, str] | str = None,
         preserve_dtype: bool = False,
+        ext_fname: str = "",
         **kwargs,
     ) -> bool:
         """Set output pixel type and write the output raster files.
