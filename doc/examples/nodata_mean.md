@@ -23,4 +23,3 @@ mean.write('ndvi_annual_mean.tif')
 ```
 
 Note that no actual computation is executed before the last line where the result is written to disk.
-

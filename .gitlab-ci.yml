@@ -23,6 +23,7 @@ workflow:
 stages:
   - Static Analysis
   - Tests
+  - Documentation
   - Ship
 
 #  -------------------------------- Static analysis --------------------------------
@@ -52,11 +53,8 @@ codespell:
   extends: .static_analysis
   rules:
     - changes:
-        - .gitlab-ci.yml
-        - pyotb/*.py
-        - tests/*.py
-        - doc/*.md
-        - README.md
+        - "**/*.py"
+        - "**/*.md"
   before_script:
     - pip install codespell
   script:
@@ -69,9 +67,7 @@ codespell:
   allow_failure: false
   rules:
     - changes:
-        - .gitlab-ci.yml
-        - pyotb/*.py
-        - tests/*.py
+        - "**/*.py"
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
@@ -99,13 +95,16 @@ test_pipeline:
   script:
     - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
-# -------------------------------------- Ship ---------------------------------------
+# -------------------------------------- Docs ---------------------------------------
 
 docs:
-  stage: Ship
-  only:
-    - master
-    - develop
+  stage: Documentation
+  # when: manual
+  rules:
+    - changes:
+      - mkdocs.yml
+      - doc/*
+      - pyotb/*.py
   before_script:
     - apt update && apt install -y python3.8-venv
     - python3 -m venv docs_venv
@@ -118,12 +117,13 @@ docs:
     paths:
       - public
 
+# -------------------------------------- Ship ---------------------------------------
+
 pypi:
   stage: Ship
   # when: manual
   only:
     - tags
-
   before_script:
     - apt update && apt install -y python3.8-venv
     - pip install build twine
