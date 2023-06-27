@@ -1,7 +1,9 @@
 ## Arithmetic operations
 
-Every pyotb object supports arithmetic operations, such as addition, subtraction, comparison...
-Consider an example where we want to compute a vegeteation mask from NDVI, i.e. the arithmetic operation `(nir - red) / (nir + red) > 0.3`
+Every pyotb object supports arithmetic operations, such as addition, 
+subtraction, comparison...
+Consider an example where we want to compute a vegeteation mask from NDVI, 
+i.e. the arithmetic operation `(nir - red) / (nir + red) > 0.3`
 
 With pyotb, one can simply do :
 
@@ -12,7 +14,9 @@ import pyotb
 nir, red = pyotb.Input('nir.tif'), pyotb.Input('red.tif')
 
 res = (nir - red) / (nir + red) > 0.3
-print(res.exp)  # prints the BandMath expression: "((im1b1 - im2b1) / (im1b1 + im2b1)) > 0.3 ? 1 : 0"
+# Prints the BandMath expression:
+# "((im1b1 - im2b1) / (im1b1 + im2b1)) > 0.3 ? 1 : 0"
+print(res.exp)
 res.write('vegetation_mask.tif', pixel_type='uint8')
 ```
 

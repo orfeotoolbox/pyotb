@@ -1,14 +1,20 @@
-## Troubleshooting: known limitations
+## Troubleshooting: known limitations with old versions
+
+!!! Info
+
+    All defects described below have been fixed since OTB 8.1.2 and pyotb 2.0.0
 
 ### Failure of intermediate writing
 
-When chaining applications in-memory, there may be some problems when writing intermediate results, depending on the order
+When chaining applications in-memory, there may be some problems when writing 
+intermediate results, depending on the order
 the writings are requested. Some examples can be found below:
 
 #### Example of failures involving slicing
 
-For some applications (non-exhaustive know list: OpticalCalibration, DynamicConvert, BandMath), we can face unexpected
- failures when using channels slicing
+For some applications (non-exhaustive know list: OpticalCalibration, 
+DynamicConvert, BandMath), we can face unexpected failures when using channels 
+slicing
 
 ```python
 import pyotb
@@ -55,8 +61,8 @@ one_band.write('one_band.tif')
 
 #### Example of failures involving arithmetic operation
 
-One can meet errors when using arithmetic operations at the end of a pipeline when DynamicConvert, BandMath or
-OpticalCalibration is involved:
+One can meet errors when using arithmetic operations at the end of a pipeline 
+when DynamicConvert, BandMath or OpticalCalibration is involved:
 
 ```python
 import pyotb
