@@ -42,9 +42,18 @@ output = pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif'})
 ```
 
 Limitations : for this notation, python doesn't accept the parameter `in` or 
-any parameter that contains a `.`. E.g., it is not possible to use 
-`pyotb.RigidTransformResample(in=input_path...)` or 
-`pyotb.VectorDataExtractROI(io.vd=vector_path...)`.
+any parameter that contains a dots (e.g. `io.in)`.
+For `in` and other main input parameters of an OTB app, you may simply pass  
+the value as first argument, pyotb will guess the parameter name.  
+For parameters that contains dots, you can either use a dictionary, or  replace dots (`.`) with underscores (`_`) as follow :  
+
+```python
+resampled = pyotb.RigidTransformResample(
+    'my_image.tif', 
+    interpolator = 'linear',
+    transform_type_id_scaley = 0.5, 
+    transform_type_id_scalex = 0.5
+)
 
 ## In-memory connections
 
