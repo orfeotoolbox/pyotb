@@ -44,7 +44,7 @@ class OTBObject(ABC):
         The returned dict results from the concatenation of the first output
         image metadata dictionary and the metadata dictionary.
 
-         """
+        """
         # Image Metadata
         otb_imd = self.app.GetImageMetadata(self.output_image_key)
         cats = ["Num", "Str", "L1D", "Time"]
