@@ -95,6 +95,11 @@ test_pipeline:
   script:
     - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
+test_metadata:
+  extends: .tests
+  script:
+    - pytest --color=yes --junitxml=test-metadata.xml tests/test_metadata.py
+
 # -------------------------------------- Docs ---------------------------------------
 
 docs:
