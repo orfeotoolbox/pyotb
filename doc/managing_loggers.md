@@ -18,7 +18,7 @@ import pyotb
 pyotb.set_logger_level('DEBUG')
 ```
 
-Bonus : in some cases, yo may want to silence the GDAL driver logger (for 
+Bonus : in some cases, you may want to silence the GDAL driver logger (for 
 example you will see a lot of errors when reading GML files with OGR).  
 One useful trick is to redirect these logs to a file. This can be done using 
 the variable `CPL_LOG`.
