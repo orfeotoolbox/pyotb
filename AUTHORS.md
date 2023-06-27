@@ -2,9 +2,9 @@
 
 ## Initial codebase
 
-* Nicolas NARÇON - IT engineer @ ESA - Rome (Italy)
+* Nicolas NARÇON (INRAE, now ESA)
 
 ## Current maintainers
 
-* Rémi CRESSON - RS research engineer @ INRAe - Montpellier (France)
-* Vincent DELBAR - GIS engineer @ La TeleScop - Montpellier (France)
+* Rémi CRESSON (INRAE)
+* Vincent DELBAR (La TeleScop)
