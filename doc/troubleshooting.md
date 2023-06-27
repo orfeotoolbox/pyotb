@@ -1,6 +1,6 @@
 ## Troubleshooting: known limitations with old versions
 
-!!! Info
+!!! note
 
     All defects described below have been fixed since OTB 8.1.2 and pyotb 2.0.0
 
