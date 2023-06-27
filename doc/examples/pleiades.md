@@ -1,5 +1,6 @@
 ### Process raw Pleiades data
-This is a common case of Pleiades data preprocessing : optical calibration -> orthorectification -> pansharpening
+This is a common case of Pleiades data preprocessing : 
+*optical calibration -> orthorectification -> pansharpening*
 
 ```python
 import pyotb
@@ -34,6 +35,7 @@ pxs = pyotb.BundleToPerfectSensor(
 )
 
 exfn = '?gdal:co:COMPRESS=DEFLATE&gdal:co:PREDICTOR=2&gdal:co:BIGTIFF=YES'
-# Here we trigger every app in the pipeline and the process is blocked until result is written to disk
+# Here we trigger every app in the pipeline and the process is blocked until 
+# result is written to disk
 pxs.write('pxs_image.tif', pixel_type='uint16', ext_fname=exfn)
 ```

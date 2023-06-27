@@ -4,7 +4,7 @@
 
     All defects described below have been fixed since OTB 8.1.2 and pyotb 2.0.0
 
-### Failure of intermediate writing
+### Failure of intermediate writing (otb < 8.1, pyotb < 1.5.4)
 
 When chaining applications in-memory, there may be some problems when writing 
 intermediate results, depending on the order
