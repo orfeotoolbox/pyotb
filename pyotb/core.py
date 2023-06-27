@@ -39,10 +39,13 @@ class OTBObject(ABC):
 
     @property
     def metadata(self) -> dict[str, (str, float, list[float])]:
-        """Return the concatenation of the first output image metadata
-        dictionary and the metadata dictionary."""
+        """Return metadata.
 
-        # Image Metadata only when there are values
+         The returned dict results from the concatenation of the first output
+         image metadata dictionary and the metadata dictionary.
+
+         """
+        # Image Metadata
         otb_imd = self.app.GetImageMetadata(self.output_image_key)
         cats = ["Num", "Str", "L1D", "Time"]
         imd = {
