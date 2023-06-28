@@ -84,6 +84,12 @@ def test_metadata():
     assert "ProjectionRef", "TIFFTAG_SOFTWARE" in INPUT.metadata
     assert "ProjectionRef", "OVR_RESAMPLING_ALG" in INPUT2.metadata
 
+    # Metadata with numeric values (e.g. TileHintX)
+    fp = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/" \
+         "Data/Input/radarsat2/RADARSAT2_ALTONA_300_300_VV.tif?inline=false"
+    app = pyotb.BandMath({"il": [fp], "exp": "im1b1"})
+    assert "TileHintX" in app.metadata
+
 
 def test_nonraster_property():
     with pytest.raises(TypeError):
