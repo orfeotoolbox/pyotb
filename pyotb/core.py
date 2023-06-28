@@ -39,8 +39,42 @@ class OTBObject(ABC):
 
     @property
     def metadata(self) -> dict[str, (str, float, list[float])]:
-        """Return first output image metadata dictionary."""
-        return dict(self.app.GetMetadataDictionary(self.output_image_key))
+        """Return metadata.
+
+        The returned dict results from the concatenation of the first output
+        image metadata dictionary and the metadata dictionary.
+
+        """
+        # Image Metadata
+        otb_imd = self.app.GetImageMetadata(self.output_image_key)
+        cats = ["Num", "Str", "L1D", "Time"]
+        imd = {
+            key: getattr(otb_imd, f"get_{cat.lower()}")(key)
+            for cat in cats
+            for key in getattr(otb_imd, f"GetKeyList{cat}")().split(" ")
+            if getattr(otb_imd, "has")(key)
+        }
+
+        # Metadata dictionary
+        # Replace items like {"metadata_1": "TIFFTAG_SOFTWARE=CSinG - 13
+        # SEPTEMBRE 2012"} with {"TIFFTAG_SOFTWARE": "CSinG - 13 SEPTEMBRE
+        # 2012"}
+        mdd = dict(self.app.GetMetadataDictionary(self.output_image_key))
+        new_mdd = {}
+        for key, val in mdd.items():
+            new_key = key
+            new_val = val
+            if isinstance(val, str):
+                splits = val.split("=")
+                if key.lower().startswith("metadata_") and len(splits) == 2:
+                    new_key = splits[0].strip()
+                    new_val = splits[1].strip()
+            new_mdd[new_key] = new_val
+
+        return {
+            **new_mdd,
+            **imd
+        }
 
     @property
     def dtype(self) -> np.dtype:

@@ -1,6 +1,5 @@
 import pytest
 
-import pyotb
 from tests_data import *
 
 
@@ -78,7 +77,18 @@ def test_data():
 
 
 def test_metadata():
-    assert INPUT.metadata["Metadata_1"] == "TIFFTAG_SOFTWARE=CSinG - 13 SEPTEMBRE 2012"
+    INPUT2 = pyotb.Input(
+        "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/"
+        "47/Q/RU/2021/12/S2B_47QRU_20211227_0_L2A/B04.tif"
+    )
+    assert "ProjectionRef", "TIFFTAG_SOFTWARE" in INPUT.metadata
+    assert "ProjectionRef", "OVR_RESAMPLING_ALG" in INPUT2.metadata
+
+    # Metadata with numeric values (e.g. TileHintX)
+    fp = "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/" \
+         "Data/Input/radarsat2/RADARSAT2_ALTONA_300_300_VV.tif?inline=false"
+    app = pyotb.BandMath({"il": [fp], "exp": "im1b1"})
+    assert "TileHintX" in app.metadata
 
 
 def test_nonraster_property():
