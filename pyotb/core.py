@@ -810,19 +810,37 @@ class App(OTBObject):
 
         # Append filename extension to filenames
         if ext_fname:
-            logger.debug(
-                "%s: using extended filename for outputs: %s", self.name, ext_fname
-            )
-            if not ext_fname.startswith("?"):
-                ext_fname = "?&" + ext_fname
-            elif not ext_fname.startswith("?&"):
-                ext_fname = "?&" + ext_fname[1:]
-            for key, value in kwargs.items():
-                if (
-                    self._out_param_types[key] == otb.ParameterType_OutputImage
-                    and "?" not in value
-                ):
-                    parameters[key] = value + ext_fname
+            if not isinstance(ext_fname, (dict, str)):
+                raise ValueError("Extended filename must be a str or a dict")
+            def _str2dict(ext_str):
+                """Function that converts str to dict."""
+                splits = [pair.split("=") for pair in ext_str.split("&")]
+                return dict(split for split in splits if len(split) == 2)
+
+            if isinstance(ext_fname, str):
+                ext_fname = _str2dict(ext_fname)
+
+            logger.debug("%s: extended filename for all outputs:", self.name)
+            for key, ext in ext_fname.items():
+                logger.debug("%s: %s", key, ext)
+
+            for key, filepath in kwargs.items():
+                if self._out_param_types[key] == otb.ParameterType_OutputImage:
+                    new_ext_fname = ext_fname.copy()
+
+                    # grab already set extended filename key/values
+                    if "?&" in filepath:
+                        filepath, already_set_ext = filepath.split("?&", 1)
+                        # extensions in filepath prevail over `new_ext_fname`
+                        new_ext_fname.update(_str2dict(already_set_ext))
+
+                    # transform dict to str
+                    ext_fname_str = "&".join([
+                        f"{key}={value}"
+                        for key, value in new_ext_fname.items()
+                    ])
+                    parameters[key] = f"{filepath}?&{ext_fname_str}"
+
         # Manage output pixel types
         data_types = {}
         if pixel_type:

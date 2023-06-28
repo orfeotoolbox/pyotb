@@ -121,6 +121,68 @@ def test_write():
     INPUT["out"].filepath.unlink()
 
 
+def test_ext_fname():
+    def _check(expected: str, key: str = "out", app = INPUT.app):
+        fn = app.GetParameterString(key)
+        assert "?&" in fn
+        assert fn.split("?&", 1)[1] == expected
+
+    assert INPUT.write("/tmp/test_write.tif", ext_fname="nodata=0")
+    _check("nodata=0")
+    assert INPUT.write("/tmp/test_write.tif", ext_fname={"nodata": "0"})
+    _check("nodata=0")
+    assert INPUT.write("/tmp/test_write.tif", ext_fname={"nodata": 0})
+    _check("nodata=0")
+    assert INPUT.write(
+        "/tmp/test_write.tif",
+        ext_fname={
+            "nodata": 0,
+            "gdal:co:COMPRESS": "DEFLATE"
+        }
+    )
+    _check("nodata=0&gdal:co:COMPRESS=DEFLATE")
+    assert INPUT.write(
+        "/tmp/test_write.tif",
+        ext_fname="nodata=0&gdal:co:COMPRESS=DEFLATE"
+    )
+    _check("nodata=0&gdal:co:COMPRESS=DEFLATE")
+    assert INPUT.write(
+        "/tmp/test_write.tif?&box=0:0:10:10",
+        ext_fname={
+            "nodata": "0",
+            "gdal:co:COMPRESS": "DEFLATE",
+            "box": "0:0:20:20"
+        }
+    )
+    # Check that the bbox is the one specified in the filepath, not the one
+    # specified in `ext_filename`
+    _check("nodata=0&gdal:co:COMPRESS=DEFLATE&box=0:0:10:10")
+    assert INPUT.write(
+        "/tmp/test_write.tif?&box=0:0:10:10",
+        ext_fname="nodata=0&gdal:co:COMPRESS=DEFLATE&box=0:0:20:20"
+    )
+    _check("nodata=0&gdal:co:COMPRESS=DEFLATE&box=0:0:10:10")
+
+    INPUT["out"].filepath.unlink()
+
+    mss = pyotb.MeanShiftSmoothing(FILEPATH)
+    mss.write(
+        {
+            "fout": "/tmp/test_ext_fn_fout.tif?&nodata=1",
+            "foutpos": "/tmp/test_ext_fn_foutpos.tif?&nodata=2"
+        },
+        ext_fname={
+            "nodata": 0,
+            "gdal:co:COMPRESS": "DEFLATE"
+        }
+    )
+    _check("nodata=1&gdal:co:COMPRESS=DEFLATE", key="fout", app=mss.app)
+    _check("nodata=2&gdal:co:COMPRESS=DEFLATE", key="foutpos", app=mss.app)
+    mss["fout"].filepath.unlink()
+    mss["foutpos"].filepath.unlink()
+
+
+
 def test_frozen_app_write():
     app = pyotb.BandMath(INPUT, exp="im1b1", frozen=True)
     assert app.write("/tmp/test_frozen_app_write.tif")
