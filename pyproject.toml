@@ -6,15 +6,15 @@ build-backend = "setuptools.build_meta"
 name = "pyotb"
 description = "Library to enable easy use of the Orfeo ToolBox (OTB) in Python"
 authors = [
-    { name = "Rémi Cresson", email = "remi.cresson@inrae.fr" },
-    { name = "Nicolas Narçon" },
-    { name = "Vincent Delbar" },
+    {name="Rémi Cresson", email="remi.cresson@inrae.fr"},
+    {name="Nicolas Narçon"},
+    {name="Vincent Delbar"},
 ]
 requires-python = ">=3.7"
 keywords = ["gis", "remote sensing", "otb", "orfeotoolbox", "orfeo toolbox"]
 dependencies = ["numpy>=1.16"]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = {text="Apache-2.0"}
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -41,7 +41,7 @@ repository = "https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb"
 packages = ["pyotb"]
 
 [tool.setuptools.dynamic]
-version = { attr = "pyotb.__version__" }
+version = {attr="pyotb.__version__"}
 
 [tool.pylint]
 max-line-length = 88
