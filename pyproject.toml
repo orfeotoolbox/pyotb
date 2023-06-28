@@ -14,7 +14,7 @@ requires-python = ">=3.7"
 keywords = ["gis", "remote sensing", "otb", "orfeotoolbox", "orfeo toolbox"]
 dependencies = ["numpy>=1.16"]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
 dynamic = ["version"]
 classifiers = [
     "Programming Language :: Python :: 3",
