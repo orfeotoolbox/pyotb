@@ -60,13 +60,13 @@ class OTBObject(ABC):
         # SEPTEMBRE 2012"} with {"TIFFTAG_SOFTWARE": "CSinG - 13 SEPTEMBRE
         # 2012"}
         mdd = dict(self.app.GetMetadataDictionary(self.output_image_key))
-        new_mdd = {
-            splits[0].strip()
-            if (replace := (k.lower().startswith("metadata_") and
-                            len(splits := v.split("=")) == 2)) else k:
-                splits[1].strip() if replace else v
-            for k, v in mdd.items()
-        }
+        new_mdd = {}
+        for key, val in mdd.items():
+            splits = val.split("=")
+            if key.lower().startswith("metadata_") and len(splits) == 2:
+                new_mdd[splits[0].strip()] = splits[1].strip()
+            else:
+                new_mdd[key] = val
 
         return {
             **new_mdd,
