@@ -62,11 +62,14 @@ class OTBObject(ABC):
         mdd = dict(self.app.GetMetadataDictionary(self.output_image_key))
         new_mdd = {}
         for key, val in mdd.items():
-            splits = val.split("=")
-            if key.lower().startswith("metadata_") and len(splits) == 2:
-                new_mdd[splits[0].strip()] = splits[1].strip()
-            else:
-                new_mdd[key] = val
+            new_key = key
+            new_val = val
+            if isinstance(val, str):
+                splits = val.split("=")
+                if key.lower().startswith("metadata_") and len(splits) == 2:
+                    new_key = splits[0].strip()
+                    new_val = splits[1].strip()
+            new_mdd[new_key] = new_val
 
         return {
             **new_mdd,
