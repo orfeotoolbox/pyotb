@@ -203,6 +203,10 @@ def test_frozen_output_write():
     assert app["out"].write("/tmp/test_frozen_app_write.tif")
     app["out"].filepath.unlink()
 
+def test_parameters():
+    app = pyotb.OrthoRectification(FILEPATH)
+    assert isinstance(app.parameters["map"], str)
+    assert app.parameters["map"] == "utm"
 
 def test_output_in_arg():
     info = pyotb.ReadImageInfo(INPUT["out"])
