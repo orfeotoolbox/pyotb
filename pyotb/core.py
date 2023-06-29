@@ -558,7 +558,7 @@ class App(OTBObject):
     @property
     def parameters(self):
         """Return used OTB application parameters."""
-        return {**self._auto_parameters, **self.app.GetParameters(), **self._settings}
+        return {**self.app.GetParameters(), **self._auto_parameters, **self._settings}
 
     @property
     def exports_dic(self) -> dict[str, dict]:
