@@ -691,6 +691,8 @@ class App(OTBObject):
             self._settings[key] = obj
             if key in self.outputs:
                 self.outputs[key].filepath = obj
+            if key in self._auto_parameters:
+                del self._auto_parameters[key]
 
     def propagate_dtype(self, target_key: str = None, dtype: int = None):
         """Propagate a pixel type from main input to every outputs, or to a target output key only.
