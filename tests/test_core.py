@@ -8,6 +8,19 @@ def test_parameters():
     assert INPUT.parameters
     assert INPUT.parameters["in"] == FILEPATH
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
+    app = pyotb.OrthoRectification(INPUT)
+    assert isinstance(app.parameters["map"], str)
+    assert app.parameters["map"] == "utm"
+    assert "map" in app._auto_parameters
+    app.set_parameters({"map": "epsg", "map.epsg.code": 2154})
+    assert app.parameters["map"] == "epsg"
+    assert "map" in app._settings and "map" not in app._auto_parameters
+    assert app.parameters["map.epsg.code"] == app.app.GetParameters()["map.epsg.code"]
+
+
+def test_param_with_underscore():
+    app = pyotb.OrthoRectification(io_in=INPUT, map_epsg_code=2154)
+    assert app.parameters["map.epsg.code"] == 2154
 
 
 def test_input_vsi():
@@ -34,11 +47,6 @@ def test_input_vsi():
 def test_input_vsi_from_user():
     # Ensure old way is still working: ExtractROI will raise RuntimeError if a path is malformed
     pyotb.Input("/vsicurl/" + FILEPATH)
-
-
-def test_param_with_underscore():
-    app = pyotb.OrthoRectification(io_in=INPUT, map_epsg_code=2154)
-    assert app.parameters["map.epsg.code"] == 2154
 
 
 def test_wrong_key():
