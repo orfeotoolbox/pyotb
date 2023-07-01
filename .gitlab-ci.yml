@@ -83,17 +83,17 @@ codespell:
 test_core:
   extends: .tests
   script:
-    - pytest --color=yes --junitxml=test-core.xml tests/test_core.py
+    - pytest -vv --color=yes --junitxml=test-core.xml tests/test_core.py
 
 test_numpy:
   extends: .tests
   script:
-    - pytest --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
+    - pytest -vv --color=yes --junitxml=test-numpy.xml tests/test_numpy.py
 
 test_pipeline:
   extends: .tests
   script:
-    - pytest --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
+    - pytest -vv --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
 
 # -------------------------------------- Docs ---------------------------------------
 
