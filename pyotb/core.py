@@ -967,13 +967,15 @@ class App(OTBObject):
                     value = str(value)
                 except RuntimeError:
                     continue
+            if not (bool(value) or value == 0):
+                continue
             # Here we should use AND self.app.IsParameterEnabled(key) but it's broken
-            if not self.app.GetParameterRole(key) and (
+            if self.app.GetParameterRole(key) == 0 and (
                 self.app.HasAutomaticValue(key) or self.app.IsParameterEnabled(key)
             ):
                 self._auto_parameters[key] = value
             # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
-            elif self.app.GetParameterRole(key) == 1 and (bool(value) or value == 0):
+            elif self.app.GetParameterRole(key) == 1:
                 if isinstance(value, str):
                     try:
                         value = literal_eval(value)
