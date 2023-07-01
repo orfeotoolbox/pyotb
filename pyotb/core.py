@@ -546,6 +546,8 @@ class App(OTBObject):
             self.execute()
             if any(key in self._settings for key in self._out_param_types):
                 self.flush()
+        else:
+            self.__sync_parameters()  # since not called during execute()
 
     @property
     def name(self) -> str:
@@ -560,7 +562,7 @@ class App(OTBObject):
     @property
     def parameters(self):
         """Return used OTB application parameters."""
-        return {**self.app.GetParameters(), **self._auto_parameters, **self._settings}
+        return {**self._auto_parameters, **self._settings}
 
     @property
     def exports_dic(self) -> dict[str, dict]:
@@ -762,6 +764,8 @@ class App(OTBObject):
             )
             self._time_start = perf_counter()
             self.app.ExecuteAndWriteOutput()
+            self.__sync_parameters()
+            self.frozen = False
         self._time_end = perf_counter()
 
     def write(
