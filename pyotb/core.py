@@ -71,10 +71,7 @@ class OTBObject(ABC):
                     new_val = splits[1].strip()
             new_mdd[new_key] = new_val
 
-        return {
-            **new_mdd,
-            **imd
-        }
+        return {**new_mdd, **imd}
 
     @property
     def dtype(self) -> np.dtype:
@@ -443,27 +440,19 @@ class App(OTBObject):
     """Base class that gathers common operations for any OTB application."""
 
     INPUT_IMAGE_TYPES = [
-        # Images only
         otb.ParameterType_InputImage,
         otb.ParameterType_InputImageList,
     ]
     INPUT_PARAM_TYPES = INPUT_IMAGE_TYPES + [
-        # Vectors
         otb.ParameterType_InputVectorData,
         otb.ParameterType_InputVectorDataList,
-        # Filenames
         otb.ParameterType_InputFilename,
         otb.ParameterType_InputFilenameList,
     ]
 
-    OUTPUT_IMAGE_TYPES = [
-        # Images only
-        otb.ParameterType_OutputImage
-    ]
+    OUTPUT_IMAGE_TYPES = [otb.ParameterType_OutputImage]
     OUTPUT_PARAM_TYPES = OUTPUT_IMAGE_TYPES + [
-        # Vectors
         otb.ParameterType_OutputVectorData,
-        # Filenames
         otb.ParameterType_OutputFilename,
     ]
 
@@ -820,6 +809,7 @@ class App(OTBObject):
         if ext_fname:
             if not isinstance(ext_fname, (dict, str)):
                 raise ValueError("Extended filename must be a str or a dict")
+
             def _str2dict(ext_str):
                 """Function that converts str to dict."""
                 splits = [pair.split("=") for pair in ext_str.split("&")]
@@ -843,10 +833,9 @@ class App(OTBObject):
                         new_ext_fname.update(_str2dict(already_set_ext))
 
                     # transform dict to str
-                    ext_fname_str = "&".join([
-                        f"{key}={value}"
-                        for key, value in new_ext_fname.items()
-                    ])
+                    ext_fname_str = "&".join(
+                        [f"{key}={value}" for key, value in new_ext_fname.items()]
+                    )
                     parameters[key] = f"{filepath}?&{ext_fname_str}"
 
         # Manage output pixel types
