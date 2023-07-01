@@ -521,15 +521,17 @@ class App(OTBObject):
         # Param keys and types
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self._all_param_types = {
-            k: self.app.GetParameterType(k) for k in self.parameters_keys
+            key: self.app.GetParameterType(key) for key in self.parameters_keys
         }
-        types = (
-            otb.ParameterType_OutputImage,
-            otb.ParameterType_OutputVectorData,
-            otb.ParameterType_OutputFilename,
-        )
         self._out_param_types = {
-            k: v for k, v in self._all_param_types.items() if v in types
+            key: val
+            for key, val in self._all_param_types.items()
+            if val in self.OUTPUT_PARAM_TYPES
+        }
+        self._key_choices = {
+            key: [f"{key}.{choice}" for choice in self.app.GetChoiceKeys(key)]
+            for key in self.parameters_keys
+            if self.app.GetParameterType(key) == otb.ParameterType_Choice
         }
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
@@ -951,8 +953,20 @@ class App(OTBObject):
 
     def __sync_parameters(self):
         """Save OTB parameters in _settings, data and outputs dict, for a list of keys or all parameters."""
+        skip = [
+            k for k in self.parameters_keys if k.split(".")[-1] in ("ram", "default")
+        ]
+        # Prune unused choices child params
+        for key in self._key_choices:
+            choices = self._key_choices[key].copy()
+            choices.remove(f"{key}.{self.app.GetParameterValue(key)}")
+            skip.extend(
+                [k for k in self.parameters_keys if k.startswith(tuple(choices))]
+            )
+
+        self._auto_parameters.clear()
         for key in self.parameters_keys:
-            if not self.app.HasValue(key):
+            if key in skip or key in self._settings or not self.app.HasValue(key):
                 continue
             value = self.app.GetParameterValue(key)
             # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
