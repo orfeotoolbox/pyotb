@@ -969,20 +969,18 @@ class App(OTBObject):
             if key in skip or key in self._settings or not self.app.HasValue(key):
                 continue
             value = self.app.GetParameterValue(key)
-            # TODO: here we *should* use self.app.IsParameterEnabled, but it seems broken
-            if isinstance(value, otb.ApplicationProxy) and self.app.HasAutomaticValue(
-                key
+            # Here we should use AND self.app.IsParameterEnabled(key) but it's broken
+            if not self.app.GetParameterRole(key) and (
+                self.app.HasAutomaticValue(key) or self.app.IsParameterEnabled(key)
             ):
-                try:
-                    value = str(
-                        value
-                    )  # some default str values like "mode" or "interpolator"
-                    self._auto_parameters[key] = value
-                    continue
-                except RuntimeError:
-                    continue  # grouped parameters
+                if isinstance(value, otb.ApplicationProxy):
+                    try:
+                        value = str(value)
+                    except RuntimeError:
+                        continue  # root of param group
+                self._auto_parameters[key] = value
             # Save static output data (ReadImageInfo, ComputeImageStatistics, etc.)
-            elif self.app.GetParameterRole(key) == 1 and bool(value) or value == 0:
+            elif self.app.GetParameterRole(key) == 1 and (bool(value) or value == 0):
                 if isinstance(value, str):
                     try:
                         value = literal_eval(value)
