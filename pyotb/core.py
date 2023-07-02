@@ -971,7 +971,8 @@ class App(OTBObject):
                     value = str(value)
                 except RuntimeError:
                     continue
-            if not (bool(value) or value == 0):
+            # Keep False or 0 values, but make sure to skip empty collections or str
+            if hasattr(value, "__iter__") and not value:
                 continue
             # Here we should use AND self.app.IsParameterEnabled(key) but it's broken
             if self.app.GetParameterRole(key) == 0 and (
