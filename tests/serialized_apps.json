@@ -3,6 +3,9 @@
     "name": "ManageNoData",
     "parameters": {
       "mode": "buildmask",
+      "mode.buildmask.inv": 1.0,
+      "mode.buildmask.outv": 0.0,
+      "usenan": false,
       "in": {
         "name": "OrthoRectification",
         "parameters": {
@@ -19,8 +22,10 @@
           "outputs.lry": 5493909.5,
           "outputs.isotropic": true,
           "opt.gridspacing": 4.0,
+          "opt.rpc": 10,
           "outputs.mode": "auto",
           "interpolator": "bco",
+          "interpolator.bco.radius": 2,
           "io.in": {
             "name": "BandMath",
             "parameters": {
@@ -54,8 +59,10 @@
             "outputs.lry": 5493909.5,
             "outputs.isotropic": true,
             "opt.gridspacing": 4.0,
+            "opt.rpc": 10,
             "outputs.mode": "auto",
             "interpolator": "bco",
+            "interpolator.bco.radius": 2,
             "io.in": {
               "name": "BandMath",
               "parameters": {
@@ -71,6 +78,9 @@
           "name": "ManageNoData",
           "parameters": {
             "mode": "buildmask",
+            "mode.buildmask.inv": 1.0,
+            "mode.buildmask.outv": 0.0,
+            "usenan": false,
             "in": {
               "name": "OrthoRectification",
               "parameters": {
@@ -87,8 +97,10 @@
                 "outputs.lry": 5493909.5,
                 "outputs.isotropic": true,
                 "opt.gridspacing": 4.0,
+                "opt.rpc": 10,
                 "outputs.mode": "auto",
                 "interpolator": "bco",
+                "interpolator.bco.radius": 2,
                 "io.in": {
                   "name": "BandMath",
                   "parameters": {
