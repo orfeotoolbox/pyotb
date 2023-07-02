@@ -550,7 +550,7 @@ class App(OTBObject):
 
     @property
     def parameters(self):
-        """Return used OTB application parameters."""
+        """Return used application parameters: automatic values or set by user."""
         return {**self._auto_parameters, **self._settings}
 
     @property
@@ -739,7 +739,7 @@ class App(OTBObject):
         self.frozen = False
         self._time_end = perf_counter()
         logger.debug("%s: execution ended", self.name)
-        self.__sync_parameters()  # this is required for apps like ReadImageInfo or ComputeImagesStatistics
+        self.__sync_parameters()
 
     def flush(self):
         """Flush data to disk, this is when WriteOutput is actually called."""
@@ -945,7 +945,11 @@ class App(OTBObject):
             self.app.SetParameterValue(key, obj)
 
     def __sync_parameters(self):
-        """Save OTB parameters in _settings, data and outputs dict, for a list of keys or all parameters."""
+        """Save app parameters in _auto_parameters or data dict.
+
+        This is always called during init or after execution, to ensure the
+         parameters property of the App is in sync with the otb.Application instance.
+        """
         skip = [
             k for k in self.parameters_keys if k.split(".")[-1] in ("ram", "default")
         ]
