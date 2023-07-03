@@ -360,6 +360,36 @@ def test_summarize_strip_output():
         assert summary["parameters"][key] == expected, \
             f"Failed for input {inp}, output {out}, args {extra_args}"
 
+def test_summarize_consistency():
+    app_fns = [
+        lambda inp: pyotb.ExtractROI(
+            {"in": inp, "startx": 10, "starty": 10, "sizex": 50, "sizey": 50}
+        ),
+        lambda inp: pyotb.ManageNoData({"in": inp, "mode": "changevalue"}),
+        lambda inp: pyotb.DynamicConvert({"in": inp}),
+        lambda inp: pyotb.Mosaic({"il": [inp]}),
+        lambda inp: pyotb.BandMath({"il": [inp], "exp": "im1b1 + 1"}),
+        lambda inp: pyotb.BandMathX({"il": [inp], "exp": "im1"}),
+        lambda inp: pyotb.OrthoRectification({"io.in": inp}),
+    ]
+    def _test(app_fn):
+        """
+        Here we create 2 summaries:
+        - summary of the app before write()
+        - summary of the app after write()
+        Then we check that both only differ with the output parameter
+        """
+        app = app_fn(inp=FILEPATH)
+        out_file = "/dev/shm/out.tif"
+        out_key = app.output_image_key
+        summary_wo_wrt = pyotb.summarize(app)
+        app.write(out_file)
+        summay_w_wrt = pyotb.summarize(app)
+        app[out_key].filepath.unlink()
+        summary_wo_wrt["parameters"].update({out_key: out_file})
+        assert summary_wo_wrt == summay_w_wrt
+    for app_fn in app_fns:
+        _test(app_fn)
 
 def test_pipeline_simple():
     # BandMath -> OrthoRectification -> ManageNoData
