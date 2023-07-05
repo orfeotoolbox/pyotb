@@ -431,12 +431,19 @@ class OTBObject(ABC):
 
         """
         getattr(self.app, item)
+        note = ""
+        if item.startswith("GetParameter"):
+            note = (
+                "Note: `pyotb_app.app.GetParameterValue('paramname')` can be "
+                "shorten with `pyotb_app['paramname']` to access parameters "
+                "values."
+            )
         raise DeprecationWarning(
             "Since pyotb 2.0.0, OTBObject instances have stopped to "
             "forward attributes to their own internal otbApplication "
             "instance. `App.app` can be used to call otbApplications "
             f"methods. Attribute was: \"{item}\". Hint: maybe try "
-            f"`pyotb_app.app.{item}` instead of `pyotb_app.{item}`?"
+            f"`pyotb_app.app.{item}` instead of `pyotb_app.{item}`? {note}"
         )
 
 
