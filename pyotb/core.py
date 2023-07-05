@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 import otbApplication as otb  # pylint: disable=import-error
 
-import pyotb
 from .helpers import logger
 from .depreciation import deprecated_alias, warning_msg, deprecated_attr
 
@@ -124,14 +123,14 @@ class OTBObject(ABC):
         """Summarize the app with `pyotb.summarize()`.
 
         Args:
-            *args: args
-            **kwargs: keyword args
+            *args: args for `pyotb.summarize()`
+            **kwargs: keyword args for `pyotb.summarize()`
 
         Returns:
-            app summary
+            app summary, same as `pyotb.summarize()`
 
         """
-        return pyotb.summarize(self, *args, **kwargs)
+        return summarize(self, *args, **kwargs)
 
 
     def get_info(self) -> dict[str, (str, float, list[float])]:
