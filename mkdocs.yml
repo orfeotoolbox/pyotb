@@ -59,6 +59,7 @@ extra_css:
 use_directory_urls: false  # this creates some pyotb/core.html pages instead of pyotb/core/index.html
 
 markdown_extensions:
+  - codehilite
   - admonition
   - toc:
       permalink: true
