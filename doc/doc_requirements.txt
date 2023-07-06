@@ -5,3 +5,4 @@ mkdocs-gen-files
 mkdocs-section-index
 mkdocs-literate-nav
 mkdocs-mermaid2-plugin
+pygments
