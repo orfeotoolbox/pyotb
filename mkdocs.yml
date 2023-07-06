@@ -71,6 +71,8 @@ markdown_extensions:
   - pymdownx.snippets
   - pymdownx.details
   - pymdownx.superfences
+  - pymdownx.highlight:
+      use_pygments: true
 
 # Rest of the navigation..
 site_name: "pyotb documentation: a Python extension of OTB"
