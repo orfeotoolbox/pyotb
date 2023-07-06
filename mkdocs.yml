@@ -55,7 +55,7 @@ extra:
     - icon: fontawesome/brands/gitlab
       link: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 extra_css:
-  - stylesheets/extra.css
+  - https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/8.1.2-rc1/Documentation/Cookbook/_static/css/otb_theme.css
 use_directory_urls: false  # this creates some pyotb/core.html pages instead of pyotb/core/index.html
 
 markdown_extensions:
