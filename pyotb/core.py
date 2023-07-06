@@ -36,10 +36,7 @@ class OTBObject(ABC):
     @property
     @deprecated_attr(replacement="output_image_key")
     def output_param(self) -> str:
-        """
-        Return the name of a parameter key associated to the main output image
-        of the object (deprecated).
-        """
+        """Return the name of a parameter key associated to the main output image of the object (deprecated)."""
 
     @property
     @abstractmethod
@@ -120,7 +117,7 @@ class OTBObject(ABC):
 
 
     def summarize(self, *args, **kwargs):
-        """Summarize the app with `pyotb.summarize()`.
+        """Call `pyotb.summarize()` on itself.
 
         Args:
             *args: args for `pyotb.summarize()`
@@ -418,33 +415,47 @@ class OTBObject(ABC):
         return id(self)
 
     def __getattr__(self, item: str):
-        """
-        Provides depreciation of old methods to access the OTB application
-        values.
-        ```
+        """Provides depreciation of old methods to access the OTB application values.
+
+        This function will be removed completely in future releases.
 
         Args:
             item: attribute name
 
-        Returns:
-            attribute from self.app
 
         """
-        getattr(self.app, item)
-        note = ""
+        note = (
+            "Since pyotb 2.0.0, OTBObject instances have stopped to forward "
+            "attributes to their own internal otbApplication instance. "
+            "`App.app` can be used to call otbApplications methods. "
+        )
+
+        if item[0].isupper():
+            # Because otbApplication instances methods names start with an
+            # upper case
+            note += (
+                f"Maybe try `pyotb_app.app.{item}` instead of "
+                f"`pyotb_app.{item}`? "
+            )
+
+        if item[0].islower():
+            # Because in pyotb 1.5.4, applications outputs were added as
+            # attributes of the instance
+            note += (
+                "Note: `pyotb_app.paramname` is no longer supported. Starting "
+                "from pytob 2.0.0, `pyotb_app['paramname']` can be used to "
+                "access parameters values. "
+            )
+
         if item.startswith("GetParameter"):
-            note = (
+            note += (
                 "Note: `pyotb_app.app.GetParameterValue('paramname')` can be "
                 "shorten with `pyotb_app['paramname']` to access parameters "
                 "values."
             )
-        raise DeprecationWarning(
-            "Since pyotb 2.0.0, OTBObject instances have stopped to "
-            "forward attributes to their own internal otbApplication "
-            "instance. `App.app` can be used to call otbApplications "
-            f"methods. Attribute was: \"{item}\". Hint: maybe try "
-            f"`pyotb_app.app.{item}` instead of `pyotb_app.{item}`? {note}"
-        )
+        warning_msg(note)
+        raise AttributeError
+
 
 
 
@@ -491,8 +502,10 @@ class OTBObject(ABC):
         return f"<pyotb.{self.__class__.__name__} object, id {id(self)}>"
 
 
-class otbObject(OTBObject):  # pylint: noqa
+class otbObject(OTBObject):  # noqa
+    """Class for depreciation of otbObject since pyotb 2.0.0. Will be removed in future releases."""
     def __init_subclass__(cls):
+        """Show a warning for depreciation."""
         warning_msg(
             "Since pyotb 2.0.0, otbObject has been renamed OTBObject. "
             "otbObject will be removed definitively in future releases."

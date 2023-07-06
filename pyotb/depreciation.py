@@ -13,8 +13,7 @@ ENDC = '\033[0m'
 OKAY = '\033[92m'
 
 def warning_msg(message: str):
-    """
-    Shows a warning message.
+    """Shows a warning message.
 
     Args:
         message: message
@@ -26,8 +25,7 @@ def warning_msg(message: str):
         stacklevel=3,
     )
 def deprecated_alias(**aliases: str) -> Callable:
-    """
-    Decorator for deprecated function and method arguments.
+    """Decorator for deprecated function and method arguments.
 
     Use as follows:
 
@@ -58,8 +56,7 @@ def rename_kwargs(
         kwargs: Dict[str, Any],
         aliases: Dict[str, str]
 ):
-    """
-    Helper function for deprecating function arguments.
+    """Helper function for deprecating function arguments.
 
     Args:
         func_name: function
@@ -82,8 +79,7 @@ def rename_kwargs(
             kwargs[new] = kwargs.pop(alias)
 
 def deprecated_attr(replacement: str) -> Callable:
-    """
-    Decorator for deprecated attr.
+    """Decorator for deprecated attr.
 
     Use as follows:
 
