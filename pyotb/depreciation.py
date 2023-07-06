@@ -12,7 +12,7 @@ WARN = '\033[91m'
 ENDC = '\033[0m'
 OKAY = '\033[92m'
 
-def warning_msg(message: str):
+def depreciation_warning(message: str):
     """Shows a warning message.
 
     Args:
@@ -75,7 +75,7 @@ def rename_kwargs(
                 f"{WARN}`{alias}`{ENDC} is deprecated as an argument to "
                 f"`{func_name}`; use {OKAY}`{new}`{ENDC} instead."
             )
-            warning_msg(message)
+            depreciation_warning(message)
             kwargs[new] = kwargs.pop(alias)
 
 def deprecated_attr(replacement: str) -> Callable:
@@ -97,7 +97,7 @@ def deprecated_attr(replacement: str) -> Callable:
     def deco(attr: Any):
         @functools.wraps(attr)
         def wrapper(self, *args, **kwargs):
-            warning_msg(
+            depreciation_warning(
                 f"{WARN}`{attr.__name__}`{ENDC} will be removed in future "
                 f"releases. Please replace {WARN}`{attr.__name__}`{ENDC} with "
                 f"{OKAY}`{replacement}`{ENDC}."

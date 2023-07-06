@@ -12,7 +12,7 @@ import numpy as np
 import otbApplication as otb  # pylint: disable=import-error
 
 from .helpers import logger
-from .depreciation import deprecated_alias, warning_msg, deprecated_attr
+from .depreciation import deprecated_alias, depreciation_warning, deprecated_attr
 
 
 class OTBObject(ABC):
@@ -453,7 +453,7 @@ class OTBObject(ABC):
                 "shorten with `pyotb_app['paramname']` to access parameters "
                 "values."
             )
-        warning_msg(note)
+        depreciation_warning(note)
         raise AttributeError
 
 
@@ -506,7 +506,7 @@ class otbObject(OTBObject):  # noqa, pylint: disable=invalid-name
     """Class for depreciation of otbObject since pyotb 2.0.0. Will be removed in future releases."""
     def __init_subclass__(cls):
         """Show a warning for depreciation."""
-        warning_msg(
+        depreciation_warning(
             "Since pyotb 2.0.0, otbObject has been renamed OTBObject. "
             "otbObject will be removed definitively in future releases."
         )
