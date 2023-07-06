@@ -117,7 +117,7 @@ class OTBObject(ABC):
 
 
     def summarize(self, *args, **kwargs):
-        """Call `pyotb.summarize()` on itself.
+        """Recursively summarize parameters and parents.
 
         Args:
             *args: args for `pyotb.summarize()`
@@ -502,7 +502,7 @@ class OTBObject(ABC):
         return f"<pyotb.{self.__class__.__name__} object, id {id(self)}>"
 
 
-class otbObject(OTBObject):  # noqa
+class otbObject(OTBObject):  # noqa, pylint: disable=invalid-name
     """Class for depreciation of otbObject since pyotb 2.0.0. Will be removed in future releases."""
     def __init_subclass__(cls):
         """Show a warning for depreciation."""

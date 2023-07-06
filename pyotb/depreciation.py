@@ -40,11 +40,11 @@ def deprecated_alias(**aliases: str) -> Callable:
         wrapped function
 
     """
-    def deco(f: Callable):
-        @functools.wraps(f)
+    def deco(func: Callable):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            rename_kwargs(f.__name__, kwargs, aliases)
-            return f(*args, **kwargs)
+            rename_kwargs(func.__name__, kwargs, aliases)
+            return func(*args, **kwargs)
 
         return wrapper
 
@@ -102,8 +102,8 @@ def deprecated_attr(replacement: str) -> Callable:
                 f"releases. Please replace {WARN}`{attr.__name__}`{ENDC} with "
                 f"{OKAY}`{replacement}`{ENDC}."
             )
-            g = getattr(self, replacement)
-            return g(*args, **kwargs) if isinstance(g, Callable) else g
+            out = getattr(self, replacement)
+            return out(*args, **kwargs) if isinstance(out, Callable) else out
 
         return wrapper
 
