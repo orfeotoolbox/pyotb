@@ -762,7 +762,7 @@ class App(OTBObject):
         path: str | Path | dict[str, str] = None,
         pixel_type: dict[str, str] | str = None,
         preserve_dtype: bool = False,
-        ext_fname: str = "",
+        ext_fname: dict[str, str] | str = None,
         **kwargs,
     ) -> bool:
         """Set output pixel type and write the output raster files.
@@ -773,7 +773,7 @@ class App(OTBObject):
                              non-standard characters such as a point, e.g. {'io.out':'output.tif'}
                            - None if output file was passed during App init
             ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
-                                Will be used for all outputs (Default value = "")
+                                Will be used for all outputs (Default value = None)
             pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
                                  - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
                                    outputs, all outputs are written with this unique type.
