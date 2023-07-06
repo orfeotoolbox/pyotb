@@ -46,8 +46,10 @@ output = pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif'})
     input parameters of an OTB application, you may simply pass the value as 
     first argument, pyotb will guess the parameter name. For parameters that 
     contains dots, you can either use a dictionary, or  replace dots (`.`) 
-    with underscores (`_`). Let's take the example of the `OrthoRectification` 
-    application of OTB, with the input image parameter named `io.in`:
+    with underscores (`_`). 
+
+    Let's take the example of the `OrthoRectification` application of OTB, 
+    with the input image parameter named `io.in`:
 
     Option #1, keyword-arg-free:
 
@@ -63,13 +65,19 @@ output = pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif'})
 
 ## In-memory connections
 
-The big asset of pyotb is the ease of in-memory connections between apps.
+One nice feature of pyotb is in-memory connection between apps. It relies on 
+the so-called [streaming](https://www.orfeo-toolbox.org/CookBook/C++/StreamingAndThreading.html)
+mechanism of OTB, that enables to process huge images with a limited memory 
+footprint.
+
+pyotb allows to pass any application's output to another. This enables to 
+build pipelines composed of several applications.
 
 Let's start from our previous example. Consider the case where one wants to 
-apply optical calibration and binary morphological dilatation 
-following the undersampling.
-
-Using pyotb, you can pass the output of an app as input of another app :
+resample the image, then apply optical calibration and binary morphological 
+dilatation. We can write the following code to build a pipeline that will
+generate the output in an end-to-end fashion, without being limited with the 
+input image size, without writing temporary files.
 
 ```python
 import pyotb
@@ -91,11 +99,20 @@ dilated = pyotb.BinaryMorphologicalOperation({
     'out': 'output.tif', 
     'filter': 'dilate',
     'structype': 'ball', 
-    'xradius': 3, 'yradius': 3
+    'xradius': 3, 
+    'yradius': 3
 })
-
-dilated.write('result.tif')
 ```
+
+We just have built our first pipeline! At this point, it's all symbolic since 
+no computation has been performed. To trigger our pipeline, one must call the 
+`write()` method from the pipeline termination:
+
+```python
+dilated.write('output.tif')
+```
+
+In the next section, we will detail how `write()` works. 
 
 ## Writing the result of an app
 
