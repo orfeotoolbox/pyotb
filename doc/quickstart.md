@@ -42,12 +42,12 @@ output = pyotb.SuperImpose({'inr': 'reference_image.tif', 'inm': 'image.tif'})
 !!! warning
 
     For this notation, python doesn't accept the parameter `in` or any 
-    parameter that contains a dots (e.g. `io.in)`. For `in` or other main 
+    parameter that contains a dots (e.g. `io.in`). For `in` or other main 
     input parameters of an OTB application, you may simply pass the value as 
     first argument, pyotb will guess the parameter name. For parameters that 
     contains dots, you can either use a dictionary, or  replace dots (`.`) 
     with underscores (`_`). Let's take the example of the `OrthoRectification` 
-    application of OTB, with the input image parameter named "io.in":
+    application of OTB, with the input image parameter named `io.in`:
 
     Option #1, keyword-arg-free:
 
