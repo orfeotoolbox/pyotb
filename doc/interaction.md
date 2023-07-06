@@ -43,11 +43,9 @@ noisy_image.write('image_plus_noise.tif')
 
 !!! warning
 
-    Limitations :
-    
     - The whole image is loaded into memory
-    - The georeference can not be modified. Thus, numpy operations can not change
-    the image or pixel size
+    - The georeference can not be modified. Thus, numpy operations can not 
+    change the image or pixel size
 
 ## Export to rasterio
 
