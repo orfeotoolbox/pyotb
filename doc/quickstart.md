@@ -77,7 +77,7 @@ Let's start from our previous example. Consider the case where one wants to
 resample the image, then apply optical calibration and binary morphological 
 dilatation. We can write the following code to build a pipeline that will
 generate the output in an end-to-end fashion, without being limited with the 
-input image size, without writing temporary files.
+input image size or writing temporary files.
 
 ```python
 import pyotb
