@@ -72,8 +72,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.superfences
 
-# Rest of the navigation..
-site_name: "pyotb documentation: a Python extension of OTB"
+# Rest of the navigation.
+site_name: "pyotb: a Python extension of OTB"
 repo_url: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 repo_name: pyotb
 docs_dir: doc/
