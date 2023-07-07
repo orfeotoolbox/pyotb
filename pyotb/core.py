@@ -115,7 +115,6 @@ class OTBObject(ABC):
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
 
-
     def summarize(self, *args, **kwargs):
         """Recursively summarize parameters and parents.
 
@@ -128,7 +127,6 @@ class OTBObject(ABC):
 
         """
         return summarize(self, *args, **kwargs)
-
 
     def get_info(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ReadImageInfo for the first image output."""
@@ -435,8 +433,7 @@ class OTBObject(ABC):
             # Because otbApplication instances methods names start with an
             # upper case
             hint = (
-                f"Maybe try `pyotb_app.app.{item}` instead of "
-                f"`pyotb_app.{item}`? "
+                f"Maybe try `pyotb_app.app.{item}` instead of " f"`pyotb_app.{item}`? "
             )
             if item.startswith("GetParameter"):
                 hint += (
@@ -1497,7 +1494,6 @@ class Output(OTBObject):
     """Object that behave like a pointer to a specific application output file."""
 
     _filepath: str | Path = None
-
 
     @deprecated_alias(app="pyotb_app", output_parameter_key="param_key")
     def __init__(
