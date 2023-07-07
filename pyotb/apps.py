@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import os
-import subprocess
-import sys
-from pathlib import Path
 
 import otbApplication as otb  # pylint: disable=import-error
 
@@ -13,7 +10,7 @@ from .core import App
 from .helpers import logger
 
 
-def get_available_applications(as_subprocess: bool = False) -> list[str]:
+def get_available_applications() -> tuple[str]:
     """Find available OTB applications.
 
     Args:
@@ -23,53 +20,13 @@ def get_available_applications(as_subprocess: bool = False) -> list[str]:
         tuple of available applications
 
     """
-    app_list = ()
-    if as_subprocess and sys.executable:
-        # Currently, there is an incompatibility between OTBTF and Tensorflow that causes segfault
-        # when OTBTF apps are used in a script where tensorflow has already been imported.
-        # See https://github.com/remicres/otbtf/issues/28
-        # Thus, we run this piece of code in a clean independent `subprocess` that doesn't interact with Tensorflow
-        env = os.environ.copy()
-        if "PYTHONPATH" not in env:
-            env["PYTHONPATH"] = ""
-        env["PYTHONPATH"] += ":" + str(Path(otb.__file__).parent)
-        env[
-            "OTB_LOGGER_LEVEL"
-        ] = "CRITICAL"  # in order to suppress warnings while listing applications
-        pycmd = "import otbApplication; print(otbApplication.Registry.GetAvailableApplications())"
-        cmd_args = [sys.executable, "-c", pycmd]
-        try:
-            params = {"env": env, "stdout": subprocess.PIPE, "stderr": subprocess.PIPE}
-            with subprocess.Popen(cmd_args, **params) as process:
-                logger.debug("Exec \"%s '%s'\"", " ".join(cmd_args[:-1]), pycmd)
-                stdout, stderr = process.communicate()
-                stdout, stderr = stdout.decode(), stderr.decode()
-                # ast.literal_eval is secure and will raise more handy Exceptions than eval
-                from ast import literal_eval  # pylint: disable=import-outside-toplevel
-
-                app_list = literal_eval(stdout.strip())
-                assert isinstance(app_list, (tuple, list))
-        except subprocess.SubprocessError:
-            logger.debug("Failed to call subprocess")
-        except (ValueError, SyntaxError, AssertionError):
-            logger.debug(
-                "Failed to decode output or convert to tuple:\nstdout=%s\nstderr=%s",
-                stdout,
-                stderr,
-            )
-        if not app_list:
-            logger.debug(
-                "Failed to list applications in an independent process. Falling back to local python import"
-            )
-    # Find applications using the normal way
-    if not app_list:
-        app_list = otb.Registry.GetAvailableApplications()
-    if not app_list:
-        raise SystemExit(
-            "Unable to load applications. Set env variable OTB_APPLICATION_PATH and try again."
-        )
-    logger.info("Successfully loaded %s OTB applications", len(app_list))
-    return app_list
+    app_list = otb.Registry.GetAvailableApplications()
+    if app_list:
+        logger.info("Successfully loaded %s OTB applications", len(app_list))
+        return app_list
+    raise SystemExit(
+        "Unable to load applications. Set env variable OTB_APPLICATION_PATH and try again."
+    )
 
 
 class OTBTFApp(App):
@@ -113,7 +70,7 @@ class OTBTFApp(App):
         super().__init__(name, *args, **kwargs)
 
 
-AVAILABLE_APPLICATIONS = get_available_applications(as_subprocess=True)
+AVAILABLE_APPLICATIONS = get_available_applications()
 
 # This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App("AppName", ...)`
 _CODE_TEMPLATE = (
