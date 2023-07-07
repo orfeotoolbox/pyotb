@@ -1660,8 +1660,7 @@ def summarize(
             useful to remove extended filenames.
 
     Returns:
-        nested dictionary with serialized App(s) containing name and
-        parameters of an app and its parents
+        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
 
     """
 
