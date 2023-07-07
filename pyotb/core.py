@@ -427,18 +427,19 @@ class OTBObject(ABC):
         note = (
             "Since pyotb 2.0.0, OTBObject instances have stopped to forward "
             "attributes to their own internal otbApplication instance. "
-            "`App.app` can be used to call otbApplications methods. "
+            "`App.app` can be used to call otbApplications methods."
         )
+        hint = None
 
         if item in dir(self.app):
             # Because otbApplication instances methods names start with an
             # upper case
-            note += (
+            hint = (
                 f"Maybe try `pyotb_app.app.{item}` instead of "
                 f"`pyotb_app.{item}`? "
             )
             if item.startswith("GetParameter"):
-                note += (
+                hint += (
                     "Note: `pyotb_app.app.GetParameterValue('paramname')` can be "
                     "shorten with `pyotb_app['paramname']` to access parameters "
                     "values."
@@ -447,13 +448,14 @@ class OTBObject(ABC):
         elif item in self.parameters_keys:
             # Because in pyotb 1.5.4, applications outputs were added as
             # attributes of the instance
-            note += (
+            hint = (
                 "Note: `pyotb_app.paramname` is no longer supported. Starting "
                 "from pyotb 2.0.0, `pyotb_app['paramname']` can be used to "
                 "access parameters values. "
             )
-        depreciation_warning(note)
-        raise AttributeError(f"'{type(self)}' object has no attribute '{item}'")
+        if hint:
+            depreciation_warning(f"{note} {hint}")
+        raise AttributeError
 
     def __getitem__(self, key) -> Any | list[float] | float | Slicer:
         """Override the default __getitem__ behaviour.
