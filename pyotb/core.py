@@ -455,7 +455,9 @@ class OTBObject(ABC):
             )
         if hint:
             depreciation_warning(f"{note} {hint}")
-        raise AttributeError
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{item}'"
+        )
 
     def __getitem__(self, key) -> Any | list[float] | float | Slicer:
         """Override the default __getitem__ behaviour.
