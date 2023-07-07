@@ -502,14 +502,20 @@ class OTBObject(ABC):
         return f"<pyotb.{self.__class__.__name__} object, id {id(self)}>"
 
 
+def old_otbobj_warn():
+    depreciation_warning(
+        "Since pyotb 2.0.0, otbObject has been renamed OTBObject. "
+        "otbObject will be removed definitively in future releases."
+    )
+
 class otbObject(OTBObject):  # noqa, pylint: disable=invalid-name
     """Class for depreciation of otbObject since pyotb 2.0.0. Will be removed in future releases."""
     def __init_subclass__(cls):
         """Show a warning for depreciation."""
-        depreciation_warning(
-            "Since pyotb 2.0.0, otbObject has been renamed OTBObject. "
-            "otbObject will be removed definitively in future releases."
-        )
+        old_otbobj_warn()
+    def __class__(self):
+        old_otbobj_warn()
+        return super().__class__
 
 
 class App(OTBObject):
@@ -1744,8 +1750,7 @@ def summarize(
             useful to remove extended filenames.
 
     Returns:
-        nested dictionary with serialized App(s) containing name and
-        parameters of an app and its parents
+        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
 
     """
 
