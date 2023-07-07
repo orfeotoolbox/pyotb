@@ -11,28 +11,32 @@
 <td>
 
 ```python
-import otbApplication
+import otbApplication as otb
 
 input_path = 'my_image.tif'
-resampled = otbApplication.Registry.CreateApplication(
+app = otb.Registry.CreateApplication(
     'RigidTransformResample'
 )
-resampled.SetParameterString('in', input_path)
-resampled.SetParameterString('interpolator', 'linear')
-resampled.SetParameterFloat(
-    'transform.type.id.scalex', 
-    0.5
+app.SetParameterString(
+    'in', input_path
 )
-resampled.SetParameterFloat(
-    'transform.type.id.scaley', 
-    0.5
+app.SetParameterString(
+    'interpolator', 'linear'
 )
-resampled.SetParameterString('out', 'output.tif')
-resampled.SetParameterOutputImagePixelType(
-    'out', otbApplication.ImagePixelType_uint16
+app.SetParameterFloat(
+    'transform.type.id.scalex', 0.5
+)
+app.SetParameterFloat(
+    'transform.type.id.scaley', 0.5
+)
+app.SetParameterString(
+    'out', 'output.tif'
+)
+app.SetParameterOutputImagePixelType(
+    'out', otb.ImagePixelType_uint16
 )
 
-resampled.ExecuteAndWriteOutput()
+app.ExecuteAndWriteOutput()
 ```
 
 </td>
@@ -41,14 +45,17 @@ resampled.ExecuteAndWriteOutput()
 ```python
 import pyotb
 
-resampled = pyotb.RigidTransformResample({
+app = pyotb.RigidTransformResample({
     'in': 'my_image.tif', 
     'interpolator': 'linear',
     'transform.type.id.scaley': 0.5,
     'transform.type.id.scalex': 0.5
 })
 
-resampled.write('output.tif', pixel_type='uint16')
+app.write(
+    'output.tif', 
+    pixel_type='uint16'
+)
 ```
 
 </td>
@@ -66,42 +73,55 @@ resampled.write('output.tif', pixel_type='uint16')
 <td>
 
 ```python
-import otbApplication
+import otbApplication as otb
 
-app1 = otbApplication.Registry.CreateApplication(
+app1 = otb.Registry.CreateApplication(
     'RigidTransformResample'
 )
-app1.SetParameterString('in', 'my_image.tif')
-app1.SetParameterString('interpolator', 'linear')
-app1.SetParameterFloat(
-    'transform.type.id.scalex',
-    0.5
+app1.SetParameterString(
+    'in', 'my_image.tif'
+)
+app1.SetParameterString(
+    'interpolator', 'linear'
 )
 app1.SetParameterFloat(
-    'transform.type.id.scaley',
-    0.5
+    'transform.type.id.scalex', 0.5
+)
+app1.SetParameterFloat(
+    'transform.type.id.scaley', 0.5
 )
 app1.Execute()
 
-app2 = otbApplication.Registry.CreateApplication(
+app2 = otb.Registry.CreateApplication(
     'OpticalCalibration'
 )
 app2.ConnectImage('in', app1, 'out')
 app2.SetParameterString('level', 'toa')
 app2.Execute()
 
-app3 = otbApplication.Registry.CreateApplication(
+app3 = otb.Registry.CreateApplication(
     'BinaryMorphologicalOperation'
 )
-app3.ConnectImage('in', app2, 'out')
-app3.SetParameterString('filter', 'dilate')
-app3.SetParameterString('structype', 'ball')
-app3.SetParameterInt('xradius', 3)
-app3.SetParameterInt('yradius', 3)
-app3.SetParameterString('out', 'output.tif')
+app3.ConnectImage(
+    'in', app2, 'out'
+)
+app3.SetParameterString(
+    'filter', 'dilate'
+)
+app3.SetParameterString(
+    'structype', 'ball'
+)
+app3.SetParameterInt(
+    'xradius', 3
+)
+app3.SetParameterInt(
+    'yradius', 3
+)
+app3.SetParameterString(
+    'out', 'output.tif'
+)
 app3.SetParameterOutputImagePixelType(
-    'out', 
-    otbApplication.ImagePixelType_uint16
+    'out', otb.ImagePixelType_uint16
 )
 app3.ExecuteAndWriteOutput()
 ```
@@ -159,28 +179,31 @@ Consider an example where we want to perform the arithmetic operation
 <td>
 
 ```python
-import otbApplication
+import otbApplication as otb
 
-bmx = otbApplication.Registry.CreateApplication(
+bmx = otb.Registry.CreateApplication(
     'BandMathX'
 )
 bmx.SetParameterStringList(
     'il', 
-    ['image1.tif', 'image2.tif', 'image3.tif']
-)  # all images are 3-bands
+    ['im1.tif', 'im2.tif', 'im3.tif']
+)
 exp = ('im1b1*im2b1-2*im3b1; '
        'im1b2*im2b2-2*im3b2; '
        'im1b3*im2b3-2*im3b3')
 bmx.SetParameterString('exp', exp)
-bmx.SetParameterString('out', 'output.tif')
+bmx.SetParameterString(
+    'out', 
+    'output.tif'
+)
 bmx.SetParameterOutputImagePixelType(
-    'out',
-    otbApplication.ImagePixelType_uint8
+    'out', 
+    otb.ImagePixelType_uint8
 )
 bmx.ExecuteAndWriteOutput()
 ```
 
-In OTB, this code works for 3-bands images.
+Note: code limited to 3-bands images.
 
 </td>
 <td>
@@ -188,16 +211,19 @@ In OTB, this code works for 3-bands images.
 ```python
 import pyotb
 
-# transforming filepaths to pyotb objects
-input1 = pyotb.Input('image1.tif')
-input2 = pyotb.Input('image2.tif')
-input3 = pyotb.Input('image3.tif')
+# filepaths --> pyotb objects
+in1 = pyotb.Input('im1.tif')
+in2 = pyotb.Input('im2.tif')
+in3 = pyotb.Input('im3.tif')
 
-res = input1 * input2 - 2 * input2
-res.write('output.tif', pixel_type='uint8')
+res = in1 * in2 - 2 * in3
+res.write(
+    'output.tif', 
+    pixel_type='uint8'
+)
 ```
 
-In pyotb,this code works with images of any number of bands.
+Note: works with any number of bands.
 
 </td>
 </tr>
@@ -215,13 +241,15 @@ In pyotb,this code works with images of any number of bands.
 
 
 ```python
-import otbApplication
+import otbApplication as otb
 
 # first 3 channels
-app = otbApplication.Registry.CreateApplication(
+app = otb.Registry.CreateApplication(
     'ExtractROI'
 )
-app.SetParameterString('in', 'my_image.tif')
+app.SetParameterString(
+    'in', 'my_image.tif'
+)
 app.SetParameterStringList(
     'cl', 
     ['Channel1', 'Channel2', 'Channel3']
@@ -229,16 +257,30 @@ app.SetParameterStringList(
 app.Execute()
 
 # 1000x1000 roi
-app = otbApplication.Registry.CreateApplication(
+app = otb.Registry.CreateApplication(
     'ExtractROI'
 )
-app.SetParameterString('in', 'my_image.tif')
-app.SetParameterString('mode', 'extent')
-app.SetParameterString('mode.extent.unit', 'pxl')
-app.SetParameterFloat('mode.extent.ulx', 0)
-app.SetParameterFloat('mode.extent.uly', 0)
-app.SetParameterFloat('mode.extent.lrx', 999)
-app.SetParameterFloat('mode.extent.lry', 999)
+app.SetParameterString(
+    'in', 'my_image.tif'
+)
+app.SetParameterString(
+    'mode', 'extent'
+)
+app.SetParameterString(
+    'mode.extent.unit', 'pxl'
+)
+app.SetParameterFloat(
+    'mode.extent.ulx', 0
+)
+app.SetParameterFloat(
+    'mode.extent.uly', 0
+)
+app.SetParameterFloat(
+    'mode.extent.lrx', 999
+)
+app.SetParameterFloat(
+    'mode.extent.lry', 999
+)
 app.Execute()
 ```
 
@@ -248,11 +290,11 @@ app.Execute()
 ```python
 import pyotb
 
-# transforming filepath to pyotb object
+# filepath --> pyotb object
 inp = pyotb.Input('my_image.tif')
 
-extracted = inp[:, :, :3]  # first 3 channels
-extracted = inp[:1000, :1000]  # 1000x1000 roi
+extracted = inp[:, :, :3]  # Bands 1,2,3
+extracted = inp[:1000, :1000]  # ROI
 ```
 
 </td>
