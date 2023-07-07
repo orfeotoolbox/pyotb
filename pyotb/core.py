@@ -772,14 +772,14 @@ class App(OTBObject):
                            - dictionary containing key-arguments enumeration. Useful when a key contains
                              non-standard characters such as a point, e.g. {'io.out':'output.tif'}
                            - None if output file was passed during App init
-            ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
-                                Will be used for all outputs (Default value = None)
             pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
                                  - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
                                    outputs, all outputs are written with this unique type.
                                    Valid pixel types are uint8, uint16, uint32, int16, int32, float, double,
                                    cint16, cint32, cfloat, cdouble. (Default value = None)
             preserve_dtype: propagate main input pixel type to outputs, in case pixel_type is None
+            ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
+                                Will be used for all outputs (Default value = None)
             **kwargs: keyword arguments e.g. out='output.tif'
 
         Returns:
