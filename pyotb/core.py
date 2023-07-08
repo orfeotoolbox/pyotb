@@ -433,7 +433,7 @@ class OTBObject(ABC):
             # Because otbApplication instances methods names start with an
             # upper case
             hint = (
-                f"Maybe try `pyotb_app.app.{item}` instead of " f"`pyotb_app.{item}`? "
+                f"Maybe try `pyotb_app.app.{item}` instead of `pyotb_app.{item}`? "
             )
             if item.startswith("GetParameter"):
                 hint += (
