@@ -12,6 +12,7 @@ import numpy as np
 import otbApplication as otb  # pylint: disable=import-error
 
 from .helpers import logger
+from .depreciation import deprecated_alias, depreciation_warning, deprecated_attr
 
 
 class OTBObject(ABC):
@@ -31,6 +32,11 @@ class OTBObject(ABC):
     @abstractmethod
     def output_image_key(self) -> str:
         """Return the name of a parameter key associated to the main output image of the object."""
+
+    @property
+    @deprecated_attr(replacement="output_image_key")
+    def output_param(self) -> str:
+        """Return the name of a parameter key associated to the main output image of the object (deprecated)."""
 
     @property
     @abstractmethod
@@ -108,6 +114,19 @@ class OTBObject(ABC):
         # Shift image origin since OTB is giving coordinates of pixel center instead of corners
         origin_x, origin_y = origin_x - spacing_x / 2, origin_y - spacing_y / 2
         return spacing_x, 0.0, origin_x, 0.0, spacing_y, origin_y
+
+    def summarize(self, *args, **kwargs):
+        """Recursively summarize parameters and parents.
+
+        Args:
+            *args: args for `pyotb.summarize()`
+            **kwargs: keyword args for `pyotb.summarize()`
+
+        Returns:
+            app summary, same as `pyotb.summarize()`
+
+        """
+        return summarize(self, *args, **kwargs)
 
     def get_info(self) -> dict[str, (str, float, list[float])]:
         """Return a dict output of ReadImageInfo for the first image output."""
@@ -392,6 +411,50 @@ class OTBObject(ABC):
 
         """
         return id(self)
+
+    def __getattr__(self, item: str):
+        """Provides depreciation of old methods to access the OTB application values.
+
+        This function will be removed completely in future releases.
+
+        Args:
+            item: attribute name
+
+
+        """
+        note = (
+            "Since pyotb 2.0.0, OTBObject instances have stopped to forward "
+            "attributes to their own internal otbApplication instance. "
+            "`App.app` can be used to call otbApplications methods."
+        )
+        hint = None
+
+        if item in dir(self.app):
+            # Because otbApplication instances methods names start with an
+            # upper case
+            hint = (
+                f"Maybe try `pyotb_app.app.{item}` instead of `pyotb_app.{item}`? "
+            )
+            if item.startswith("GetParameter"):
+                hint += (
+                    "Note: `pyotb_app.app.GetParameterValue('paramname')` can be "
+                    "shorten with `pyotb_app['paramname']` to access parameters "
+                    "values."
+                )
+
+        elif item in self.parameters_keys:
+            # Because in pyotb 1.5.4, applications outputs were added as
+            # attributes of the instance
+            hint = (
+                "Note: `pyotb_app.paramname` is no longer supported. Starting "
+                "from pyotb 2.0.0, `pyotb_app['paramname']` can be used to "
+                "access parameters values. "
+            )
+        if hint:
+            depreciation_warning(f"{note} {hint}")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{item}'"
+        )
 
     def __getitem__(self, key) -> Any | list[float] | float | Slicer:
         """Override the default __getitem__ behaviour.
@@ -757,6 +820,7 @@ class App(OTBObject):
             self.frozen = False
         self._time_end = perf_counter()
 
+    @deprecated_alias(filename_extension="ext_fname")
     def write(
         self,
         path: str | Path | dict[str, str] = None,
@@ -1431,6 +1495,7 @@ class Output(OTBObject):
 
     _filepath: str | Path = None
 
+    @deprecated_alias(app="pyotb_app", output_parameter_key="param_key")
     def __init__(
         self,
         pyotb_app: App,
@@ -1462,6 +1527,11 @@ class Output(OTBObject):
     def app(self) -> otb.Application:
         """Reference to the parent pyotb otb.Application instance."""
         return self.parent_pyotb_app.app
+
+    @property
+    @deprecated_attr(replacement="parent_pyotb_app")
+    def pyotb_app(self) -> App:
+        """Reference to the parent pyotb App (deprecated)."""
 
     @property
     def exports_dic(self) -> dict[str, dict]:
