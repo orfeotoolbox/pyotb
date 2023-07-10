@@ -1,4 +1,16 @@
-## Troubleshooting: known limitations with old versions
+# Troubleshooting
+
+## Migration from pyotb 1.5.4 (oct 2022) to 2.x.y
+
+- `otbObject` has ben renamed `OTBObject`
+- use `pyotb_app['paramname']` or `pyotb_app.app.GetParameterValue('paramname')` instead of `pyotb_app.GetParameterValue('paramname')` to access parameter `paramname` value
+- use `pyotb_app['paramname']` instead of `pyotb_app.paramname` to access parameter `paramname` value
+- `App.output_param` has been replaced with `App.output_image_key`
+- `App.write()` argument `filename_extension` has been renamed `ext_fname`
+- `Output.__init__()` arguments `app` and `output_parameter_key` have been renamed `pyotb_app` and `param_key`
+- `Output.pyotb_app` has been renamed `Output.parent_pyotb_app`
+
+## Known limitations with old versions
 
 !!! note
 
