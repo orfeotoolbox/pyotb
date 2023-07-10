@@ -11,7 +11,7 @@ to make OTB more Python friendly.
 - [Installation](installation.md)
 - [How to use pyotb](quickstart.md)
 - [Useful features](features.md)
-- [Functions](features.md)
+- [Functions](functions.md)
 - [Interaction with Python libraries (numpy, rasterio, tensorflow)](interaction.md)
 
 ## Examples

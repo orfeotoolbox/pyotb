@@ -762,7 +762,7 @@ class App(OTBObject):
         path: str | Path | dict[str, str] = None,
         pixel_type: dict[str, str] | str = None,
         preserve_dtype: bool = False,
-        ext_fname: str = "",
+        ext_fname: dict[str, str] | str = None,
         **kwargs,
     ) -> bool:
         """Set output pixel type and write the output raster files.
@@ -772,14 +772,14 @@ class App(OTBObject):
                            - dictionary containing key-arguments enumeration. Useful when a key contains
                              non-standard characters such as a point, e.g. {'io.out':'output.tif'}
                            - None if output file was passed during App init
-            ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
-                                Will be used for all outputs (Default value = "")
             pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
                                  - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
                                    outputs, all outputs are written with this unique type.
                                    Valid pixel types are uint8, uint16, uint32, int16, int32, float, double,
                                    cint16, cint32, cfloat, cdouble. (Default value = None)
             preserve_dtype: propagate main input pixel type to outputs, in case pixel_type is None
+            ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
+                                Will be used for all outputs (Default value = None)
             **kwargs: keyword arguments e.g. out='output.tif'
 
         Returns:
@@ -1660,8 +1660,7 @@ def summarize(
             useful to remove extended filenames.
 
     Returns:
-        nested dictionary with serialized App(s) containing name and
-        parameters of an app and its parents
+        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
 
     """
 

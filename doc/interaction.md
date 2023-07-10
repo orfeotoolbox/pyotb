@@ -43,11 +43,9 @@ noisy_image.write('image_plus_noise.tif')
 
 !!! warning
 
-    Limitations :
-    
     - The whole image is loaded into memory
-    - The georeference can not be modified. Thus, numpy operations can not change
-    the image or pixel size
+    - The georeference can not be modified. Thus, numpy operations can not 
+    change the image or pixel size
 
 ## Export to rasterio
 
@@ -138,10 +136,6 @@ memory
 
 !!! warning
 
-    Limitations :
-    
-    - For OTBTF versions < 4.0.0, it is not possible to use the tensorflow 
-    python API inside a script where OTBTF is used because of libraries 
-    clashing between Tensorflow and OTBTF, i.e. `import tensorflow` doesn't 
-    work in a script where OTBTF apps have been initialized. This is why we 
-    recommend to use latest OTBTF versions
+    Due to compilation issues in OTBTF before version 4.0.0, tensorflow and 
+    pyotb can't be imported in the same python code. This problem has been 
+    fixed in OTBTF 4.0.0.
