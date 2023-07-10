@@ -8,9 +8,10 @@ import functools
 import warnings
 
 
-WARN = '\033[91m'
-ENDC = '\033[0m'
-OKAY = '\033[92m'
+WARN = "\033[91m"
+ENDC = "\033[0m"
+OKAY = "\033[92m"
+
 
 def depreciation_warning(message: str):
     """Shows a warning message.
@@ -24,6 +25,8 @@ def depreciation_warning(message: str):
         category=DeprecationWarning,
         stacklevel=3,
     )
+
+
 def deprecated_alias(**aliases: str) -> Callable:
     """Decorator for deprecated function and method arguments.
 
@@ -40,6 +43,7 @@ def deprecated_alias(**aliases: str) -> Callable:
         wrapped function
 
     """
+
     def deco(func: Callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -51,11 +55,7 @@ def deprecated_alias(**aliases: str) -> Callable:
     return deco
 
 
-def rename_kwargs(
-        func_name: str,
-        kwargs: Dict[str, Any],
-        aliases: Dict[str, str]
-):
+def rename_kwargs(func_name: str, kwargs: Dict[str, Any], aliases: Dict[str, str]):
     """Helper function for deprecating function arguments.
 
     Args:
@@ -78,6 +78,7 @@ def rename_kwargs(
             depreciation_warning(message)
             kwargs[new] = kwargs.pop(alias)
 
+
 def deprecated_attr(replacement: str) -> Callable:
     """Decorator for deprecated attr.
 
@@ -94,6 +95,7 @@ def deprecated_attr(replacement: str) -> Callable:
         wrapped function
 
     """
+
     def deco(attr: Any):
         @functools.wraps(attr)
         def wrapper(self, *args, **kwargs):
