@@ -55,7 +55,8 @@ extra:
     - icon: fontawesome/brands/gitlab
       link: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 extra_css:
-  - stylesheets/extra.css
+  - https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/8.1.2-rc1/Documentation/Cookbook/_static/css/otb_theme.css
+  - extra.css
 use_directory_urls: false  # this creates some pyotb/core.html pages instead of pyotb/core/index.html
 
 markdown_extensions:
@@ -66,13 +67,15 @@ markdown_extensions:
       toc_depth: 1-2
   - pymdownx.highlight:
       anchor_linenums: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+     custom_fences:
+       - name: python
+         class: python
+         format: !!python/name:pymdownx.superfences.fence_code_format
 
-# Rest of the navigation..
-site_name: "pyotb documentation: a Python extension of OTB"
+# Rest of the navigation.
+site_name: "pyotb: Orfeo ToolBox for Python"
 repo_url: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
 repo_name: pyotb
 docs_dir: doc/
