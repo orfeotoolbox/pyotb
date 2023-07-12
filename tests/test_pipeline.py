@@ -2,7 +2,7 @@ import os
 import itertools
 import pytest
 import pyotb
-from tests_data import INPUT, FILEPATH
+from tests_data import INPUT, SPOT_IMG_URL
 
 
 # List of buildings blocks, we can add other pyotb objects here
@@ -79,7 +79,7 @@ def pipeline2str(pipeline):
 
 def make_pipelines_list():
     """Create a list of pipelines using different lengths and blocks"""
-    blocks = {FILEPATH: OTBAPPS_BLOCKS, INPUT: ALL_BLOCKS}  # for filepath, we can't use Slicer or Operation
+    blocks = {SPOT_IMG_URL: OTBAPPS_BLOCKS, INPUT: ALL_BLOCKS}  # for filepath, we can't use Slicer or Operation
     pipelines = []
     names = []
     for inp, blocks in blocks.items():

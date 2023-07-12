@@ -4,11 +4,23 @@ import numpy as np
 from tests_data import *
 
 
-# Input settings
 def test_parameters():
+    # Input / ExtractROI
     assert INPUT.parameters
-    assert INPUT.parameters["in"] == FILEPATH
+    assert INPUT.parameters["in"] == SPOT_IMG_URL
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
+    # ManageNoData
+    app = pyotb.ManageNoData(INPUT)
+    assert "usenan" in app._auto_parameters
+    assert "mode.buildmask.inv" in app._auto_parameters
+    # OpticalCalibration
+    inp = pyotb.Input(PLEIADES_IMG_URL)
+    app = pyotb.OpticalCalibration(inp, level="toa")
+    assert "milli" in app._auto_parameters
+    assert "clamp" in app._auto_parameters
+    assert app._auto_parameters["acqui.year"] == 2012
+    assert app._auto_parameters["acqui.sun.elev"] == 23.836299896240234
+    # OrthoRectification
     app = pyotb.OrthoRectification(INPUT)
     assert isinstance(app.parameters["map"], str)
     assert app.parameters["map"] == "utm"
@@ -50,7 +62,7 @@ def test_input_vsi():
 
 def test_input_vsi_from_user():
     # Ensure old way is still working: ExtractROI will raise RuntimeError if a path is malformed
-    pyotb.Input("/vsicurl/" + FILEPATH)
+    pyotb.Input("/vsicurl/" + SPOT_IMG_URL)
 
 
 def test_wrong_key():
@@ -170,7 +182,7 @@ def test_ext_fname():
 
     INPUT["out"].filepath.unlink()
 
-    mss = pyotb.MeanShiftSmoothing(FILEPATH)
+    mss = pyotb.MeanShiftSmoothing(SPOT_IMG_URL)
     mss.write(
         {
             "fout": "/tmp/test_ext_fn_fout.tif?&nodata=1",
@@ -237,7 +249,7 @@ def test_slicer_in_output():
 def test_rational_operators():
     def _test(func, exp):
         meas = func(INPUT)
-        ref = pyotb.BandMathX({"il": [FILEPATH], "exp": exp})
+        ref = pyotb.BandMathX({"il": [SPOT_IMG_URL], "exp": exp})
         for i in range(1, 5):
             compared = pyotb.CompareImages(
                 {"ref.in": ref, "meas.in": meas, "ref.channel": i, "meas.channel": i}
@@ -248,14 +260,14 @@ def test_rational_operators():
     _test(lambda x: x - x, "im1 - im1")
     _test(lambda x: x / x, "im1 div im1")
     _test(lambda x: x * x, "im1 mult im1")
-    _test(lambda x: x + FILEPATH, "im1 + im1")
-    _test(lambda x: x - FILEPATH, "im1 - im1")
-    _test(lambda x: x / FILEPATH, "im1 div im1")
-    _test(lambda x: x * FILEPATH, "im1 mult im1")
-    _test(lambda x: FILEPATH + x, "im1 + im1")
-    _test(lambda x: FILEPATH - x, "im1 - im1")
-    _test(lambda x: FILEPATH / x, "im1 div im1")
-    _test(lambda x: FILEPATH * x, "im1 mult im1")
+    _test(lambda x: x + SPOT_IMG_URL, "im1 + im1")
+    _test(lambda x: x - SPOT_IMG_URL, "im1 - im1")
+    _test(lambda x: x / SPOT_IMG_URL, "im1 div im1")
+    _test(lambda x: x * SPOT_IMG_URL, "im1 mult im1")
+    _test(lambda x: SPOT_IMG_URL + x, "im1 + im1")
+    _test(lambda x: SPOT_IMG_URL - x, "im1 - im1")
+    _test(lambda x: SPOT_IMG_URL / x, "im1 div im1")
+    _test(lambda x: SPOT_IMG_URL * x, "im1 mult im1")
     _test(lambda x: x + 2, "im1 + {2;2;2;2}")
     _test(lambda x: x - 2, "im1 - {2;2;2;2}")
     _test(lambda x: x / 2, "0.5 * im1")
@@ -354,8 +366,8 @@ def test_summarize_output():
 
 
 def test_summarize_strip_output():
-    in_fn = FILEPATH
-    in_fn_w_ext = FILEPATH + "?&skipcarto=1"
+    in_fn = SPOT_IMG_URL
+    in_fn_w_ext = SPOT_IMG_URL + "?&skipcarto=1"
     out_fn = "/tmp/output.tif"
     out_fn_w_ext = out_fn + "?&box=10:10:10:10"
 
@@ -394,7 +406,7 @@ def test_summarize_consistency():
         - summary of the app after write()
         Then we check that both only differ with the output parameter
         """
-        app = app_fn(inp=FILEPATH)
+        app = app_fn(inp=SPOT_IMG_URL)
         out_file = "/dev/shm/out.tif"
         out_key = app.output_image_key
         summary_wo_wrt = pyotb.summarize(app)
@@ -408,20 +420,18 @@ def test_summarize_consistency():
         _test(app_fn)
 
 
-@pytest.mark.xfail
-def test_pipeline_simple():
+def test_summary_pipeline_simple():
     # BandMath -> OrthoRectification -> ManageNoData
-    app1 = pyotb.BandMath({"il": [FILEPATH], "exp": "im1b1"})
-    app2 = pyotb.OrthoRectification({"io.in": app1})
+    app1 = pyotb.OrthoRectification({"io.in": SPOT_IMG_URL})
+    app2 = pyotb.BandMath({"il": [app1], "exp": "im1b1"})
     app3 = pyotb.ManageNoData({"in": app2})
     summary = pyotb.summarize(app3)
     assert summary == SIMPLE_SERIALIZATION
 
 
-@pytest.mark.xfail
-def test_pipeline_diamond():
+def test_summary_pipeline_diamond():
     # Diamond graph
-    app1 = pyotb.BandMath({"il": [FILEPATH], "exp": "im1b1"})
+    app1 = pyotb.BandMath({"il": [SPOT_IMG_URL], "exp": "im1b1"})
     app2 = pyotb.OrthoRectification({"io.in": app1})
     app3 = pyotb.ManageNoData({"in": app2})
     app4 = pyotb.BandMathX({"il": [app2, app3], "exp": "im1+im2"})

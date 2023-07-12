@@ -74,26 +74,38 @@ codespell:
     LD_LIBRARY_PATH: /opt/otb/lib
     OTB_LOGGER_LEVEL: INFO
     PYOTB_LOGGER_LEVEL: DEBUG
+    SPOT_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif
+    PLEIADES_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Baseline/OTB/Images/prTvOrthoRectification_pleiades-1_noDEM.tif
+  before_script:
+    - pip install pytest pytest-cov
+
+test_install:
+  extends: .tests
+  script:
+    - pip install .
+
+test_module_core:
+  extends: .tests
   artifacts:
     reports:
-      junit: test-*.xml
+      junit: test-module-core.xml
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-  before_script:
-    - pip install pytest pytest-cov
-    - pip install .
-
-test_core:
-  extends: .tests
   coverage: '/TOTAL.*\s+(\d+%)$/'
   script:
-    - pytest -vv --color=yes --junitxml=test-core.xml --cov=/usr/local/lib/python3.8/dist-packages/pyotb --cov-report term --cov-report xml:coverage.xml tests/test_core.py
+    - curl -fsLI $SPOT_IMG_URL
+    - curl -fsLI $PLEIADES_IMG_URL
+    - python3 -m pytest -vv --junitxml=test-module-core.xml --cov-report xml:coverage.xml tests/test_core.py
 
-test_pipeline:
+test_pipeline_permutations:
   extends: .tests
+  artifacts:
+    reports:
+      junit: test-pipeline-permutations.xml
   script:
-    - pytest -vv --color=yes --junitxml=test-pipeline.xml tests/test_pipeline.py
+    - curl -fsLI $SPOT_IMG_URL
+    - python3 -m pytest -vv --junitxml=test-pipeline-permutations.xml tests/test_pipeline.py
 
 # -------------------------------------- Docs ---------------------------------------
 

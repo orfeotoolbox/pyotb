@@ -432,9 +432,7 @@ class OTBObject(ABC):
         if item in dir(self.app):
             # Because otbApplication instances methods names start with an
             # upper case
-            hint = (
-                f"Maybe try `pyotb_app.app.{item}` instead of `pyotb_app.{item}`? "
-            )
+            hint = f"Maybe try `pyotb_app.app.{item}` instead of `pyotb_app.{item}`? "
             if item.startswith("GetParameter"):
                 hint += (
                     "Note: `pyotb_app.app.GetParameterValue('paramname')` can be "
