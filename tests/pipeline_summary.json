@@ -39,7 +39,7 @@
       }
     }
   },
-  "COMPLEX": {
+  "DIAMOND": {
     "name": "BandMathX",
     "parameters": {
       "il": [
