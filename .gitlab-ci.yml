@@ -61,6 +61,13 @@ codespell:
     - codespell {pyotb,tests,doc,README.md}
 
 # -------------------------------------- Tests --------------------------------------
+test_install:
+  stage: Tests
+  only:
+    - tags
+  allow_failure: false
+  script:
+    - pip install .
 
 .tests:
   stage: Tests
@@ -72,20 +79,16 @@ codespell:
   variables:
     OTB_ROOT: /opt/otb
     LD_LIBRARY_PATH: /opt/otb/lib
-    OTB_LOGGER_LEVEL: INFO
-    PYOTB_LOGGER_LEVEL: DEBUG
     SPOT_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif
     PLEIADES_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Baseline/OTB/Images/prTvOrthoRectification_pleiades-1_noDEM.tif
   before_script:
     - pip install pytest pytest-cov
 
-test_install:
-  extends: .tests
-  script:
-    - pip install .
-
 test_module_core:
   extends: .tests
+  variables:
+    OTB_LOGGER_LEVEL: INFO
+    PYOTB_LOGGER_LEVEL: DEBUG
   artifacts:
     reports:
       junit: test-module-core.xml
@@ -100,6 +103,9 @@ test_module_core:
 
 test_pipeline_permutations:
   extends: .tests
+  variables:
+    OTB_LOGGER_LEVEL: WARNING
+    PYOTB_LOGGER_LEVEL: INFO
   artifacts:
     reports:
       junit: test-pipeline-permutations.xml
@@ -111,7 +117,6 @@ test_pipeline_permutations:
 
 docs:
   stage: Documentation
-  # when: manual
   rules:
     - changes:
         - mkdocs.yml
