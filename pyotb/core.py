@@ -1742,20 +1742,19 @@ def summarize(
     if not isinstance(obj, App):
         return obj
 
+    # Call / top level of recursion : obj is an App
+    def strip_path(param: str | Any):
+        if isinstance(param, list):
+            return [strip_path(p) for p in param]
         if not isinstance(param, str):
+            return summarize(param)
+        return param.split("?")[0]
+
+    # We need to return parameters values, summarized if param is an App
     parameters = {}
     for key, param in obj.parameters.items():
-        if (
-            strip_input_paths
-            and obj.is_input(key)
-            or strip_output_paths
-            and obj.is_output(key)
-        ):
-            parameters[key] = (
-                [strip_path(p) for p in param]
-                if isinstance(param, list)
-                else strip_path(param)
-            )
+        if strip_inpath and obj.is_input(key) or strip_outpath and obj.is_output(key):
+            parameters[key] = strip_path(param)
         else:
             parameters[key] = summarize(param)
     return {"name": obj.app.GetName(), "parameters": parameters}
