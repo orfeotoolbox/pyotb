@@ -1718,25 +1718,23 @@ def summarize(
 ) -> dict[str, dict | Any] | str | float | list:
     """Recursively summarize parameters of an App or Output object and its parents.
 
+    At the deepest recursion level, this function just return any parameter value,
+     path stripped if needed, or app summarized in case of a pipeline.
+
     Args:
-        obj: input object to summarize
-        strip_input_paths: strip all input paths: If enabled, paths related to
+        obj: input object / parameter value to summarize
+        strip_inpath: strip all input paths: If enabled, paths related to
             inputs are truncated after the first "?" character. Can be useful
             to remove URLs tokens (e.g. SAS or S3 credentials).
-        strip_output_paths: strip all output paths: If enabled, paths related
+        strip_outpath: strip all output paths: If enabled, paths related
             to outputs are truncated after the first "?" character. Can be
             useful to remove extended filenames.
 
     Returns:
-        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
+        nested dictionary containing name and parameters of an app and its parents
 
     """
-
-    def strip_path(param: str | Any):
-        if not isinstance(param, str):
-            return summarize(param)
-        return param.split("?")[0]
-
+    # This is the deepest recursion level
     if isinstance(obj, list):
         return [summarize(o) for o in obj]
     if isinstance(obj, Output):
