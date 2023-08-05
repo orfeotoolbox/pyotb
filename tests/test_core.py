@@ -348,9 +348,9 @@ def test_summarize_strip_output():
 
     baseline = [
         (in_fn, out_fn_w_ext, "out", {}, out_fn_w_ext),
-        (in_fn, out_fn_w_ext, "out", {"strip_output_paths": True}, out_fn),
+        (in_fn, out_fn_w_ext, "out", {"strip_outpath": True}, out_fn),
         (in_fn_w_ext, out_fn, "in", {}, in_fn_w_ext),
-        (in_fn_w_ext, out_fn, "in", {"strip_input_paths": True}, in_fn),
+        (in_fn_w_ext, out_fn, "in", {"strip_inpath": True}, in_fn),
     ]
 
     for inp, out, key, extra_args, expected in baseline:

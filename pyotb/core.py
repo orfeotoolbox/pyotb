@@ -1742,6 +1742,7 @@ def summarize(
     if not isinstance(obj, App):
         return obj
 
+        if not isinstance(param, str):
     parameters = {}
     for key, param in obj.parameters.items():
         if (
