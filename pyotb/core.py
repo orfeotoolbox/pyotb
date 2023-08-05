@@ -1712,10 +1712,10 @@ def get_out_images_param_keys(app: OTBObject) -> list[str]:
 
 
 def summarize(
-    obj: App | Output | Any,
-    strip_input_paths: bool = False,
-    strip_output_paths: bool = False,
-) -> dict[str, str | dict[str, Any]]:
+    obj: App | Output | str | float | list,
+    strip_inpath: bool = False,
+    strip_outpath: bool = False,
+) -> dict[str, dict | Any] | str | float | list:
     """Recursively summarize parameters of an App or Output object and its parents.
 
     Args:
