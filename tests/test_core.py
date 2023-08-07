@@ -49,17 +49,23 @@ def test_app_properties():
 
 
 def test_app_input_vsi():
+    # Ensure old way is still working: ExtractROI will raise RuntimeError if a path is malformed
+    pyotb.Input("/vsicurl/" + SPOT_IMG_URL)
     # Simple remote file
     info = pyotb.ReadImageInfo("https://fake.com/image.tif", frozen=True)
     assert info.app.GetParameterValue("in") == "/vsicurl/https://fake.com/image.tif"
     assert info.parameters["in"] == "https://fake.com/image.tif"
-    # Compressed remote file
-    info = pyotb.ReadImageInfo("https://fake.com/image.tif.zip", frozen=True)
+    # Compressed single file archive
+    info = pyotb.ReadImageInfo("image.tif.zip", frozen=True)
+    assert info.app.GetParameterValue("in") == "/vsizip/image.tif.zip"
+    assert info.parameters["in"] == "image.tif.zip"
+    # File within compressed remote archive
+    info = pyotb.ReadImageInfo("https://fake.com/archive.tar.gz/image.tif", frozen=True)
     assert (
         info.app.GetParameterValue("in")
-        == "/vsizip//vsicurl/https://fake.com/image.tif.zip"
+        == "/vsitar//vsicurl/https://fake.com/archive.tar.gz/image.tif"
     )
-    assert info.parameters["in"] == "https://fake.com/image.tif.zip"
+    assert info.parameters["in"] == "https://fake.com/archive.tar.gz/image.tif"
     # Piped curl --> zip --> tiff
     ziped_tif_urls = (
         "https://github.com/OSGeo/gdal/raw/master"
@@ -70,8 +76,6 @@ def test_app_input_vsi():
     for ziped_tif_url in ziped_tif_urls:
         info = pyotb.ReadImageInfo(ziped_tif_url)
         assert info["sizex"] == 20
-    # Ensure old way is still working: ExtractROI will raise RuntimeError if a path is malformed
-    pyotb.Input("/vsicurl/" + SPOT_IMG_URL)
 
 
 def test_img_properties():
