@@ -1721,31 +1721,29 @@ def get_out_images_param_keys(app: OTBObject) -> list[str]:
 
 
 def summarize(
-    obj: App | Output | Any,
-    strip_input_paths: bool = False,
-    strip_output_paths: bool = False,
-) -> dict[str, str | dict[str, Any]]:
+    obj: App | Output | str | float | list,
+    strip_inpath: bool = False,
+    strip_outpath: bool = False,
+) -> dict[str, dict | Any] | str | float | list:
     """Recursively summarize parameters of an App or Output object and its parents.
 
+    At the deepest recursion level, this function just return any parameter value,
+     path stripped if needed, or app summarized in case of a pipeline.
+
     Args:
-        obj: input object to summarize
-        strip_input_paths: strip all input paths: If enabled, paths related to
+        obj: input object / parameter value to summarize
+        strip_inpath: strip all input paths: If enabled, paths related to
             inputs are truncated after the first "?" character. Can be useful
             to remove URLs tokens (e.g. SAS or S3 credentials).
-        strip_output_paths: strip all output paths: If enabled, paths related
+        strip_outpath: strip all output paths: If enabled, paths related
             to outputs are truncated after the first "?" character. Can be
             useful to remove extended filenames.
 
     Returns:
-        nested dictionary with serialized App(s) containing name and parameters of an app and its parents
+        nested dictionary containing name and parameters of an app and its parents
 
     """
-
-    def strip_path(param: str | Any):
-        if not isinstance(param, str):
-            return summarize(param)
-        return param.split("?")[0]
-
+    # This is the deepest recursion level
     if isinstance(obj, list):
         return [summarize(o) for o in obj]
     if isinstance(obj, Output):
@@ -1753,19 +1751,19 @@ def summarize(
     if not isinstance(obj, App):
         return obj
 
+    def strip_path(param: str | Any):
+        if isinstance(param, list):
+            return [strip_path(p) for p in param]
+        if not isinstance(param, str):
+            return summarize(param)
+        return param.split("?")[0]
+
+    # Call / top level of recursion : obj is an App
+    # We need to return parameters values, summarized if param is an App
     parameters = {}
     for key, param in obj.parameters.items():
-        if (
-            strip_input_paths
-            and obj.is_input(key)
-            or strip_output_paths
-            and obj.is_output(key)
-        ):
-            parameters[key] = (
-                [strip_path(p) for p in param]
-                if isinstance(param, list)
-                else strip_path(param)
-            )
+        if strip_inpath and obj.is_input(key) or strip_outpath and obj.is_output(key):
+            parameters[key] = strip_path(param)
         else:
             parameters[key] = summarize(param)
     return {"name": obj.app.GetName(), "parameters": parameters}
