@@ -2,6 +2,7 @@
 """This module is the core of pyotb."""
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from ast import literal_eval
 from pathlib import Path
@@ -731,10 +732,7 @@ class App(OTBObject):
                 )
             try:
                 if self.is_input(key):
-                    if self.is_key_images_list(key):
-                        self.__set_param(key, [add_vsi_prefix(p) for p in obj])
-                    else:
-                        self.__set_param(key, add_vsi_prefix(obj))
+                    self.__set_param(key, self.__check_input_param(obj))
                 else:
                     self.__set_param(key, obj)
             except (RuntimeError, TypeError, ValueError, KeyError) as e:
@@ -968,6 +966,49 @@ class App(OTBObject):
             ):
                 kwargs.update({self.input_key: arg})
         return kwargs
+
+    def __check_input_param(
+        self, obj: list | OTBObject | str | Path
+    ) -> list | OTBObject | str:
+        """Check the type and value of an input param.
+
+        Args:
+            obj: input parameter value
+
+        Returns:
+            object, string with new /vsi prefix(es) if needed
+
+        """
+        if isinstance(obj, list):
+            return [self.__check_input_param(o) for o in obj]
+        # May be we could add some checks here
+        if isinstance(obj, OTBObject):
+            return obj
+        if isinstance(obj, Path):
+            obj = str(obj)
+        if isinstance(obj, str):
+            if not obj.startswith("/vsi"):
+                # Remote file. TODO: add support for S3 / GS / AZ
+                if obj.startswith(("https://", "http://", "ftp://")):
+                    obj = "/vsicurl/" + obj
+                # Compressed file
+                prefixes = {
+                    ".tar": "vsitar",
+                    ".tar.gz": "vsitar",
+                    ".tgz": "vsitar",
+                    ".gz": "vsigzip",
+                    ".7z": "vsi7z",
+                    ".zip": "vsizip",
+                    ".rar": "vsirar",
+                }
+                expr = r"(.*?)(\.7z|\.zip|\.rar|\.tar\.gz|\.tgz|\.tar|\.gz)(.*)"
+                parts = re.match(expr, obj)
+                if parts:
+                    file, ext = parts.group(1), parts.group(2)
+                    if not Path(file + ext).is_dir():
+                        obj = f"/{prefixes[ext]}/{obj}"
+            return obj
+        raise TypeError(f"{self.name}: wrong input parameter type ({type(obj)})")
 
     def __set_param(
         self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]
@@ -1578,38 +1619,6 @@ class Output(OTBObject):
     def __str__(self) -> str:
         """Return string representation of Output filepath."""
         return str(self.filepath)
-
-
-def add_vsi_prefix(filepath: str | Path) -> str:
-    """Append vsi prefixes to file URL or path if needed.
-
-    Args:
-        filepath: file path or URL
-
-    Returns:
-        string with new /vsi prefix(es)
-
-    """
-    if isinstance(filepath, Path):
-        filepath = str(filepath)
-    if isinstance(filepath, str) and not filepath.startswith("/vsi"):
-        # Remote file. TODO: add support for S3 / GS / AZ
-        if filepath.startswith(("https://", "http://", "ftp://")):
-            filepath = "/vsicurl/" + filepath
-        # Compressed file
-        prefixes = {
-            ".tar": "vsitar",
-            ".tgz": "vsitar",
-            ".gz": "vsigzip",
-            ".7z": "vsi7z",
-            ".zip": "vsizip",
-            ".rar": "vsirar",
-        }
-        basename = filepath.split("?")[0]
-        ext = Path(basename).suffix
-        if ext in prefixes:
-            filepath = f"/{prefixes[ext]}/{filepath}"
-    return filepath
 
 
 def get_nbchannels(inp: str | Path | OTBObject) -> int:
