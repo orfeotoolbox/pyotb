@@ -45,19 +45,19 @@ def set_logger_level(level: str):
     logger_handler.setLevel(getattr(logging, level))
 
 
-def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = True):
+def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
     """Try to load OTB bindings or scan system, help user in case of failure, set env variables.
 
-    Path precedence :                                OTB_ROOT > python bindings directory
-        OR search for releases installations    :    HOME
-        OR (for Linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
-        OR (for MacOS)                          :    ~/Applications
-        OR (for Windows)                        :    C:/Program Files
+    The OTB_ROOT variable allow one to override default OTB version, with auto env setting.
+    Path precedence : $OTB_ROOT > location of python bindings location
+    Then, if OTB is not found:
+        search for releases installations: $HOME/Applications
+        OR (for Linux): /opt/otbtf > /opt/otb > /usr/local > /usr
+        OR (for Windows): C:/Program Files
 
     Args:
         prefix: prefix to search OTB in (Default value = OTB_ROOT)
         scan: find otb in system known locations (Default value = True)
-        scan_userdir: search for OTB release in user's home directory (Default value = True)
 
     Returns:
         otbApplication module
@@ -95,7 +95,7 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
             ) from e
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
-    prefix = __find_otb_root(scan_userdir)
+    prefix = __find_otb_root()
     if not prefix:
         if hasattr(sys, "ps1"):
             if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
@@ -341,11 +341,8 @@ def __find_apps_path(lib_dir: Path):
     return ""
 
 
-def __find_otb_root(scan_userdir: bool = False):
+def __find_otb_root():
     """Search for OTB root directory in well known locations.
-
-    Args:
-        scan_userdir: search with glob in $HOME directory
 
     Returns:
         str path of the OTB directory
@@ -369,22 +366,17 @@ def __find_otb_root(scan_userdir: bool = False):
                 prefix = path.parent.parent.parent
             else:
                 prefix = path.parent.parent
-            prefix = prefix.absolute()
     elif sys.platform == "win32":
-        for path in Path("c:/Program Files").glob("**/OTB-*/lib"):
+        for path in sorted(Path("c:/Program Files").glob("**/OTB-*/lib")):
             logger.info("Found %s", path.parent)
-            prefix = path.parent.absolute()
-    elif sys.platform == "darwin":
-        for path in (Path.home() / "Applications").glob("**/OTB-*/lib"):
-            logger.info("Found %s", path.parent)
-            prefix = path.parent.absolute()
-    # If possible, use OTB found in user's HOME tree (this may take some time)
-    if scan_userdir:
-        for path in sorted(Path.home().glob("**/OTB-*/lib/")):
-            logger.info("Found %s", path.parent)
-            prefix = path.parent.absolute()
+            prefix = path.parent
+    # Search for pyotb OTB install, or default on macOS
+    apps = Path.home() / "Applications"
+    for path in sorted(apps.glob("OTB-*/lib/")):
+        logger.info("Found %s", path.parent)
+        prefix = path.parent
     # Return latest found prefix (and version), see precedence in function def find_otb()
-    return prefix
+    return prefix.absolute()
 
 
 def __suggest_fix_import(error_message: str, prefix: str):
