@@ -204,7 +204,7 @@ def install_otb(version: str = "latest", path: str = ""):
 
     Args:
         version: OTB version tag, e.g. '8.1.2'
-        path: installation directory
+        path: installation directory, default is $HOME/Applications
 
     Returns:
         full path of the new installation
@@ -241,11 +241,12 @@ def install_otb(version: str = "latest", path: str = ""):
         path = Path.home() / "Applications" / tmpfile.stem
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
-            zipf.extractall(path)
+            print("Extracting zip file...")
+            zipf.extractall(path.parent)
     else:
         install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
         print(f"Executing '{install_cmd}'\n")
-        subprocess.run(f"{cmd} {tmpfile} --target {path} --accept", shell=True, check=True)
+        subprocess.run(install_cmd, shell=True, check=True)
     tmpfile.unlink()  # cleaning
 
     # Add env variable to profile
