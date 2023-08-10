@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 """This module helps to ensure we properly initialize pyotb: only in case OTB is found and apps are available."""
+import json
 import logging
 import os
+import re
+import subprocess
 import sys
+import tempfile
+import urllib.request
 from pathlib import Path
 from shutil import which
 
 # Allow user to switch between OTB directories without setting every env variable
 OTB_ROOT = os.environ.get("OTB_ROOT")
+DOCS_URL = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
 
 # Logging
 # User can also get logger with `logging.getLogger("pyOTB")`
@@ -90,6 +96,22 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
     prefix = __find_otb_root(scan_userdir)
+    if not prefix:
+        if hasattr(sys, "ps1"):
+            if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
+                version = input(
+                    "Choose a version number to install (default is latest): "
+                )
+                path = input(
+                    "Provide a path for installation "
+                    "(default is <user_dir>/Applications/OTB-<version>): "
+                )
+                return find_otb(install_otb(version, path))
+    if not prefix:
+        raise SystemExit(
+            "OTB not found on disk. "
+            "To install it, open an interactive python shell and type 'import pyotb'"
+        )
     # Try to import one last time before raising error
     try:
         set_environment(prefix)
@@ -98,9 +120,6 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
         return otb
     except EnvironmentError as e:
         raise SystemExit("Auto setup for OTB env failed. Exiting.") from e
-    # Unknown error
-    except ModuleNotFoundError as e:
-        raise SystemExit("Can't run without OTB installed. Exiting.") from e
     # Help user to fix this
     except ImportError as e:
         __suggest_fix_import(str(e), prefix)
@@ -164,6 +183,96 @@ def set_environment(prefix: str):
         )
     os.environ["GDAL_DATA"] = gdal_data
     os.environ["PROJ_LIB"] = proj_lib
+
+
+def otb_latest_release_tag():
+    """Use gitlab API to find latest release tag name, but skip pre-releases."""
+    api_endpoint = "https://gitlab.orfeo-toolbox.org/api/v4/projects/53/repository/tags"
+    vers_regex = re.compile(r"^\d\.\d\.\d$")
+    with urllib.request.urlopen(api_endpoint) as stream:
+        data = json.loads(stream.read())
+    releases = sorted(
+        [tag["name"] for tag in data if vers_regex.match(tag["name"])],
+    )
+    return releases[-1]
+
+
+def install_otb(version: str = "latest", path: str = ""):
+    """Install pre-compiled OTB binaries in path, use latest release by default.
+
+    Args:
+        version: OTB version tag, e.g. '8.1.2'
+        path: installation directory
+
+    Returns:
+        full path of the new installation
+    """
+    major = sys.version_info.major
+    if major == 2:
+        raise SystemExit(
+            "You need to use python3 in order to import OTB python bindings."
+        )
+    minor = sys.version_info.minor
+    name_corresp = {"linux": "Linux64", "darwnin": "Darwin64", "win32": "Win64"}
+    sysname = name_corresp[sys.platform]
+    if sysname == "Win64":
+        cmd = which("cmd.exe")
+        ext = "zip"
+        if minor != 7:
+            raise SystemExit(
+                "Python version 3.7 is required to import python bindings on Windows."
+            )
+    else:
+        cmd = which("zsh") or which("bash") or which("sh")
+        ext = "run"
+
+    # Fetch archive and run installer
+    if not version or version == "latest":
+        version = otb_latest_release_tag()
+    filename = f"OTB-{version}-{sysname}.{ext}"
+    url = f"https://www.orfeo-toolbox.org/packages/archives/OTB/{filename}"
+    tmpdir = tempfile.gettempdir()
+    tmpfile = Path(tmpdir) / filename
+    print(f"Downloading {url}")
+    if not tmpfile.exists():
+        urllib.request.urlretrieve(url, tmpfile)
+    if path:
+        path = Path(path)
+    else:
+        path = Path.home() / "Applications" / tmpfile.stem
+    install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
+    print(f"Executing '{install_cmd}'\n")
+    subprocess.run(f"{cmd} {tmpfile} --target {path} --accept", shell=True, check=True)
+    tmpfile.unlink()
+
+    # Add env variable to profile
+    if sysname != "Win64":
+        with open(Path.home() / ".profile", "a", encoding="utf-8") as buf:
+            buf.write(f'\n. "{path}/otbenv.profile"\n')
+    else:
+        print(
+            "In order to speed-up pyotb import, remember to call 'otbenv.bat' "
+            "before importing pyotb, or add 'OTB_ROOT=\"{path}\"' to your env variables."
+        )
+    if (
+        sysname == "Win64"
+        or (sysname == "Linux64" and minor == 8)
+        or (sysname == "Darwin64" and minor == 7)
+    ):
+        return str(path)
+    # Recompile bindings : this may fail because of OpenGL...
+    if sys.executable and which("ctest") and which("python3-config"):
+        print("\nRecompiling python bindings...")
+        ctest_cmd = (
+            ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
+        )
+        subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
+        return str(path)
+    print(
+        "\nYou'll need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
+        " in order to recompile python bindings. "
+    )
+    raise SystemExit
 
 
 def __find_lib(prefix: str = None, otb_module=None):
@@ -330,9 +439,8 @@ def __suggest_fix_import(error_message: str, prefix: str):
                     "It seems that your env variables aren't properly set,"
                     " first use 'call otbenv.bat' then try to import pyotb once again"
                 )
-    docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
     logger.critical(
-        "You can verify installation requirements for your OS at %s", docs_link
+        "You can verify installation requirements for your OS at %s", DOCS_URL
     )
 
 
