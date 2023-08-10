@@ -109,8 +109,8 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
                     "(default is <user_dir>/Applications/OTB-<version>): "
                 )
                 edit_env = input(
-                    "Enable user environment variables for this installation ? (y/n): "
-                )
+                    "Modify user environment variables for this installation ? (y/n): "
+                ) == "y"
                 return find_otb(install_otb(version, path, edit_env))
     if not prefix:
         raise SystemExit(
