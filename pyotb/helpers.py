@@ -247,7 +247,9 @@ def install_otb(version: str = "latest", path: str = ""):
 
     # Add env variable to profile
     if sysname != "Win64":
-        with open(Path.home() / ".profile", "a", encoding="utf-8") as buf:
+        profile = Path.home() / ".profile"
+        print(f"Adding new env variables to {profile}")
+        with open(profile, "a", encoding="utf-8") as buf:
             buf.write(f'\n. "{path}/otbenv.profile"\n')
     else:
         print(
