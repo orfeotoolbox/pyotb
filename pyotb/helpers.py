@@ -108,7 +108,10 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
                     "Provide a path for installation "
                     "(default is <user_dir>/Applications/OTB-<version>): "
                 )
-                return find_otb(install_otb(version, path))
+                edit_env = input(
+                    "Enable user environment variables for this installation ? (y/n): "
+                )
+                return find_otb(install_otb(version, path, edit_env))
     if not prefix:
         raise SystemExit(
             "OTB not found on disk. "
@@ -199,7 +202,7 @@ def otb_latest_release_tag():
     return releases[-1]
 
 
-def install_otb(version: str = "latest", path: str = ""):
+def install_otb(version: str = "latest", path: str = "", edit_env: bool = False):
     """Install pre-compiled OTB binaries in path, use latest release by default.
 
     Args:
@@ -250,7 +253,7 @@ def install_otb(version: str = "latest", path: str = ""):
     tmpfile.unlink()  # cleaning
 
     # Add env variable to profile
-    if sysname != "Win64":
+    if sysname != "Win64" and edit_env:
         profile = Path.home() / ".profile"
         print(f"##### Adding new env variables to {profile}")
         with open(profile, "a", encoding="utf-8") as buf:
