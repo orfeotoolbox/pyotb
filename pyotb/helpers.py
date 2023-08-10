@@ -233,7 +233,7 @@ def install_otb(version: str = "latest", path: str = ""):
     url = f"https://www.orfeo-toolbox.org/packages/archives/OTB/{filename}"
     tmpdir = tempfile.gettempdir()
     tmpfile = Path(tmpdir) / filename
-    print(f"Downloading {url}")
+    print(f"##### Downloading {url}")
     urllib.request.urlretrieve(url, tmpfile)
     if path:
         path = Path(path)
@@ -241,18 +241,18 @@ def install_otb(version: str = "latest", path: str = ""):
         path = Path.home() / "Applications" / tmpfile.stem
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
-            print("Extracting zip file...")
+            print("##### Extracting zip file...")
             zipf.extractall(path.parent)
     else:
         install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
-        print(f"Executing '{install_cmd}'\n")
+        print(f"##### Executing '{install_cmd}'\n")
         subprocess.run(install_cmd, shell=True, check=True)
     tmpfile.unlink()  # cleaning
 
     # Add env variable to profile
     if sysname != "Win64":
         profile = Path.home() / ".profile"
-        print(f"Adding new env variables to {profile}")
+        print(f"##### Adding new env variables to {profile}")
         with open(profile, "a", encoding="utf-8") as buf:
             buf.write(f'\n. "{path}/otbenv.profile"\n')
     else:
@@ -266,7 +266,7 @@ def install_otb(version: str = "latest", path: str = ""):
         return str(path)
     # Else recompile bindings : this may fail because of OpenGL
     if which("ctest") and which("python3-config"):
-        print("\nRecompiling python bindings...")
+        print("\n##### Recompiling python bindings...")
         ctest_cmd = (
             ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
         )
