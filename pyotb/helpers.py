@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import zipfile
 import urllib.request
 from pathlib import Path
 from shutil import which
@@ -237,9 +238,13 @@ def install_otb(version: str = "latest", path: str = ""):
         path = Path(path)
     else:
         path = Path.home() / "Applications" / tmpfile.stem
-    install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
-    print(f"Executing '{install_cmd}'\n")
-    subprocess.run(f"{cmd} {tmpfile} --target {path} --accept", shell=True, check=True)
+    if sysname == "Win64":
+        with zipfile.ZipFile(tmpfile) as zipf:
+            zipf.extractall(path)
+    else:
+        install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
+        print(f"Executing '{install_cmd}'\n")
+        subprocess.run(f"{cmd} {tmpfile} --target {path} --accept", shell=True, check=True)
     tmpfile.unlink()  # cleaning
 
     # Add env variable to profile
