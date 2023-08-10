@@ -445,4 +445,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
 
 
 # Since helpers is the first module to be inititialized, this will prevent pyotb to run if OTB is not found
-find_otb()
+if os.environ.get("OTB_AUTO_INSTALL") in ("1", "true", "ON", "YES"):
+    find_otb(install_otb())
+else:
+    find_otb()
