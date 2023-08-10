@@ -98,6 +98,7 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
     logger.info("Failed to import OTB. Searching for it...")
     prefix = __find_otb_root()
     if not prefix:
+        # Python is interactive
         if hasattr(sys, "ps1"):
             if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
                 version = input(
@@ -113,7 +114,7 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
             "OTB not found on disk. "
             "To install it, open an interactive python shell and type 'import pyotb'"
         )
-    # Try to import one last time before raising error
+    # If OTB is found on disk, set env and try to import one last time
     try:
         set_environment(prefix)
         import otbApplication as otb  # pylint: disable=import-outside-toplevel
@@ -381,7 +382,8 @@ def __find_otb_root():
         logger.info("Found %s", path.parent)
         prefix = path.parent
     # Return latest found prefix (and version), see precedence in function def find_otb()
-    return prefix.absolute()
+    if isinstance(prefix, Path):
+        return prefix.absolute()
 
 
 def __suggest_fix_import(error_message: str, prefix: str):
