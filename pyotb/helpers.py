@@ -432,9 +432,10 @@ def __suggest_fix_import(error_message: str, prefix: str):
         "You can verify installation requirements for your OS at %s", DOCS_URL
     )
 
-
-# Since helpers is the first module to be inititialized, this will prevent pyotb to run if OTB is not found
+# This part of pyotb is the first imported during __init__ and checks if OTB is found
+# User may trigger auto installation with
 if os.environ.get("OTB_AUTO_INSTALL") in ("1", "true", "ON", "YES"):
     find_otb(install_otb())
+# If OTB is not found, a SystemExit is raised, to prevent execution of the core module
 else:
     find_otb()
