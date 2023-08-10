@@ -272,11 +272,11 @@ def install_otb(version: str = "latest", path: str = ""):
         )
         subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
         return str(path)
-    print(
+    msg = (
         "\nYou need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
         " in order to recompile python bindings. "
     )
-    raise SystemExit
+    raise SystemExit(msg)
 
 
 def __find_lib(prefix: str = None, otb_module=None):
