@@ -385,6 +385,7 @@ def __find_otb_root():
     # Return latest found prefix (and version), see precedence in function def find_otb()
     if isinstance(prefix, Path):
         return prefix.absolute()
+    return None
 
 
 def __suggest_fix_import(error_message: str, prefix: str):
@@ -439,6 +440,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
     logger.critical(
         "You can verify installation requirements for your OS at %s", DOCS_URL
     )
+
 
 # This part of pyotb is the first imported during __init__ and checks if OTB is found
 # If OTB is not found, a SystemExit is raised, to prevent execution of the core module
