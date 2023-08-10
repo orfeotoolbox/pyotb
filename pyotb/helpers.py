@@ -188,7 +188,7 @@ def set_environment(prefix: str):
 def otb_latest_release_tag():
     """Use gitlab API to find latest release tag name, but skip pre-releases."""
     api_endpoint = "https://gitlab.orfeo-toolbox.org/api/v4/projects/53/repository/tags"
-    vers_regex = re.compile(r"^\d\.\d\.\d$")
+    vers_regex = re.compile(r"^\d\.\d\.\d$")  # we ignore rc-* or alpha-*
     with urllib.request.urlopen(api_endpoint) as stream:
         data = json.loads(stream.read())
     releases = sorted(
@@ -209,19 +209,17 @@ def install_otb(version: str = "latest", path: str = ""):
     """
     major = sys.version_info.major
     if major == 2:
-        raise SystemExit(
-            "You need to use python3 in order to import OTB python bindings."
-        )
+        raise SystemExit("Python 3 is required for OTB bindings.")
     minor = sys.version_info.minor
     name_corresp = {"linux": "Linux64", "darwnin": "Darwin64", "win32": "Win64"}
     sysname = name_corresp[sys.platform]
     if sysname == "Win64":
-        cmd = which("cmd.exe")
-        ext = "zip"
         if minor != 7:
             raise SystemExit(
                 "Python version 3.7 is required to import python bindings on Windows."
             )
+        cmd = which("cmd.exe")
+        ext = "zip"
     else:
         cmd = which("zsh") or which("bash") or which("sh")
         ext = "run"
@@ -234,8 +232,7 @@ def install_otb(version: str = "latest", path: str = ""):
     tmpdir = tempfile.gettempdir()
     tmpfile = Path(tmpdir) / filename
     print(f"Downloading {url}")
-    if not tmpfile.exists():
-        urllib.request.urlretrieve(url, tmpfile)
+    urllib.request.urlretrieve(url, tmpfile)
     if path:
         path = Path(path)
     else:
@@ -243,7 +240,7 @@ def install_otb(version: str = "latest", path: str = ""):
     install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
     print(f"Executing '{install_cmd}'\n")
     subprocess.run(f"{cmd} {tmpfile} --target {path} --accept", shell=True, check=True)
-    tmpfile.unlink()
+    tmpfile.unlink()  # cleaning
 
     # Add env variable to profile
     if sysname != "Win64":
@@ -254,16 +251,14 @@ def install_otb(version: str = "latest", path: str = ""):
     else:
         print(
             "In order to speed-up pyotb import, remember to call 'otbenv.bat' "
-            "before importing pyotb, or add 'OTB_ROOT=\"{path}\"' to your env variables."
+            f"before importing pyotb, or add 'OTB_ROOT=\"{path}\"' to your env variables."
         )
-    if (
-        sysname == "Win64"
-        or (sysname == "Linux64" and minor == 8)
-        or (sysname == "Darwin64" and minor == 7)
-    ):
         return str(path)
-    # Recompile bindings : this may fail because of OpenGL...
-    if sys.executable and which("ctest") and which("python3-config"):
+    # Linux requires 3.8, macOS requires 3.7
+    if (sysname == "Linux64" and minor == 8) or (sysname == "Darwin64" and minor == 7):
+        return str(path)
+    # Else recompile bindings : this may fail because of OpenGL
+    if which("ctest") and which("python3-config"):
         print("\nRecompiling python bindings...")
         ctest_cmd = (
             ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
@@ -271,7 +266,7 @@ def install_otb(version: str = "latest", path: str = ""):
         subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
         return str(path)
     print(
-        "\nYou'll need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
+        "\nYou need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
         " in order to recompile python bindings. "
     )
     raise SystemExit
