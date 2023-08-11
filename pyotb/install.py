@@ -174,7 +174,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         path = Path.home() / "Applications" / tmpfile.stem
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
-            print("##### Extracting zip file...\n")
+            print("##### Extracting zip file...")
             # Unzip will always create a dir with OTB-version name
             zipf.extractall(path.parent if default_path else path)
     else:
