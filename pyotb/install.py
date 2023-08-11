@@ -211,11 +211,10 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     if sys.executable.startswith("/usr/bin"):
         symlink_python_library(target_lib, cmd)
         return str(path)
-    else:
-        print(
-            f"Unable to automatically locate library for executable {sys.executable}"
-            f"You'll need to manually symlink that one file to {target_lib}"
-        )
+    print(
+        f"Unable to automatically locate library for executable {sys.executable}"
+        f"You could manually create a symlink from that file to {target_lib}"
+    )
     # TODO: support for auto build deps install using brew, apt, pacman/yay, yum...
     msg = (
         "\nYou need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
