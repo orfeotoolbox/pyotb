@@ -95,7 +95,7 @@ def update_windows_env(otb_path: Path):
         print(f"To undo this permanent setting, use 'reg.exe delete \"{key}\"'")
 
 
-def recompile_python_bindings(path: str, cmd: str):
+def recompile_python_bindings(path: Path, cmd: str):
     """Run subprocess command to recompile python bindings.
 
     Args:
@@ -118,7 +118,7 @@ def symlink_python_library(target_lib: str, cmd: str):
     """Run subprocess command to recompile python bindings.
 
     Args:
-        path: path of the new OTB installation
+        target_lib: path of the missing python library
         cmd: path of the default system shell command
 
     """
@@ -135,6 +135,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     Args:
         version: OTB version tag, e.g. '8.1.2'
         path: installation directory, default is $HOME/Applications
+        edit_env: wether or not to permanently modify user's environment variables
 
     Returns:
         full path of the new installation
