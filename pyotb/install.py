@@ -117,7 +117,6 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         return str(path)
 
     # Else recompile bindings : this may fail because of OpenGL
-    target_lib = f"{path}/lib/libpython3.{expected}.so.rh-python3{expected}-1.0"
     if which("ctest") and which("python3-config"):
         print("\n##### Recompiling python bindings...")
         ctest_cmd = (
@@ -133,9 +132,11 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
             ) from err
     # Use dirty cross python version symlink
     elif sys.executable.startswith("/usr/bin"):
+        target_lib = f"{path}/lib/libpython3.{expected}.so.rh-python3{expected}-1.0"
         lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
         if Path(lib).exists():
-            ln_cmd = f'ln -s "{lib}" "{target_lib}"'
+            print(f"Creating symbolic links: {lib} -> {target_lib}")
+            ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
             subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
             return str(path)
     else:
