@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """This module helps to ensure we properly initialize pyotb: only in case OTB is found and apps are available."""
-import json
 import logging
 import os
-import re
-import subprocess
 import sys
-import tempfile
-import zipfile
-import urllib.request
 from pathlib import Path
 from shutil import which
+
+from .install import install_otb, interactive_config
 
 # Allow user to switch between OTB directories without setting every env variable
 OTB_ROOT = os.environ.get("OTB_ROOT")
@@ -97,27 +93,16 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
     prefix = __find_otb_root()
-    if not prefix:
-        # Python is interactive
-        if hasattr(sys, "ps1"):
-            if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
-                version = input(
-                    "Choose a version number to install (default is latest): "
-                )
-                path = input(
-                    "Provide a path for installation "
-                    "(default is <user_dir>/Applications/OTB-<version>): "
-                )
-                edit_env = input(
-                    "Modify user environment variables for this installation ? (y/n): "
-                ) == "y"
-                return find_otb(install_otb(version, path, edit_env))
-    if not prefix:
+    # Try auto install if shell is interactive
+    if not prefix and hasattr(sys, "ps1"):
+        if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
+            return find_otb(install_otb(*interactive_config()))
+    elif not prefix:
         raise SystemExit(
-            "OTB not found on disk. "
-            "To install it, open an interactive python shell and type 'import pyotb'"
+            "OTB libraries not found on disk. "
+            "To install it, open an interactive python shell and 'import pyotb'"
         )
-    # If OTB is found on disk, set env and try to import one last time
+    # If OTB was found on disk, set env and try to import one last time
     try:
         set_environment(prefix)
         import otbApplication as otb  # pylint: disable=import-outside-toplevel
@@ -188,98 +173,6 @@ def set_environment(prefix: str):
         )
     os.environ["GDAL_DATA"] = gdal_data
     os.environ["PROJ_LIB"] = proj_lib
-
-
-def otb_latest_release_tag():
-    """Use gitlab API to find latest release tag name, but skip pre-releases."""
-    api_endpoint = "https://gitlab.orfeo-toolbox.org/api/v4/projects/53/repository/tags"
-    vers_regex = re.compile(r"^\d\.\d\.\d$")  # we ignore rc-* or alpha-*
-    with urllib.request.urlopen(api_endpoint) as stream:
-        data = json.loads(stream.read())
-    releases = sorted(
-        [tag["name"] for tag in data if vers_regex.match(tag["name"])],
-    )
-    return releases[-1]
-
-
-def install_otb(version: str = "latest", path: str = "", edit_env: bool = False):
-    """Install pre-compiled OTB binaries in path, use latest release by default.
-
-    Args:
-        version: OTB version tag, e.g. '8.1.2'
-        path: installation directory, default is $HOME/Applications
-
-    Returns:
-        full path of the new installation
-    """
-    major = sys.version_info.major
-    if major == 2:
-        raise SystemExit("Python 3 is required for OTB bindings.")
-    minor = sys.version_info.minor
-    name_corresp = {"linux": "Linux64", "darwnin": "Darwin64", "win32": "Win64"}
-    sysname = name_corresp[sys.platform]
-    if sysname == "Win64":
-        if minor != 7:
-            raise SystemExit(
-                "Python version 3.7 is required to import python bindings on Windows."
-            )
-        cmd = which("cmd.exe")
-        ext = "zip"
-    else:
-        cmd = which("zsh") or which("bash") or which("sh")
-        ext = "run"
-
-    # Fetch archive and run installer
-    if not version or version == "latest":
-        version = otb_latest_release_tag()
-    filename = f"OTB-{version}-{sysname}.{ext}"
-    url = f"https://www.orfeo-toolbox.org/packages/archives/OTB/{filename}"
-    tmpdir = tempfile.gettempdir()
-    tmpfile = Path(tmpdir) / filename
-    print(f"##### Downloading {url}")
-    urllib.request.urlretrieve(url, tmpfile)
-    if path:
-        path = Path(path)
-    else:
-        path = Path.home() / "Applications" / tmpfile.stem
-    if sysname == "Win64":
-        with zipfile.ZipFile(tmpfile) as zipf:
-            print("##### Extracting zip file...")
-            zipf.extractall(path.parent)
-    else:
-        install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
-        print(f"##### Executing '{install_cmd}'\n")
-        subprocess.run(install_cmd, shell=True, check=True)
-    tmpfile.unlink()  # cleaning
-
-    # Add env variable to profile
-    if sysname != "Win64" and edit_env:
-        profile = Path.home() / ".profile"
-        print(f"##### Adding new env variables to {profile}")
-        with open(profile, "a", encoding="utf-8") as buf:
-            buf.write(f'\n. "{path}/otbenv.profile"\n')
-    else:
-        print(
-            "In order to speed-up pyotb import, remember to call 'otbenv.bat' "
-            f"before importing pyotb, or add 'OTB_ROOT=\"{path}\"' to your env variables."
-        )
-        return str(path)
-    # Linux requires 3.8, macOS requires 3.7
-    if (sysname == "Linux64" and minor == 8) or (sysname == "Darwin64" and minor == 7):
-        return str(path)
-    # Else recompile bindings : this may fail because of OpenGL
-    if which("ctest") and which("python3-config"):
-        print("\n##### Recompiling python bindings...")
-        ctest_cmd = (
-            ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
-        )
-        subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
-        return str(path)
-    msg = (
-        "\nYou need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
-        " in order to recompile python bindings. "
-    )
-    raise SystemExit(msg)
 
 
 def __find_lib(prefix: str = None, otb_module=None):
