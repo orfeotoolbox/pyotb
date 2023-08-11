@@ -1,12 +1,12 @@
 """This module contains functions for interactive auto installation of OTB."""
 import json
-import sys
 import os
 import re
 import subprocess
+import sys
 import tempfile
-import zipfile
 import urllib.request
+import zipfile
 from pathlib import Path
 from shutil import which
 
@@ -72,7 +72,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     check, expected = check_versions(sysname, python_minor, otb_major)
     if sysname == "Win64" and not check:
         print(f"Python 3.{expected} is required to import bindings on Windows.")
-        return
+        return ""
 
     # Fetch archive and run installer
     filename = f"OTB-{version}-{sysname}.{ext}"
@@ -101,7 +101,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     if edit_env:
         if sysname == "Win64":
             # TODO: import winreg
-            return str(path)
+            ...
         else:
             profile = Path.home() / ".profile"
             print(f"##### Adding new env variables to {profile}")
