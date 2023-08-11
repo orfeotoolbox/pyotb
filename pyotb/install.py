@@ -48,6 +48,39 @@ def check_versions(sysname: str, python_minor: int, otb_major: int):
     return False, expected
 
 
+def update_unix_env(otb_path: Path):
+    """Update env profile for current user with new otb_env.profile call.
+
+    Args:
+        otb_path: the path of the new OTB installation
+
+    """
+    profile = Path.home() / ".profile"
+    with open(profile, "a", encoding="utf-8") as buf:
+        buf.write(f'\n. "{otb_path}/otbenv.profile"\n')
+        print(f"##### Added new environment variables to {profile}")
+
+
+def update_windows_env(otb_path: Path):
+    """Update registry hive for current user with new OTB_ROOT env variable.
+
+    Args:
+        otb_path: path of the new OTB installation
+
+    """
+    import winreg  # pylint: disable=import-error,import-outside-toplevel
+
+    with winreg.OpenKeyEx(
+        winreg.HKEY_CURRENT_USER, "Environment", 0, winreg.KEY_SET_VALUE
+    ) as reg_key:
+        winreg.SetValueEx(reg_key, "OTB_ROOT", 0, winreg.REG_EXPAND_SZ, str(otb_path))
+        print(
+            "##### Environment variable 'OTB_ROOT' added successfully to user's hive."
+        )
+        key = "HKEY_CURRENT_USER\\Environment\\OTB_ROOT"
+        print(f"To undo this permanent setting, use 'reg.exe delete \"{key}\"'")
+
+
 def install_otb(version: str = "latest", path: str = "", edit_env: bool = False):
     """Install pre-compiled OTB binaries in path, use latest release by default.
 
@@ -57,6 +90,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
 
     Returns:
         full path of the new installation
+
     """
     # Read env config
     if sys.version_info.major == 2:
@@ -89,7 +123,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         path = Path.home() / "Applications" / tmpfile.stem
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
-            print("##### Extracting zip file...")
+            print("##### Extracting zip file...\n")
             zipf.extractall(path.parent)
     else:
         install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
@@ -100,17 +134,13 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     # Add env variable to profile
     if edit_env:
         if sysname == "Win64":
-            # TODO: import winreg
-            ...
+            update_windows_env(path)
         else:
-            profile = Path.home() / ".profile"
-            print(f"##### Adding new env variables to {profile}")
-            with open(profile, "a", encoding="utf-8") as buf:
-                buf.write(f'\n. "{path}/otbenv.profile"\n')
+            update_unix_env(path)
     elif not default_path:
         ext = "bat" if sysname == "Win64" else "profile"
         print(
-            f"Remember to call 'otbenv.{ext}' before importing pyotb, "
+            f"Remember to call '{path}{os.sep}otbenv.{ext}' before importing pyotb, "
             f"or add 'OTB_ROOT=\"{path}\"' to your env variables."
         )
     # No recompilation or symlink required
