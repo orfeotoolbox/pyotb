@@ -129,7 +129,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         except subprocess.CalledProcessError as err:
             raise SystemExit(
                 "Unable to recompile python bindings, "
-                "some dependencies may require manuel installation."
+                "some dependencies (libgl1) may require manual installation."
             ) from err
     # Use dirty cross python version symlink
     elif sys.executable.startswith("/usr/bin"):
