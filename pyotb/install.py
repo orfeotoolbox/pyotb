@@ -91,41 +91,7 @@ def env_config_windows(otb_path: Path):
         print(f"To undo this, you may use '{reg_cmd}'")
 
 
-def recompile_python_bindings(path: Path, cmd: str):
-    """Run subprocess command to recompile python bindings.
-
-    Args:
-        path: path of the new OTB installation
-        cmd: path of the default system shell command
-
-    """
-    print("\n##### Recompiling python bindings...")
-    ctest_cmd = ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
-    try:
-        subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
-    except subprocess.CalledProcessError as err:
-        raise SystemExit(
-            "Unable to recompile python bindings, "
-            "some dependencies (libgl1) may require manual installation."
-        ) from err
-
-
-def symlink_python_library(target_lib: str, cmd: str):
-    """Run subprocess command to recompile python bindings.
-
-    Args:
-        target_lib: path of the missing python library
-        cmd: path of the default system shell command
-
-    """
-    lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
-    if Path(lib).exists():
-        print(f"##### Creating symbolic links: {lib} -> {target_lib}")
-        ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
-        subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
-
-
-def install_otb(version: str = "latest", path: str = "", edit_env: bool = False):
+def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
     """Install pre-compiled OTB binaries in path, use latest release by default.
 
     Args:
@@ -153,7 +119,6 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         raise SystemExit(
             f"Python 3.{expected} is required to import bindings on Windows."
         )
-
     # Fetch archive and run installer
     filename = f"OTB-{version}-{sysname}.{ext}"
     url = f"https://www.orfeo-toolbox.org/packages/archives/OTB/{filename}"
@@ -194,25 +159,33 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     if check:
         return str(path)
 
-    # Else recompile bindings : this may fail because of OpenGL
+    # Here version check failed, try recompile bindings : can fail because of OpenGL
     suffix = f"so.rh-python3{expected}-1.0" if otb_major < 8 else "so.1.0"
     target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
-    can_compile = which("ctest") and which("python3-config")
-    # Google Colab ships with cmake and python3-dev, but not libgl1-mesa-dev
-    if can_compile and "COLAB_RELEASE_TAG" not in os.environ:
-        recompile_python_bindings(path, cmd)
-        return str(path)
-    # Or use dirty cross version python symlink (only tested on Ubuntu)
-    if sys.executable.startswith("/usr/bin"):
-        symlink_python_library(target_lib, cmd)
-        return str(path)
+    if which("ctest") and which("python3-config"):
+        try:
+            print("\n##### Python version mismatch. Trying to recompile bindings...")
+            ctest_cmd = (
+                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
+            )
+            subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), check=True)
+            return str(path)
+        except subprocess.CalledProcessError:
+            print("\nCompilation failed. ")
     print(
-        f"Unable to automatically locate library for executable {sys.executable}"
-        f"You could manually create a symlink from that file to {target_lib}"
+        "You need cmake, python3-dev and libgl1-mesa-dev installed. "
+        "Trying to symlink libraries instead - this may fail with newest versions."
     )
-    # TODO: support for auto build deps install using brew, apt, pacman/yay, yum...
-    msg = (
-        "\nYou need to install 'cmake', 'python3-dev' and 'libgl1-mesa-dev'"
-        " in order to recompile python bindings. "
+    # TODO: support for sudo auto build deps install using apt, pacman/yay, brew...
+    # Else use dirty cross version python symlink (only tested on Ubuntu)
+    if sys.executable.startswith("/usr/bin"):
+        lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
+        if Path(lib).exists():
+            print(f"##### Creating symbolic links: {lib} -> {target_lib}")
+            ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
+            subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
+            return str(path)
+    raise SystemExit(
+        f"Unable to automatically locate library for executable '{sys.executable}', "
+        f"you could manually create a symlink from that file to {target_lib}"
     )
-    raise SystemExit(msg)
