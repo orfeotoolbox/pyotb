@@ -123,21 +123,21 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         ctest_cmd = (
             ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
         )
-        subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
-        return str(path)
+        try:
+            subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
+            return str(path)
+        except subprocess.CalledProcessError as err:
+            raise SystemExit(
+                "Unable to recompile python bindings, "
+                "some dependencies may require manuel installation."
+            ) from err
     # Use dirty cross python version symlink
     elif sys.executable.startswith("/usr/bin"):
         lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
         if Path(lib).exists():
             ln_cmd = f'ln -s "{lib}" "{target_lib}"'
-            try:
-                subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
-                return str(path)
-            except subprocess.CalledProcessError as err:
-                raise SystemExit(
-                    "Unable to recompile python bindings, "
-                    "some dependencies may require manuel installation"
-                ) from err
+            subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
+            return str(path)
     else:
         print(
             f"Unable to automatically locate library for executable {sys.executable}"
