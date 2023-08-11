@@ -69,7 +69,7 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
             import otbApplication as otb  # pylint: disable=import-outside-toplevel
 
             return otb
-        except EnvironmentError as e:
+        except SystemError as e:
             raise SystemExit(f"Failed to import OTB with prefix={prefix}") from e
         except ImportError as e:
             __suggest_fix_import(str(e), prefix)
@@ -110,7 +110,7 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
         import otbApplication as otb  # pylint: disable=import-outside-toplevel
 
         return otb
-    except EnvironmentError as e:
+    except SystemError as e:
         raise SystemExit("Auto setup for OTB env failed. Exiting.") from e
     # Help user to fix this
     except ImportError as e:
@@ -136,7 +136,7 @@ def set_environment(prefix: str):
     # External libraries
     lib_dir = __find_lib(prefix)
     if not lib_dir:
-        raise EnvironmentError("Can't find OTB external libraries")
+        raise SystemError("Can't find OTB external libraries")
     # This does not seems to work
     if sys.platform == "linux" and built_from_source:
         new_ld_path = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
@@ -144,7 +144,7 @@ def set_environment(prefix: str):
     # Add python bindings directory first in PYTHONPATH
     otb_api = __find_python_api(lib_dir)
     if not otb_api:
-        raise EnvironmentError("Can't find OTB Python API")
+        raise SystemError("Can't find OTB Python API")
     if otb_api not in sys.path:
         sys.path.insert(0, otb_api)
     # Add /bin first in PATH, in order to avoid conflicts with another GDAL install
@@ -154,7 +154,7 @@ def set_environment(prefix: str):
     if Path(apps_path).exists():
         os.environ["OTB_APPLICATION_PATH"] = apps_path
     else:
-        raise EnvironmentError("Can't find OTB applications directory")
+        raise SystemError("Can't find OTB applications directory")
     os.environ["LC_NUMERIC"] = "C"
     os.environ["GDAL_DRIVER_PATH"] = "disable"
 
@@ -170,7 +170,7 @@ def set_environment(prefix: str):
         gdal_data = str(prefix / "share/data")
         proj_lib = str(prefix / "share/proj")
     else:
-        raise EnvironmentError(
+        raise SystemError(
             f"Can't find GDAL location with current OTB prefix '{prefix}' or in /usr"
         )
     os.environ["GDAL_DATA"] = gdal_data
