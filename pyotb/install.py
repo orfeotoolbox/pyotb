@@ -15,8 +15,8 @@ def interactive_config():
     """Prompt user to configure installation variables."""
     version = input("Choose a version number to install (default is latest): ")
     path = input(
-        "Provide a path for installation "
-        "(default is <user_dir>/Applications/OTB-<version>): "
+        "Provide a parent directory for installation "
+        "(default is <user_dir>/Applications/): "
     )
     edit_env = (
         input("Modify user environment variables for this installation ? (y/n): ")
@@ -175,6 +175,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
             print("##### Extracting zip file...\n")
+            # Unzip will always create a dir with OTB-version name
             zipf.extractall(path.parent if default_path else path)
     else:
         install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
