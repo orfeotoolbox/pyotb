@@ -57,7 +57,7 @@ def check_versions(sysname: str, python_minor: int, otb_major: int):
     return False, expected
 
 
-def update_unix_env(otb_path: Path):
+def env_config_unix(otb_path: Path):
     """Update env profile for current user with new otb_env.profile call.
 
     Args:
@@ -70,7 +70,7 @@ def update_unix_env(otb_path: Path):
         print(f"##### Added new environment variables to {profile}")
 
 
-def update_windows_env(otb_path: Path):
+def env_config_windows(otb_path: Path):
     """Update registry hive for current user with new OTB_ROOT env variable.
 
     Args:
@@ -84,7 +84,7 @@ def update_windows_env(otb_path: Path):
     ) as reg_key:
         winreg.SetValueEx(reg_key, "OTB_ROOT", 0, winreg.REG_EXPAND_SZ, str(otb_path))
         print(
-            "##### Environment variable 'OTB_ROOT' added to user's registry."
+            "##### Environment variable 'OTB_ROOT' added to user's registry. "
             "You'll need to login / logout to apply this change."
         )
         reg_cmd = "reg.exe delete HKEY_CURRENT_USER\\Environment /v OTB_ROOT /f"
@@ -181,9 +181,9 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     # Add env variable to profile
     if edit_env:
         if sysname == "Win64":
-            update_windows_env(path)
+            env_config_windows(path)
         else:
-            update_unix_env(path)
+            env_config_unix(path)
     elif not default_path:
         ext = "bat" if sysname == "Win64" else "profile"
         print(
