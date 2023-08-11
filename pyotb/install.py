@@ -134,7 +134,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
         path = Path.home() / "Applications" / tmpfile.stem
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
-            print("##### Extracting zip file...")
+            print("##### Extracting zip file")
             # Unzip will always create a dir with OTB-version name
             zipf.extractall(path.parent if default_path else path)
     else:
@@ -164,14 +164,15 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
     target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
     if which("ctest") and which("python3-config"):
         try:
-            print("\n##### Python version mismatch. Trying to recompile bindings...")
+            print("\n!!!!! Python version mismatch, trying to recompile bindings")
             ctest_cmd = (
-                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
+                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -V"
             )
-            subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), check=True)
+            print(f"##### Executing '{ctest_cmd}'")
+            subprocess.run(ctest_cmd, cwd=path, check=True, shell=True)
             return str(path)
         except subprocess.CalledProcessError:
-            print("\nCompilation failed. ")
+            print("\nCompilation failed.")
     print(
         "You need cmake, python3-dev and libgl1-mesa-dev installed. "
         "Trying to symlink libraries instead - this may fail with newest versions."
