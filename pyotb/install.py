@@ -154,8 +154,9 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     otb_major = int(version[0])
     check, expected = check_versions(sysname, python_minor, otb_major)
     if sysname == "Win64" and not check:
-        print(f"Python 3.{expected} is required to import bindings on Windows.")
-        return ""
+        raise SystemExit(
+            f"Python 3.{expected} is required to import bindings on Windows."
+        )
 
     # Fetch archive and run installer
     filename = f"OTB-{version}-{sysname}.{ext}"
