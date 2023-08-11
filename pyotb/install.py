@@ -64,7 +64,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     python_minor = sys.version_info.minor
     if not version or version == "latest":
         version = otb_latest_release_tag()
-    name_corresp = {"linux": "Linux64", "darwnin": "Darwin64", "win32": "Win64"}
+    name_corresp = {"linux": "Linux64", "darwin": "Darwin64", "win32": "Win64"}
     sysname = name_corresp[sys.platform]
     ext = "zip" if sysname == "Win64" else "run"
     cmd = which("zsh") or which("bash") or which("sh")
