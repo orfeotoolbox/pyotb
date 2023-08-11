@@ -11,6 +11,20 @@ from pathlib import Path
 from shutil import which
 
 
+def interactive_config():
+    """Prompt user to configure installation variables."""
+    version = input("Choose a version number to install (default is latest): ")
+    path = input(
+        "Provide a path for installation "
+        "(default is <user_dir>/Applications/OTB-<version>): "
+    )
+    edit_env = (
+        input("Modify user environment variables for this installation ? (y/n): ")
+        == "y"
+    )
+    return version, path, edit_env
+
+
 def otb_latest_release_tag():
     """Use gitlab API to find latest release tag name, but skip pre-releases."""
     api_endpoint = "https://gitlab.orfeo-toolbox.org/api/v4/projects/53/repository/tags"
@@ -79,6 +93,40 @@ def update_windows_env(otb_path: Path):
         )
         key = "HKEY_CURRENT_USER\\Environment\\OTB_ROOT"
         print(f"To undo this permanent setting, use 'reg.exe delete \"{key}\"'")
+
+
+def recompile_python_bindings(path: str, cmd: str):
+    """Run subprocess command to recompile python bindings.
+
+    Args:
+        path: path of the new OTB installation
+        cmd: path of the default system shell command
+
+    """
+    print("\n##### Recompiling python bindings...")
+    ctest_cmd = ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
+    try:
+        subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
+    except subprocess.CalledProcessError as err:
+        raise SystemExit(
+            "Unable to recompile python bindings, "
+            "some dependencies (libgl1) may require manual installation."
+        ) from err
+
+
+def symlink_python_library(target_lib: str, cmd: str):
+    """Run subprocess command to recompile python bindings.
+
+    Args:
+        path: path of the new OTB installation
+        cmd: path of the default system shell command
+
+    """
+    lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
+    if Path(lib).exists():
+        print(f"##### Creating symbolic links: {lib} -> {target_lib}")
+        ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
+        subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
 
 
 def install_otb(version: str = "latest", path: str = "", edit_env: bool = False):
@@ -150,34 +198,15 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     # Else recompile bindings : this may fail because of OpenGL
     suffix = f"so.rh-python3{expected}-1.0" if otb_major < 8 else "so.1.0"
     target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
-    if (
-        which("ctest")
-        and which("python3-config")
-        # Google Colab ships with cmake and python3-dev, but not libgl1-mesa-dev
-        and "COLAB_RELEASE_TAG" not in os.environ
-    ):
-        print("\n##### Recompiling python bindings...")
-        ctest_cmd = (
-            ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
-        )
-        try:
-            subprocess.run(
-                ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True
-            )
-            return str(path)
-        except subprocess.CalledProcessError as err:
-            raise SystemExit(
-                "Unable to recompile python bindings, "
-                "some dependencies (libgl1) may require manual installation."
-            ) from err
-    # Use dirty cross python version symlink (only tested on Ubuntu)
+    can_compile = which("ctest") and which("python3-config")
+    # Google Colab ships with cmake and python3-dev, but not libgl1-mesa-dev
+    if can_compile and "COLAB_RELEASE_TAG" not in os.environ:
+        recompile_python_bindings(path, cmd)
+        return str(path)
+    # Or use dirty cross version python symlink (only tested on Ubuntu)
     elif sys.executable.startswith("/usr/bin"):
-        lib = f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
-        if Path(lib).exists():
-            print(f"Creating symbolic links: {lib} -> {target_lib}")
-            ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
-            subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
-            return str(path)
+        symlink_python_library(target_lib, cmd)
+        return str(path)
     else:
         print(
             f"Unable to automatically locate library for executable {sys.executable}"
@@ -189,17 +218,3 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         " in order to recompile python bindings. "
     )
     raise SystemExit(msg)
-
-
-def interactive_config():
-    """Prompt user to configure installation variables."""
-    version = input("Choose a version number to install (default is latest): ")
-    path = input(
-        "Provide a path for installation "
-        "(default is <user_dir>/Applications/OTB-<version>): "
-    )
-    edit_env = (
-        input("Modify user environment variables for this installation ? (y/n): ")
-        == "y"
-    )
-    return version, path, edit_env
