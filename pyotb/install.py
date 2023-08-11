@@ -1,6 +1,7 @@
 """This module contains functions for interactive auto installation of OTB."""
 import json
 import sys
+import os
 import re
 import subprocess
 import tempfile
@@ -119,13 +120,20 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     # Else recompile bindings : this may fail because of OpenGL
     suffix = f"so.rh-python3{expected}-1.0" if otb_major < 8 else "so.1.0"
     target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
-    if which("ctest") and which("python3-config"):
+    if (
+        which("ctest")
+        and which("python3-config")
+        # Google Colab ships with cmake and python3-dev, but not libgl1-mesa-dev
+        and "COLAB_RELEASE_TAG" not in os.environ
+    ):
         print("\n##### Recompiling python bindings...")
         ctest_cmd = (
             ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -VV"
         )
         try:
-            subprocess.run(ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True)
+            subprocess.run(
+                ctest_cmd, executable=cmd, cwd=str(path), shell=True, check=True
+            )
             return str(path)
         except subprocess.CalledProcessError as err:
             raise SystemExit(
