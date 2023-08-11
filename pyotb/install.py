@@ -13,10 +13,9 @@ from shutil import which
 
 def interactive_config():
     """Prompt user to configure installation variables."""
-    version = input("OTB version to download (default is latest): ")
-    path = input(
-        "Parent directory for installation (default is <user_dir>/Applications/): "
-    )
+    version = input("Choose a version to download (default is latest): ")
+    default_dir = f"<user_dir>{os.path.sep}Applications{os.path.sep}"
+    path = input(f"Parent directory for installation (default is {default_dir}): ")
     env = input("Permanently change user's environment variables ? (y/n): ") == "y"
     return version, path, env
 
