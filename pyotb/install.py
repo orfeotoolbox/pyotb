@@ -135,7 +135,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     Args:
         version: OTB version tag, e.g. '8.1.2'
         path: installation directory, default is $HOME/Applications
-        edit_env: wether or not to permanently modify user's environment variables
+        edit_env: whether or not to permanently modify user's environment variables
 
     Returns:
         full path of the new installation
@@ -205,7 +205,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
         recompile_python_bindings(path, cmd)
         return str(path)
     # Or use dirty cross version python symlink (only tested on Ubuntu)
-    elif sys.executable.startswith("/usr/bin"):
+    if sys.executable.startswith("/usr/bin"):
         symlink_python_library(target_lib, cmd)
         return str(path)
     else:
