@@ -315,7 +315,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
                             expected,
                         )
                     target = f"{prefix}/lib/libpython3.{expected}.so.1.0"
-                    logger.critical("Use 'ln -s %s %s'", lib, target)
+                    logger.critical("If using OTB>=8.0, use 'ln -s %s %s'", lib, target)
                 else:
                     logger.critical(
                         "You may need to install cmake, python3-dev and mesa's libgl"
