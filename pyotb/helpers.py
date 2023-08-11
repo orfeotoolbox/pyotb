@@ -100,7 +100,7 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
         if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
             return find_otb(install_otb(*interactive_config()))
         raise SystemError("OTB libraries not found on disk. ")
-    elif not prefix:
+    if not prefix:
         raise SystemExit(
             "OTB libraries not found on disk. "
             "To install it, open an interactive python shell and 'import pyotb'"
