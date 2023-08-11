@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""This module helps to ensure we properly initialize pyotb: only in case OTB is found and apps are available."""
+"""This module ensure we properly initialize pyotb, or raise SystemExit in case of broken install."""
 import logging
 import os
 import sys
@@ -43,8 +43,9 @@ def set_logger_level(level: str):
 
 
 def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
-    """Try to load OTB bindings or scan system, help user in case of failure, set env variables.
+    """Try to load OTB bindings or scan system, help user in case of failure, set env.
 
+    If in interactive prompt, user will be asked if he wants to install OTB.
     The OTB_ROOT variable allow one to override default OTB version, with auto env setting.
     Path precedence : $OTB_ROOT > location of python bindings location
     Then, if OTB is not found:
@@ -75,7 +76,8 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
             raise SystemExit("Failed to import OTB. Exiting.") from e
     # Else try import from actual Python path
     try:
-        # Here, we can't properly set env variables before OTB import. We assume user did this before running python
+        # Here, we can't properly set env variables before OTB import.
+        # We assume user did this before running python
         # For LD_LIBRARY_PATH problems, use OTB_ROOT instead of PYTHONPATH
         import otbApplication as otb  # pylint: disable=import-outside-toplevel
 
@@ -145,9 +147,9 @@ def set_environment(prefix: str):
         raise EnvironmentError("Can't find OTB Python API")
     if otb_api not in sys.path:
         sys.path.insert(0, otb_api)
-    # Add /bin first in PATH, in order to avoid conflicts with another GDAL install when using os.system()
+    # Add /bin first in PATH, in order to avoid conflicts with another GDAL install
     os.environ["PATH"] = f"{prefix / 'bin'}{os.pathsep}{os.environ['PATH']}"
-    # Applications path  (this can be tricky since OTB import will succeed even without apps)
+    # Ensure APPLICATION_PATH is set
     apps_path = __find_apps_path(lib_dir)
     if Path(apps_path).exists():
         os.environ["OTB_APPLICATION_PATH"] = apps_path
@@ -180,7 +182,7 @@ def __find_lib(prefix: str = None, otb_module=None):
 
     Args:
         prefix: try with OTB root directory
-        otb_module: try with OTB python module (otbApplication) library path if found, else None
+        otb_module: try with otbApplication library path if found, else None
 
     Returns:
         lib path
@@ -278,7 +280,7 @@ def __find_otb_root():
     for path in sorted(apps.glob("OTB-*/lib/")):
         logger.info("Found %s", path.parent)
         prefix = path.parent
-    # Return latest found prefix (and version), see precedence in function def find_otb()
+    # Return latest found prefix (and version), see precedence in find_otb() docstrings
     if isinstance(prefix, Path):
         return prefix.absolute()
     return None
@@ -297,25 +299,27 @@ def __suggest_fix_import(error_message: str, prefix: str):
                 lib = (
                     f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
                 )
-                if which("ctest"):
+                if which("ctest") and which("python3-config"):
                     logger.critical(
-                        "To recompile python bindings, use 'cd %s ; source otbenv.profile ; "
+                        "To recompile python bindings, use "
+                        "'cd %s ; source otbenv.profile ; "
                         "ctest -S share/otb/swig/build_wrapping.cmake -VV'",
                         prefix,
                     )
                 elif Path(lib).exists():
-                    expect_minor = int(error_message[11])
-                    if expect_minor != sys.version_info.minor:
+                    expected = int(error_message[11])
+                    if expected != sys.version_info.minor:
                         logger.critical(
-                            "Python library version mismatch (OTB was expecting 3.%s) : "
-                            "a simple symlink may not work, depending on your python version",
-                            expect_minor,
+                            "Python library version mismatch (OTB expected 3.%s) : "
+                            "a symlink may not work, depending on your python version",
+                            expected,
                         )
-                    target_lib = f"{prefix}/lib/libpython3.{expect_minor}.so.rh-python3{expect_minor}-1.0"
-                    logger.critical("Use 'ln -s %s %s'", lib, target_lib)
+                    target = f"{prefix}/lib/libpython3.{expected}.so.1.0"
+                    logger.critical("Use 'ln -s %s %s'", lib, target)
                 else:
                     logger.critical(
-                        "You may need to install cmake in order to recompile python bindings"
+                        "You may need to install cmake, python3-dev and mesa's libgl"
+                        " in order to recompile python bindings"
                     )
             else:
                 logger.critical(
@@ -326,7 +330,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
         if error_message.startswith("DLL load failed"):
             if sys.version_info.minor != 7:
                 logger.critical(
-                    "You need Python 3.5 (OTB releases 6.4 to 7.4) or Python 3.7 (since OTB 8)"
+                    "You need Python 3.5 (OTB 6.4 to 7.4) or Python 3.7 (since OTB 8)"
                 )
             else:
                 logger.critical(
