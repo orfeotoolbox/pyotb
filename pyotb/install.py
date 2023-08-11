@@ -90,9 +90,10 @@ def update_windows_env(otb_path: Path):
         winreg.SetValueEx(reg_key, "OTB_ROOT", 0, winreg.REG_EXPAND_SZ, str(otb_path))
         print(
             "##### Environment variable 'OTB_ROOT' added successfully to user's hive."
+            "You'll need to login / logout to apply this change."
         )
-        key = "HKEY_CURRENT_USER\\Environment\\OTB_ROOT"
-        print(f"To undo this permanent setting, use 'reg.exe delete \"{key}\"'")
+        reg_cmd = "reg.exe delete HKEY_CURRENT_USER\\Environment /v OTB_ROOT /f"
+        print(f"To undo this permanent setting, use '{reg_cmd}'")
 
 
 def recompile_python_bindings(path: Path, cmd: str):
@@ -174,7 +175,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = False)
     if sysname == "Win64":
         with zipfile.ZipFile(tmpfile) as zipf:
             print("##### Extracting zip file...\n")
-            zipf.extractall(path.parent)
+            zipf.extractall(path.parent if default_path else path)
     else:
         install_cmd = f"{cmd} {tmpfile} --target {path} --accept"
         print(f"##### Executing '{install_cmd}'\n")
