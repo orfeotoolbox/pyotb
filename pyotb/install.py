@@ -13,16 +13,12 @@ from shutil import which
 
 def interactive_config():
     """Prompt user to configure installation variables."""
-    version = input("Choose a version number to install (default is latest): ")
+    version = input("OTB version to download (default is latest): ")
     path = input(
-        "Provide a parent directory for installation "
-        "(default is <user_dir>/Applications/): "
+        "Parent directory for installation (default is <user_dir>/Applications/): "
     )
-    edit_env = (
-        input("Modify user environment variables for this installation ? (y/n): ")
-        == "y"
-    )
-    return version, path, edit_env
+    env = input("Permanently change user's environment variables ? (y/n): ") == "y"
+    return version, path, env
 
 
 def otb_latest_release_tag():
@@ -89,11 +85,11 @@ def update_windows_env(otb_path: Path):
     ) as reg_key:
         winreg.SetValueEx(reg_key, "OTB_ROOT", 0, winreg.REG_EXPAND_SZ, str(otb_path))
         print(
-            "##### Environment variable 'OTB_ROOT' added successfully to user's hive."
+            "##### Environment variable 'OTB_ROOT' added to user's registry."
             "You'll need to login / logout to apply this change."
         )
         reg_cmd = "reg.exe delete HKEY_CURRENT_USER\\Environment /v OTB_ROOT /f"
-        print(f"To undo this permanent setting, use '{reg_cmd}'")
+        print(f"To undo this, you may use '{reg_cmd}'")
 
 
 def recompile_python_bindings(path: Path, cmd: str):
