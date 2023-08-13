@@ -40,7 +40,7 @@ def check_versions(sysname: str, python_minor: int, otb_major: int):
         python_minor: minor version of python
         otb_major: major version of OTB to be installed
     Returns:
-        True if requirements are satisfied
+        (True, 0) or (False, expected_version) if case of version conflict
     """
     if sysname == "Win64":
         expected = 5 if otb_major in (6, 7) else 7
@@ -65,7 +65,7 @@ def env_config_unix(otb_path: Path):
 
     """
     profile = Path.home() / ".profile"
-    with open(profile, "a", encoding="utf-8") as buf:
+    with profile.open("a", encoding="utf-8") as buf:
         buf.write(f'\n. "{otb_path}/otbenv.profile"\n')
         print(f"##### Added new environment variables to {profile}")
 
@@ -155,18 +155,16 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
             f"Remember to call '{path}{os.sep}otbenv.{ext}' before importing pyotb, "
             f"or add 'OTB_ROOT=\"{path}\"' to your env variables."
         )
-    # No recompilation or symlink required
+    # Requirements are met, no recompilation or symlink required
     if check:
         return str(path)
 
-    # Here version check failed, try recompile bindings : can fail because of OpenGL
-    suffix = f"so.rh-python3{expected}-1.0" if otb_major < 8 else "so.1.0"
-    target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
+    # Else try recompile bindings : can fail because of OpenGL
     if which("ctest") and which("python3-config"):
         try:
             print("\n!!!!! Python version mismatch, trying to recompile bindings")
             ctest_cmd = (
-                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -V"
+                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -Vv"
             )
             print(f"##### Executing '{ctest_cmd}'")
             subprocess.run(ctest_cmd, cwd=path, check=True, shell=True)
@@ -174,8 +172,8 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
         except subprocess.CalledProcessError:
             print("\nCompilation failed.")
     print(
-        "You need cmake, python3-dev and libgl1-mesa-dev installed. "
-        "Trying to symlink libraries instead - this may fail with newest versions."
+        "You need cmake, python3-dev and libgl1-mesa-dev installed."
+        "\nTrying to symlink libraries instead - this may fail with newest versions."
     )
     # TODO: support for sudo auto build deps install using apt, pacman/yay, brew...
     # Else use dirty cross version python symlink (only tested on Ubuntu)

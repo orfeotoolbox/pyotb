@@ -302,8 +302,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
                 )
                 if which("ctest") and which("python3-config"):
                     logger.critical(
-                        "To recompile python bindings, use "
-                        "'cd %s ; source otbenv.profile ; "
+                        "To compile, use 'cd %s ; source otbenv.profile ; "
                         "ctest -S share/otb/swig/build_wrapping.cmake -VV'",
                         prefix,
                     )
