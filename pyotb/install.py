@@ -34,7 +34,7 @@ def otb_latest_release_tag():
 
 
 def check_versions(sysname: str, python_minor: int, otb_major: int):
-    """Verify if python version is compatible with OTB version.
+    """Verify if python version is compatible with major OTB version.
 
     Args:
         sysname: OTB's system name convention (Linux64, Darwin64, Win64)
@@ -72,7 +72,7 @@ def env_config_unix(otb_path: Path):
 
 
 def env_config_windows(otb_path: Path):
-    """Update registry hive for current user with new OTB_ROOT env variable.
+    """Update user's registry hive with new OTB_ROOT env variable.
 
     Args:
         otb_path: path of the new OTB installation
@@ -161,23 +161,29 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
         return str(path)
 
     # Else try recompile bindings : can fail because of OpenGL
-    if which("ctest") and which("python3-config"):
+    # Here we check for /usr/bin because CMake's will find_package() only there
+    if (
+        sys.executable.startswith("/usr/bin")
+        and which("ctest")
+        and which("python3-config")
+    ):
         try:
             print("\n!!!!! Python version mismatch, trying to recompile bindings")
             ctest_cmd = (
-                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -Vv"
+                ". ./otbenv.profile && ctest -S share/otb/swig/build_wrapping.cmake -V"
             )
             print(f"##### Executing '{ctest_cmd}'")
             subprocess.run(ctest_cmd, cwd=path, check=True, shell=True)
             return str(path)
         except subprocess.CalledProcessError:
             print("\nCompilation failed.")
+    # TODO: support for sudo auto build deps install using apt, pacman/yay, brew...
     print(
         "You need cmake, python3-dev and libgl1-mesa-dev installed."
         "\nTrying to symlink libraries instead - this may fail with newest versions."
     )
-    # TODO: support for sudo auto build deps install using apt, pacman/yay, brew...
-    # Else use dirty cross version python symlink (only tested on Ubuntu)
+
+    # Finally try with cross version python symlink (only tested on Ubuntu)
     suffix = "so.1.0" if otb_major >= 8 else f"so.rh-python3{expected}-1.0"
     target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
     lib_dir = sysconfig.get_config_var("LIBDIR")
