@@ -4,6 +4,7 @@ import os
 import re
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import urllib.request
 import zipfile
@@ -179,16 +180,13 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
     # Else use dirty cross version python symlink (only tested on Ubuntu)
     suffix = "so.1.0" if otb_major >= 8 else f"so.rh-python3{expected}-1.0"
     target_lib = f"{path}/lib/libpython3.{expected}.{suffix}"
-    for prefix in ("/usr", "/usr/local"):
-        if not sys.executable.startswith(f"{prefix}/bin"):
-            continue
-        lib_dir = f"{prefix}/lib" + ("/x86_64-linux-gnu" if prefix == "/usr" else "")
-        lib = f"{lib_dir}/libpython3.{sys.version_info.minor}.so"
-        if Path(lib).exists():
-            print(f"##### Creating symbolic link: {lib} -> {target_lib}")
-            ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
-            subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
-            return str(path)
+    lib_dir = sysconfig.get_config_var("LIBDIR")
+    lib = f"{lib_dir}/libpython3.{sys.version_info.minor}.so"
+    if Path(lib).exists():
+        print(f"##### Creating symbolic link: {lib} -> {target_lib}")
+        ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
+        subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
+        return str(path)
     raise SystemExit(
         f"Unable to automatically locate library for executable '{sys.executable}', "
         f"you could manually create a symlink from that file to {target_lib}"

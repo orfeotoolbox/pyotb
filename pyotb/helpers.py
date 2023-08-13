@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import sysconfig
 from pathlib import Path
 from shutil import which
 
@@ -291,42 +292,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
     """Help user to fix the OTB installation with appropriate log messages."""
     logger.critical("An error occurred while importing OTB Python API")
     logger.critical("OTB error message was '%s'", error_message)
-    if sys.platform == "linux":
-        if error_message.startswith("libpython3."):
-            logger.critical(
-                "It seems like you need to symlink or recompile python bindings"
-            )
-            if sys.executable.startswith("/usr/bin"):
-                lib = (
-                    f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
-                )
-                if which("ctest") and which("python3-config"):
-                    logger.critical(
-                        "To compile, use 'cd %s ; source otbenv.profile ; "
-                        "ctest -S share/otb/swig/build_wrapping.cmake -VV'",
-                        prefix,
-                    )
-                elif Path(lib).exists():
-                    expected = int(error_message[11])
-                    if expected != sys.version_info.minor:
-                        logger.critical(
-                            "Python library version mismatch (OTB expected 3.%s) : "
-                            "a symlink may not work, depending on your python version",
-                            expected,
-                        )
-                    target = f"{prefix}/lib/libpython3.{expected}.so.1.0"
-                    logger.critical("If using OTB>=8.0, use 'ln -s %s %s'", lib, target)
-                else:
-                    logger.critical(
-                        "You may need to install cmake, python3-dev and mesa's libgl"
-                        " in order to recompile python bindings"
-                    )
-            else:
-                logger.critical(
-                    "Unable to automatically locate python dynamic library of %s",
-                    sys.executable,
-                )
-    elif sys.platform == "win32":
+    if sys.platform == "win32":
         if error_message.startswith("DLL load failed"):
             if sys.version_info.minor != 7:
                 logger.critical(
@@ -337,6 +303,37 @@ def __suggest_fix_import(error_message: str, prefix: str):
                     "It seems that your env variables aren't properly set,"
                     " first use 'call otbenv.bat' then try to import pyotb once again"
                 )
+    elif error_message.startswith("libpython3."):
+        logger.critical(
+            "It seems like you need to symlink or recompile python bindings"
+        )
+        if (
+            sys.executable.startswith("/usr/bin")
+            and which("ctest")
+            and which("python3-config")
+        ):
+            logger.critical(
+                "To compile, use 'cd %s ; source otbenv.profile ; "
+                "ctest -S share/otb/swig/build_wrapping.cmake -VV'",
+                prefix,
+            )
+            return
+        logger.critical(
+            "You may need to install cmake, python3-dev and mesa's libgl"
+            " in order to recompile python bindings"
+        )
+        expected = int(error_message[11])
+        if expected != sys.version_info.minor:
+            logger.critical(
+                "Python library version mismatch (OTB expected 3.%s) : "
+                "a symlink may not work, depending on your python version",
+                expected,
+            )
+        lib_dir = sysconfig.get_config_var("LIBDIR")
+        lib = f"{lib_dir}/libpython3.{sys.version_info.minor}.so"
+        if Path(lib).exists():
+            target = f"{prefix}/lib/libpython3.{expected}.so.1.0"
+            logger.critical("If using OTB>=8.0, try 'ln -sf %s %s'", lib, target)
     logger.critical(
         "You can verify installation requirements for your OS at %s", DOCS_URL
     )
