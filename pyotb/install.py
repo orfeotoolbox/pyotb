@@ -193,7 +193,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
         ln_cmd = f'ln -sf "{lib}" "{target_lib}"'
         subprocess.run(ln_cmd, executable=cmd, shell=True, check=True)
         return str(path)
-    raise SystemExit(
+    raise SystemError(
         f"Unable to automatically locate library for executable '{sys.executable}', "
         f"you could manually create a symlink from that file to {target_lib}"
     )
