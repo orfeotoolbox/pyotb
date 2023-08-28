@@ -141,6 +141,8 @@ def test_xy_to_rowcol():
 def test_write():
     assert INPUT.write("/dev/shm/test_write.tif", ext_fname="nodata=0")
     INPUT["out"].filepath.unlink()
+    assert INPUT.write(Path("/dev/shm/test_write.tif"), ext_fname="nodata=0")
+    INPUT["out"].filepath.unlink()
     # Frozen
     frozen_app = pyotb.BandMath(INPUT, exp="im1b1", frozen=True)
     assert frozen_app.write("/dev/shm/test_frozen_app_write.tif")
