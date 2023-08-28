@@ -732,9 +732,10 @@ class App(OTBObject):
                 )
             try:
                 if self.is_input(key):
-                    self.__set_param(key, self.__check_input_param(obj))
-                else:
-                    self.__set_param(key, obj)
+                    obj = self.__check_input_param(obj)
+                elif self.is_output(key):
+                    obj = self.__check_output_param(obj)
+                self.__set_param(key, obj)
             except (RuntimeError, TypeError, ValueError, KeyError) as e:
                 raise RuntimeError(
                     f"{self.name}: error before execution, while setting parameter '{key}' to '{obj}': {e})"
@@ -972,15 +973,7 @@ class App(OTBObject):
     def __check_input_param(
         self, obj: list | OTBObject | str | Path
     ) -> list | OTBObject | str:
-        """Check the type and value of an input param.
-
-        Args:
-            obj: input parameter value
-
-        Returns:
-            object, string with new /vsi prefix(es) if needed
-
-        """
+        """Check the type and value of an input parameter, add vsi prefixes if needed."""
         if isinstance(obj, list):
             return [self.__check_input_param(o) for o in obj]
         # May be we could add some checks here
@@ -1012,8 +1005,20 @@ class App(OTBObject):
             return obj
         raise TypeError(f"{self.name}: wrong input parameter type ({type(obj)})")
 
+    def __check_output_param(
+        self, obj: list | OTBObject | str | Path
+    ) -> list | OTBObject | str:
+        """Check the type and value of an output parameter."""
+        if isinstance(obj, list):
+            return [self.__check_output_param(o) for o in obj]
+        if isinstance(obj, Path):
+            obj = str(obj)
+        if isinstance(obj, str):
+            return obj
+        raise TypeError(f"{self.name}: wrong output parameter type ({type(obj)})")
+
     def __set_param(
-        self, key: str, obj: list | tuple | OTBObject | otb.Application | list[Any]
+        self, key: str, obj: str | float | list | tuple | OTBObject | otb.Application
     ):
         """Set one parameter, decide which otb.Application method to use depending on target object."""
         if obj is None or (isinstance(obj, (list, tuple)) and not obj):
