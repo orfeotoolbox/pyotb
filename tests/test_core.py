@@ -150,7 +150,8 @@ def test_write():
     frozen_app_init_with_outfile = pyotb.BandMath(
         INPUT, exp="im1b1", out="/dev/shm/test_frozen_app_write.tif", frozen=True
     )
-    assert frozen_app_init_with_outfile.write()
+    assert frozen_app_init_with_outfile.write(pixel_type="uint16")
+    assert frozen_app_init_with_outfile.dtype == "uint16"
     frozen_app_init_with_outfile["out"].filepath.unlink()
 
 
