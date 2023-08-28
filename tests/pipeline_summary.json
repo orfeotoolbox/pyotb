@@ -30,7 +30,7 @@
                 "interpolator.bco.radius": 2,
                 "opt.rpc": 10,
                 "opt.gridspacing": 4.0,
-                "io.in": "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+                "io.in": "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
               }
             }
           ],
@@ -67,7 +67,7 @@
               "name": "BandMath",
               "parameters": {
                 "il": [
-                  "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+                  "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
                 ],
                 "exp": "im1b1"
               }
@@ -105,7 +105,7 @@
                   "name": "BandMath",
                   "parameters": {
                     "il": [
-                      "https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+                      "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
                     ],
                     "exp": "im1b1"
                   }

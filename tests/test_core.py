@@ -7,7 +7,6 @@ from tests_data import *
 def test_app_parameters():
     # Input / ExtractROI
     assert INPUT.parameters
-    assert INPUT.parameters["in"] == SPOT_IMG_URL
     assert (INPUT.parameters["sizex"], INPUT.parameters["sizey"]) == (251, 304)
     # OrthoRectification
     app = pyotb.OrthoRectification(INPUT)
@@ -53,19 +52,25 @@ def test_app_input_vsi():
     pyotb.Input("/vsicurl/" + SPOT_IMG_URL)
     # Simple remote file
     info = pyotb.ReadImageInfo("https://fake.com/image.tif", frozen=True)
-    assert info.app.GetParameterValue("in") == "/vsicurl/https://fake.com/image.tif"
-    assert info.parameters["in"] == "https://fake.com/image.tif"
+    assert (
+        info.app.GetParameterValue("in")
+        == info.parameters["in"]
+        == "/vsicurl/https://fake.com/image.tif"
+    )
     # Compressed single file archive
     info = pyotb.ReadImageInfo("image.tif.zip", frozen=True)
-    assert info.app.GetParameterValue("in") == "/vsizip/image.tif.zip"
-    assert info.parameters["in"] == "image.tif.zip"
+    assert (
+        info.app.GetParameterValue("in")
+        == info.parameters["in"]
+        == "/vsizip/image.tif.zip"
+    )
     # File within compressed remote archive
     info = pyotb.ReadImageInfo("https://fake.com/archive.tar.gz/image.tif", frozen=True)
     assert (
         info.app.GetParameterValue("in")
+        == info.parameters["in"]
         == "/vsitar//vsicurl/https://fake.com/archive.tar.gz/image.tif"
     )
-    assert info.parameters["in"] == "https://fake.com/archive.tar.gz/image.tif"
     # Piped curl --> zip --> tiff
     ziped_tif_urls = (
         "https://github.com/OSGeo/gdal/raw/master"
@@ -348,8 +353,8 @@ def test_summarize_output_obj():
 
 
 def test_summarize_strip_output():
-    in_fn = SPOT_IMG_URL
-    in_fn_w_ext = SPOT_IMG_URL + "?&skipcarto=1"
+    in_fn = "/vsicurl/" + SPOT_IMG_URL
+    in_fn_w_ext = "/vsicurl/" + SPOT_IMG_URL + "?&skipcarto=1"
     out_fn = "/dev/shm/output.tif"
     out_fn_w_ext = out_fn + "?&box=10:10:10:10"
 
