@@ -1005,9 +1005,7 @@ class App(OTBObject):
             return obj
         raise TypeError(f"{self.name}: wrong input parameter type ({type(obj)})")
 
-    def __check_output_param(
-        self, obj: list | OTBObject | str | Path
-    ) -> list | OTBObject | str:
+    def __check_output_param(self, obj: list | str | Path) -> list | str:
         """Check the type and value of an output parameter."""
         if isinstance(obj, list):
             return [self.__check_output_param(o) for o in obj]
