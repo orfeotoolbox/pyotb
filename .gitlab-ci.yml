@@ -47,7 +47,7 @@ pylint:
   before_script:
     - pip install pylint
   script:
-    - pylint $PWD/pyotb
+    - pylint $PWD/pyotb --disable=fixme
 
 codespell:
   extends: .static_analysis
@@ -84,7 +84,7 @@ test_install:
   before_script:
     - pip install pytest pytest-cov
 
-test_module_core:
+module_core:
   extends: .tests
   variables:
     OTB_LOGGER_LEVEL: INFO
@@ -101,7 +101,7 @@ test_module_core:
     - curl -fsLI $PLEIADES_IMG_URL
     - python3 -m pytest -vv --junitxml=test-module-core.xml --cov-report xml:coverage.xml tests/test_core.py
 
-test_pipeline_permutations:
+pipeline_permutations:
   extends: .tests
   variables:
     OTB_LOGGER_LEVEL: WARNING
