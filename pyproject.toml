@@ -56,7 +56,6 @@ max-line-length = 88
 max-module-lines = 2000
 good-names = ["x", "y", "i", "j", "k", "e"]
 disable = [
-    "fixme",
     "line-too-long",
     "too-many-locals",
     "too-many-branches",

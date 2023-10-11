@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-"""This module helps to ensure we properly initialize pyotb: only in case OTB is found and apps are available."""
+"""This module ensure we properly initialize pyotb, or raise SystemExit in case of broken install."""
 import logging
 import os
 import sys
+import sysconfig
 from pathlib import Path
 from shutil import which
 
+from .install import install_otb, interactive_config
+
 # Allow user to switch between OTB directories without setting every env variable
 OTB_ROOT = os.environ.get("OTB_ROOT")
+DOCS_URL = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
 
 # Logging
 # User can also get logger with `logging.getLogger("pyOTB")`
@@ -39,19 +43,20 @@ def set_logger_level(level: str):
     logger_handler.setLevel(getattr(logging, level))
 
 
-def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = True):
-    """Try to load OTB bindings or scan system, help user in case of failure, set env variables.
+def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
+    """Try to load OTB bindings or scan system, help user in case of failure, set env.
 
-    Path precedence :                                OTB_ROOT > python bindings directory
-        OR search for releases installations    :    HOME
-        OR (for Linux)                          :    /opt/otbtf > /opt/otb > /usr/local > /usr
-        OR (for MacOS)                          :    ~/Applications
-        OR (for Windows)                        :    C:/Program Files
+    If in interactive prompt, user will be asked if he wants to install OTB.
+    The OTB_ROOT variable allow one to override default OTB version, with auto env setting.
+    Path precedence : $OTB_ROOT > location of python bindings location
+    Then, if OTB is not found:
+        search for releases installations: $HOME/Applications
+        OR (for Linux): /opt/otbtf > /opt/otb > /usr/local > /usr
+        OR (for Windows): C:/Program Files
 
     Args:
         prefix: prefix to search OTB in (Default value = OTB_ROOT)
         scan: find otb in system known locations (Default value = True)
-        scan_userdir: search for OTB release in user's home directory (Default value = True)
 
     Returns:
         otbApplication module
@@ -65,14 +70,15 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
             import otbApplication as otb  # pylint: disable=import-outside-toplevel
 
             return otb
-        except EnvironmentError as e:
+        except SystemError as e:
             raise SystemExit(f"Failed to import OTB with prefix={prefix}") from e
         except ImportError as e:
             __suggest_fix_import(str(e), prefix)
             raise SystemExit("Failed to import OTB. Exiting.") from e
     # Else try import from actual Python path
     try:
-        # Here, we can't properly set env variables before OTB import. We assume user did this before running python
+        # Here, we can't properly set env variables before OTB import.
+        # We assume user did this before running python
         # For LD_LIBRARY_PATH problems, use OTB_ROOT instead of PYTHONPATH
         import otbApplication as otb  # pylint: disable=import-outside-toplevel
 
@@ -89,18 +95,25 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True, scan_userdir: bool = Tru
             ) from e
     # Else search system
     logger.info("Failed to import OTB. Searching for it...")
-    prefix = __find_otb_root(scan_userdir)
-    # Try to import one last time before raising error
+    prefix = __find_otb_root()
+    # Try auto install if shell is interactive
+    if not prefix and hasattr(sys, "ps1"):
+        if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
+            return find_otb(install_otb(*interactive_config()))
+        raise SystemError("OTB libraries not found on disk. ")
+    if not prefix:
+        raise SystemExit(
+            "OTB libraries not found on disk. "
+            "To install it, open an interactive python shell and 'import pyotb'"
+        )
+    # If OTB was found on disk, set env and try to import one last time
     try:
         set_environment(prefix)
         import otbApplication as otb  # pylint: disable=import-outside-toplevel
 
         return otb
-    except EnvironmentError as e:
+    except SystemError as e:
         raise SystemExit("Auto setup for OTB env failed. Exiting.") from e
-    # Unknown error
-    except ModuleNotFoundError as e:
-        raise SystemExit("Can't run without OTB installed. Exiting.") from e
     # Help user to fix this
     except ImportError as e:
         __suggest_fix_import(str(e), prefix)
@@ -125,7 +138,7 @@ def set_environment(prefix: str):
     # External libraries
     lib_dir = __find_lib(prefix)
     if not lib_dir:
-        raise EnvironmentError("Can't find OTB external libraries")
+        raise SystemError("Can't find OTB external libraries")
     # This does not seems to work
     if sys.platform == "linux" and built_from_source:
         new_ld_path = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
@@ -133,17 +146,17 @@ def set_environment(prefix: str):
     # Add python bindings directory first in PYTHONPATH
     otb_api = __find_python_api(lib_dir)
     if not otb_api:
-        raise EnvironmentError("Can't find OTB Python API")
+        raise SystemError("Can't find OTB Python API")
     if otb_api not in sys.path:
         sys.path.insert(0, otb_api)
-    # Add /bin first in PATH, in order to avoid conflicts with another GDAL install when using os.system()
+    # Add /bin first in PATH, in order to avoid conflicts with another GDAL install
     os.environ["PATH"] = f"{prefix / 'bin'}{os.pathsep}{os.environ['PATH']}"
-    # Applications path  (this can be tricky since OTB import will succeed even without apps)
+    # Ensure APPLICATION_PATH is set
     apps_path = __find_apps_path(lib_dir)
     if Path(apps_path).exists():
         os.environ["OTB_APPLICATION_PATH"] = apps_path
     else:
-        raise EnvironmentError("Can't find OTB applications directory")
+        raise SystemError("Can't find OTB applications directory")
     os.environ["LC_NUMERIC"] = "C"
     os.environ["GDAL_DRIVER_PATH"] = "disable"
 
@@ -159,7 +172,7 @@ def set_environment(prefix: str):
         gdal_data = str(prefix / "share/data")
         proj_lib = str(prefix / "share/proj")
     else:
-        raise EnvironmentError(
+        raise SystemError(
             f"Can't find GDAL location with current OTB prefix '{prefix}' or in /usr"
         )
     os.environ["GDAL_DATA"] = gdal_data
@@ -171,7 +184,7 @@ def __find_lib(prefix: str = None, otb_module=None):
 
     Args:
         prefix: try with OTB root directory
-        otb_module: try with OTB python module (otbApplication) library path if found, else None
+        otb_module: try with otbApplication library path if found, else None
 
     Returns:
         lib path
@@ -235,11 +248,8 @@ def __find_apps_path(lib_dir: Path):
     return ""
 
 
-def __find_otb_root(scan_userdir: bool = False):
+def __find_otb_root():
     """Search for OTB root directory in well known locations.
-
-    Args:
-        scan_userdir: search with glob in $HOME directory
 
     Returns:
         str path of the OTB directory
@@ -263,78 +273,72 @@ def __find_otb_root(scan_userdir: bool = False):
                 prefix = path.parent.parent.parent
             else:
                 prefix = path.parent.parent
-            prefix = prefix.absolute()
     elif sys.platform == "win32":
-        for path in Path("c:/Program Files").glob("**/OTB-*/lib"):
+        for path in sorted(Path("c:/Program Files").glob("**/OTB-*/lib")):
             logger.info("Found %s", path.parent)
-            prefix = path.parent.absolute()
-    elif sys.platform == "darwin":
-        for path in (Path.home() / "Applications").glob("**/OTB-*/lib"):
-            logger.info("Found %s", path.parent)
-            prefix = path.parent.absolute()
-    # If possible, use OTB found in user's HOME tree (this may take some time)
-    if scan_userdir:
-        for path in Path.home().glob("**/OTB-*/lib"):
-            logger.info("Found %s", path.parent)
-            prefix = path.parent.absolute()
-    # Return latest found prefix (and version), see precedence in function def find_otb()
-    return prefix
+            prefix = path.parent
+    # Search for pyotb OTB install, or default on macOS
+    apps = Path.home() / "Applications"
+    for path in sorted(apps.glob("OTB-*/lib/")):
+        logger.info("Found %s", path.parent)
+        prefix = path.parent
+    # Return latest found prefix (and version), see precedence in find_otb() docstrings
+    if isinstance(prefix, Path):
+        return prefix.absolute()
+    return None
 
 
 def __suggest_fix_import(error_message: str, prefix: str):
     """Help user to fix the OTB installation with appropriate log messages."""
     logger.critical("An error occurred while importing OTB Python API")
     logger.critical("OTB error message was '%s'", error_message)
-    if sys.platform == "linux":
-        if error_message.startswith("libpython3."):
-            logger.critical(
-                "It seems like you need to symlink or recompile python bindings"
-            )
-            if sys.executable.startswith("/usr/bin"):
-                lib = (
-                    f"/usr/lib/x86_64-linux-gnu/libpython3.{sys.version_info.minor}.so"
-                )
-                if which("ctest"):
-                    logger.critical(
-                        "To recompile python bindings, use 'cd %s ; source otbenv.profile ; "
-                        "ctest -S share/otb/swig/build_wrapping.cmake -VV'",
-                        prefix,
-                    )
-                elif Path(lib).exists():
-                    expect_minor = int(error_message[11])
-                    if expect_minor != sys.version_info.minor:
-                        logger.critical(
-                            "Python library version mismatch (OTB was expecting 3.%s) : "
-                            "a simple symlink may not work, depending on your python version",
-                            expect_minor,
-                        )
-                    target_lib = f"{prefix}/lib/libpython3.{expect_minor}.so.rh-python3{expect_minor}-1.0"
-                    logger.critical("Use 'ln -s %s %s'", lib, target_lib)
-                else:
-                    logger.critical(
-                        "You may need to install cmake in order to recompile python bindings"
-                    )
-            else:
-                logger.critical(
-                    "Unable to automatically locate python dynamic library of %s",
-                    sys.executable,
-                )
-    elif sys.platform == "win32":
+    if sys.platform == "win32":
         if error_message.startswith("DLL load failed"):
             if sys.version_info.minor != 7:
                 logger.critical(
-                    "You need Python 3.5 (OTB releases 6.4 to 7.4) or Python 3.7 (since OTB 8)"
+                    "You need Python 3.5 (OTB 6.4 to 7.4) or Python 3.7 (since OTB 8)"
                 )
             else:
                 logger.critical(
                     "It seems that your env variables aren't properly set,"
                     " first use 'call otbenv.bat' then try to import pyotb once again"
                 )
-    docs_link = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
+    elif error_message.startswith("libpython3."):
+        logger.critical(
+            "It seems like you need to symlink or recompile python bindings"
+        )
+        if (
+            sys.executable.startswith("/usr/bin")
+            and which("ctest")
+            and which("python3-config")
+        ):
+            logger.critical(
+                "To compile, use 'cd %s ; source otbenv.profile ; "
+                "ctest -S share/otb/swig/build_wrapping.cmake -VV'",
+                prefix,
+            )
+            return
+        logger.critical(
+            "You may need to install cmake, python3-dev and mesa's libgl"
+            " in order to recompile python bindings"
+        )
+        expected = int(error_message[11])
+        if expected != sys.version_info.minor:
+            logger.critical(
+                "Python library version mismatch (OTB expected 3.%s) : "
+                "a symlink may not work, depending on your python version",
+                expected,
+            )
+        lib_dir = sysconfig.get_config_var("LIBDIR")
+        lib = f"{lib_dir}/libpython3.{sys.version_info.minor}.so"
+        if Path(lib).exists():
+            target = f"{prefix}/lib/libpython3.{expected}.so.1.0"
+            logger.critical("If using OTB>=8.0, try 'ln -sf %s %s'", lib, target)
     logger.critical(
-        "You can verify installation requirements for your OS at %s", docs_link
+        "You can verify installation requirements for your OS at %s", DOCS_URL
     )
 
 
-# Since helpers is the first module to be initialized, this will prevent pyotb to run if OTB is not found
+# This part of pyotb is the first imported during __init__ and checks if OTB is found
+# If OTB is not found, a SystemExit is raised, to prevent execution of the core module
 find_otb()
