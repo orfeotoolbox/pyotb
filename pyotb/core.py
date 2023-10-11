@@ -1521,7 +1521,7 @@ class Input(App):
             filepath: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
 
         """
-        super().__init__("ExtractROI", {"in": filepath}, frozen=True)
+        super().__init__("ExtractROI", {"in": filepath}, quiet=True, frozen=True)
         self._name = f"Input from {filepath}"
         if not filepath.startswith(("/vsi", "http://", "https://", "ftp://")):
             filepath = Path(filepath)
