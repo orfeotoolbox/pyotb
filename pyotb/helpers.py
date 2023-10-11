@@ -336,5 +336,5 @@ def __suggest_fix_import(error_message: str, prefix: str):
     )
 
 
-# Since helpers is the first module to be inititialized, this will prevent pyotb to run if OTB is not found
+# Since helpers is the first module to be initialized, this will prevent pyotb to run if OTB is not found
 find_otb()
