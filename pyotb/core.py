@@ -858,8 +858,8 @@ class App(OTBObject):
             )
         elif isinstance(path, (str, Path)) and self.output_key:
             kwargs[self.output_key] = str(path)
-        elif not path and self.output_image_key in self.parameters:
-            kwargs[self.output_key] = self.parameters[self.output_image_key]
+        elif not path and self.output_key in self.parameters:
+            kwargs[self.output_key] = self.parameters[self.output_key]
         elif path is not None:
             raise TypeError(f"{self.name}: unsupported filepath type ({type(path)})")
         if not (kwargs or any(k in self._settings for k in self._out_param_types)):
