@@ -181,7 +181,7 @@ def test_write_multi_output():
     )
     dr = pyotb.DimensionalityReduction(SPOT_IMG_URL)
     assert dr.write(
-        {"in": SPOT_IMG_URL, "out": "/dev/shm/1.tif", "outinv": "/dev/shm/2.tif"}
+        {"out": "/dev/shm/1.tif", "outinv": "/dev/shm/2.tif"}
     )
 
 
