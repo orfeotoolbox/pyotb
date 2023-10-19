@@ -166,6 +166,7 @@ def test_write_multi_output():
         fout="/dev/shm/test_ext_fn_fout.tif",
         foutpos="/dev/shm/test_ext_fn_foutpos.tif",
     )
+
     mss = pyotb.MeanShiftSmoothing(SPOT_IMG_URL)
     assert mss.write(
         {
@@ -176,7 +177,7 @@ def test_write_multi_output():
     )
 
     dr = pyotb.DimensionalityReduction(
-        {"in": SPOT_IMG_URL, "out": "/dev/shm/1.tif", "outinv": "/dev/shm/2.tif"}
+        SPOT_IMG_URL, out="/dev/shm/1.tif", outinv="/dev/shm/2.tif"
     )
     dr = pyotb.DimensionalityReduction(SPOT_IMG_URL)
     assert dr.write(
