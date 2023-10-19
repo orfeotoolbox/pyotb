@@ -807,6 +807,8 @@ class App(OTBObject):
             logger.debug("%s: flushing data to disk", self.name)
             self.app.WriteOutput()
         except RuntimeError:
+            if not self.frozen:
+                raise
             logger.debug(
                 "%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput",
                 self.name,
