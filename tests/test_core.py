@@ -160,6 +160,30 @@ def test_write():
     frozen_app_init_with_outfile["out"].filepath.unlink()
 
 
+def test_write_multi_output():
+    mss = pyotb.MeanShiftSmoothing(
+        SPOT_IMG_URL,
+        fout="/dev/shm/test_ext_fn_fout.tif",
+        foutpos="/dev/shm/test_ext_fn_foutpos.tif",
+    )
+    mss = pyotb.MeanShiftSmoothing(SPOT_IMG_URL)
+    assert mss.write(
+        {
+            "fout": "/dev/shm/test_ext_fn_fout.tif",
+            "foutpos": "/dev/shm/test_ext_fn_foutpos.tif",
+        },
+        ext_fname={"nodata": 0, "gdal:co:COMPRESS": "DEFLATE"},
+    )
+
+    dr = pyotb.DimensionalityReduction(
+        {"in": SPOT_IMG_URL, "out": "/dev/shm/1.tif", "outinv": "/dev/shm/2.tif"}
+    )
+    dr = pyotb.DimensionalityReduction(SPOT_IMG_URL)
+    assert dr.write(
+        {"in": SPOT_IMG_URL, "out": "/dev/shm/1.tif", "outinv": "/dev/shm/2.tif"}
+    )
+
+
 def test_write_ext_fname():
     def _check(expected: str, key: str = "out", app=INPUT.app):
         fn = app.GetParameterString(key)
@@ -195,18 +219,21 @@ def test_write_ext_fname():
     _check("nodata=0&gdal:co:COMPRESS=DEFLATE&box=0:0:10:10")
     INPUT["out"].filepath.unlink()
 
-    mss = pyotb.MeanShiftSmoothing(INPUT)
-    mss.write(
+    mmsd = pyotb.MorphologicalMultiScaleDecomposition(INPUT)
+    mmsd.write(
         {
-            "fout": "/dev/shm/test_ext_fn_fout.tif?&nodata=1",
-            "foutpos": "/dev/shm/test_ext_fn_foutpos.tif?&nodata=2",
+            "outconvex": "/dev/shm/outconvex.tif?&nodata=1",
+            "outconcave": "/dev/shm/outconcave.tif?&nodata=2",
+            "outleveling": "/dev/shm/outleveling.tif?&nodata=3",
         },
         ext_fname={"nodata": 0, "gdal:co:COMPRESS": "DEFLATE"},
     )
-    _check("nodata=1&gdal:co:COMPRESS=DEFLATE", key="fout", app=mss.app)
-    _check("nodata=2&gdal:co:COMPRESS=DEFLATE", key="foutpos", app=mss.app)
-    mss["fout"].filepath.unlink()
-    mss["foutpos"].filepath.unlink()
+    _check("nodata=1&gdal:co:COMPRESS=DEFLATE", key="outconvex", app=mmsd.app)
+    _check("nodata=2&gdal:co:COMPRESS=DEFLATE", key="outconcave", app=mmsd.app)
+    _check("nodata=3&gdal:co:COMPRESS=DEFLATE", key="outleveling", app=mmsd.app)
+    mmsd["outconvex"].filepath.unlink()
+    mmsd["outconcave"].filepath.unlink()
+    mmsd["outleveling"].filepath.unlink()
 
 
 def test_output():
