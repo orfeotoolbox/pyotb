@@ -626,6 +626,10 @@ class App(OTBObject):
             raise KeyError(f"key {key} not found in the application parameters types")
         return self._all_param_types[key] in param_types
 
+    def __is_multi_output(self):
+        """Check if app has multiple output since it needs exec during write()."""
+        return len(self.outputs) > 1
+
     def is_input(self, key: str) -> bool:
         """Returns True if the key is an input.
 
@@ -917,7 +921,7 @@ class App(OTBObject):
             if key in data_types:
                 self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: filepath})
-        if self.frozen:
+        if self.frozen or self.__is_multi_output():
             self.execute()
         self.flush()
         if not parameters:
