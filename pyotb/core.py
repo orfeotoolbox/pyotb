@@ -626,6 +626,10 @@ class App(OTBObject):
             raise KeyError(f"key {key} not found in the application parameters types")
         return self._all_param_types[key] in param_types
 
+    def __is_multi_output(self):
+        """Check if app has multiple outputs to ensure execution during write()."""
+        return len(self.outputs) > 1
+
     def is_input(self, key: str) -> bool:
         """Returns True if the key is an input.
 
@@ -803,18 +807,8 @@ class App(OTBObject):
 
     def flush(self):
         """Flush data to disk, this is when WriteOutput is actually called."""
-        try:
-            logger.debug("%s: flushing data to disk", self.name)
-            self.app.WriteOutput()
-        except RuntimeError:
-            logger.debug(
-                "%s: failed with WriteOutput, executing once again with ExecuteAndWriteOutput",
-                self.name,
-            )
-            self._time_start = perf_counter()
-            self.app.ExecuteAndWriteOutput()
-            self.__sync_parameters()
-            self.frozen = False
+        logger.debug("%s: flushing data to disk", self.name)
+        self.app.WriteOutput()
         self._time_end = perf_counter()
 
     @deprecated_alias(filename_extension="ext_fname")
@@ -927,11 +921,13 @@ class App(OTBObject):
             if key in data_types:
                 self.propagate_dtype(key, data_types[key])
             self.set_parameters({key: filepath})
-        if self.frozen:
+        # TODO: drop multioutput special case when fixed on the OTB side. See discussion in MR !102
+        if self.frozen or self.__is_multi_output():
             self.execute()
         self.flush()
         if not parameters:
             return True
+
         # Search and log missing files
         files, missing = [], []
         for key, filepath in parameters.items():
