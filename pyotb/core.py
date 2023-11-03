@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """This module is the core of pyotb."""
 from __future__ import annotations
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """This module provides a set of functions for pyotb."""
 from __future__ import annotations
 
