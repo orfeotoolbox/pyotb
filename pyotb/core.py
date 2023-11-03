@@ -1025,14 +1025,9 @@ class App(OTBObject):
                     self.app.ConnectImage(key, inp.app, inp.output_image_key)
                 elif isinstance(inp, otb.Application):
                     self.app.ConnectImage(key, obj, get_out_images_param_keys(inp)[0])
-                elif isinstance(inp, (str, Path)):
+                else:
                     # Append `input` to the list, do not overwrite any previously set element of the image list
                     self.app.AddParameterStringList(key, inp)
-                else:
-                    raise TypeError(
-                        f"{self.name}: wrong input parameter type ({type(inp)})"
-                        f" found in '{key}' list: {inp}"
-                    )
         # List of any other types (str, int...)
         else:
             # TODO: use self.is_key_list, but this is not working for ExtractROI param "cl" which is ParameterType_UNKNOWN
