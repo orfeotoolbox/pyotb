@@ -15,13 +15,13 @@ DOCS_URL = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
 # Logging
 # User can also get logger with `logging.getLogger("pyOTB")`
 # then use pyotb.set_logger_level() to adjust logger verbosity
-logger = logging.getLogger("pyOTB")
+logger = logging.getLogger("pyotb")
 logger_handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter(
-    fmt="%(asctime)s (%(levelname)-4s) [pyOTB] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    fmt="%(asctime)s (%(levelname)-4s) [pyotb] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 logger_handler.setFormatter(formatter)
-# Search for PYOTB_LOGGER_LEVEL, else use OTB_LOGGER_LEVEL as pyOTB level, or fallback to INFO
+# Search for PYOTB_LOGGER_LEVEL, else use OTB_LOGGER_LEVEL as pyotb level, or fallback to INFO
 LOG_LEVEL = (
     os.environ.get("PYOTB_LOGGER_LEVEL") or os.environ.get("OTB_LOGGER_LEVEL") or "INFO"
 )
