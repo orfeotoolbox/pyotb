@@ -457,12 +457,10 @@ def define_processing_area(
             #  It should replace any 'outside' pixel by some NoData -> add `fillvalue` argument in the function
 
         # Applying this bounding box to all inputs
+        bounds = (ulx, uly, lrx, lry)
         logger.info(
             "Cropping all images to extent Upper Left (%s, %s), Lower Right (%s, %s)",
-            ulx,
-            uly,
-            lrx,
-            lry,
+            *bounds,
         )
         new_inputs = []
         for inp in inputs:
@@ -472,11 +470,11 @@ def define_processing_area(
                     "mode": "extent",
                     "mode.extent.unit": "phy",
                     "mode.extent.ulx": ulx,
-                    "mode.extent.uly": lry,  # bug in OTB <= 7.3 :
+                    "mode.extent.uly": uly,
                     "mode.extent.lrx": lrx,
-                    "mode.extent.lry": uly,  # ULY/LRY are inverted
+                    "mode.extent.lry": lry,
                 }
-                new_input = App("ExtractROI", params)
+                new_input = App("ExtractROI", params, quiet=True)
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
