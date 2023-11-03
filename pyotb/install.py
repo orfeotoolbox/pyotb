@@ -35,7 +35,7 @@ def otb_latest_release_tag():
     return releases[-1]
 
 
-def check_versions(sysname: str, python_minor: int, otb_major: int) -> tuple[int]:
+def check_versions(sysname: str, python_minor: int, otb_major: int) -> tuple[bool, int]:
     """Verify if python version is compatible with major OTB version.
 
     Args:
@@ -44,22 +44,22 @@ def check_versions(sysname: str, python_minor: int, otb_major: int) -> tuple[int
         otb_major: major version of OTB to be installed
 
     Returns:
-        (1, 0) or (0, expected_version) if case of version conflict
+        (True, 0) if compatible or (False, expected_version) in case of conflicts
 
     """
     if sysname == "Win64":
         expected = 5 if otb_major in (6, 7) else 7
         if python_minor == expected:
-            return 1, 0
+            return True, 0
     elif sysname == "Darwin64":
         expected = 7, 0
         if python_minor == expected:
-            return 1, 0
+            return True, 0
     elif sysname == "Linux64":
         expected = 5 if otb_major in (6, 7) else 8
         if python_minor == expected:
-            return 1, 0
-    return 0, expected
+            return True, 0
+    return False, expected
 
 
 def env_config_unix(otb_path: Path):
