@@ -706,7 +706,7 @@ class App(OTBObject):
 
         Raises:
             KeyError: when the parameter name wasn't recognized
-            RuntimeError: failed to set parameter valie
+            RuntimeError: failed to set parameter value
 
         """
         parameters = kwargs
