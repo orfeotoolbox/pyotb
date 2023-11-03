@@ -458,7 +458,6 @@ def define_processing_area(
                     "mode.extent.lry": lry,
                 }
                 new_input = App("ExtractROI", params, quiet=True)
-                # OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
                 if str(inp) == str(reference_pixel_size_input):
