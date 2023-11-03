@@ -1,4 +1,6 @@
 """This module contains functions for interactive auto installation of OTB."""
+from __future__ import annotations
+
 import json
 import os
 import re
