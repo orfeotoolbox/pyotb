@@ -1034,12 +1034,9 @@ class App(OTBObject):
                         f" found in '{key}' list: {inp}"
                     )
         # List of any other types (str, int...)
-        elif self.is_key_list(key):
-            self.app.SetParameterValue(key, obj)
         else:
-            raise TypeError(
-                f"{self.name}: wrong input parameter type ({type(obj)}) for '{key}'"
-            )
+            # TODO: use self.is_key_list, but this is not working for ExtractROI param "cl" which is ParameterType_UNKNOWN
+            self.app.SetParameterValue(key, obj)
 
     def __sync_parameters(self):
         """Save app parameters in _auto_parameters or data dict.
