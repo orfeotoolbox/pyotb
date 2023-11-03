@@ -1266,6 +1266,32 @@ class Operation(App):
             appname, il=self.unique_inputs, exp=self.exp, quiet=True, name=name
         )
 
+    def get_nb_bands(self, inputs: list[OTBObject | str | int | float]) -> int:
+        """Guess the number of bands of the output image, from the inputs.
+
+        Args:
+            inputs: the Operation operands
+
+        Raises:
+            ValueError: if all inputs don't have the same number of bands
+
+        """
+        if any(
+            isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced")
+            for inp in inputs
+        ):
+            return 1
+        # Check that all inputs have the same band count
+        nb_bands_list = [
+            get_nbchannels(inp)
+            for inp in inputs
+            if not isinstance(inp, (float, int))
+        ]
+        all_same = all(x == nb_bands_list[0] for x in nb_bands_list)
+        if len(nb_bands_list) > 1 and not all_same:
+            raise ValueError("All images do not have the same number of bands")
+        return nb_bands_list[0]
+
     def build_fake_expressions(
         self,
         operator: str,
@@ -1285,29 +1311,12 @@ class Operation(App):
         self.inputs.clear()
         self.nb_channels.clear()
         logger.debug("%s, %s", operator, inputs)
-        # This is when we use the ternary operator with `pyotb.where` function. The output nb of bands is already known
+        # When we use the ternary operator with `pyotb.where` function, the output nb of bands is already known
         if operator == "?" and nb_bands:
             pass
         # For any other operations, the output number of bands is the same as inputs
         else:
-            if any(
-                isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced")
-                for inp in inputs
-            ):
-                nb_bands = 1
-            else:
-                nb_bands_list = [
-                    get_nbchannels(inp)
-                    for inp in inputs
-                    if not isinstance(inp, (float, int))
-                ]
-                # check that all inputs have the same nb of bands
-                if len(nb_bands_list) > 1 and not all(
-                    x == nb_bands_list[0] for x in nb_bands_list
-                ):
-                    raise ValueError("All images do not have the same number of bands")
-                nb_bands = nb_bands_list[0]
-
+            nb_bands = self.get_nb_bands(inputs)
         # Create a list of fake expressions, each item of the list corresponding to one band
         self.fake_exp_bands.clear()
         for i, band in enumerate(range(1, nb_bands + 1)):
@@ -1463,29 +1472,11 @@ class LogicalOperation(Operation):
         Args:
             operator: str (one of >, <, >=, <=, ==, !=, &, |)
             inputs: Can be OTBObject, filepath, int or float
-            nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
+            nb_bands: optionnaly specify the output nb of bands - used only internally by pyotb.where
 
         """
-        # For any other operations, the output number of bands is the same as inputs
-        if any(
-            isinstance(inp, Slicer) and hasattr(inp, "one_band_sliced")
-            for inp in inputs
-        ):
-            nb_bands = 1
-        else:
-            nb_bands_list = [
-                get_nbchannels(inp)
-                for inp in inputs
-                if not isinstance(inp, (float, int))
-            ]
-            # check that all inputs have the same nb of bands
-            if len(nb_bands_list) > 1 and not all(
-                x == nb_bands_list[0] for x in nb_bands_list
-            ):
-                raise ValueError("All images do not have the same number of bands")
-            nb_bands = nb_bands_list[0]
         # Create a list of fake exp, each item of the list corresponding to one band
-        for i, band in enumerate(range(1, nb_bands + 1)):
+        for i, band in enumerate(range(1, self.get_nb_bands(inputs) + 1)):
             expressions = []
             for inp in inputs:
                 fake_exp, corresp_inputs, nb_channels = super().make_fake_exp(
