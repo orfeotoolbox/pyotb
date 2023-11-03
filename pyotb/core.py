@@ -1043,9 +1043,18 @@ class App(OTBObject):
                 else:  # here `input` should be an image filepath
                     # Append `input` to the list, do not overwrite any previously set element of the image list
                     self.app.AddParameterStringList(key, inp)
+                else:
+                    raise TypeError(
+                        f"{self.name}: wrong input parameter type ({type(inp)})"
+                        f" found in '{key}' list: {inp}"
+                    )
         # List of any other types (str, int...)
-        else:
+        elif self.is_key_list(key):
             self.app.SetParameterValue(key, obj)
+        else:
+            raise TypeError(
+                f"{self.name}: wrong input parameter type ({type(obj)}) for '{key}'"
+            )
 
     def __sync_parameters(self):
         """Save app parameters in _auto_parameters or data dict.
