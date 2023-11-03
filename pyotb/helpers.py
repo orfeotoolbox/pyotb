@@ -60,6 +60,10 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
     Returns:
         otbApplication module
 
+    Raises:
+        SystemError: is OTB is not found (when using interactive mode)
+        SystemExit: if OTB is not found, since pyotb won't be usable
+
     """
     otb = None
     # Try OTB_ROOT env variable first (allow override default OTB version)
@@ -125,6 +129,9 @@ def set_environment(prefix: str):
     Args:
         prefix: path to OTB root directory
 
+    Raises:
+        SystemError: if OTB or GDAL is not found
+
     """
     logger.info("Preparing environment for OTB in %s", prefix)
     # OTB root directory
@@ -138,16 +145,18 @@ def set_environment(prefix: str):
     lib_dir = __find_lib(prefix)
     if not lib_dir:
         raise SystemError("Can't find OTB external libraries")
-    # This does not seems to work
+    # LD library path : this does not seems to work
     if sys.platform == "linux" and built_from_source:
         new_ld_path = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
         os.environ["LD_LIBRARY_PATH"] = new_ld_path
+
     # Add python bindings directory first in PYTHONPATH
     otb_api = __find_python_api(lib_dir)
     if not otb_api:
         raise SystemError("Can't find OTB Python API")
     if otb_api not in sys.path:
         sys.path.insert(0, otb_api)
+
     # Add /bin first in PATH, in order to avoid conflicts with another GDAL install
     os.environ["PATH"] = f"{prefix / 'bin'}{os.pathsep}{os.environ['PATH']}"
     # Ensure APPLICATION_PATH is set
@@ -159,6 +168,7 @@ def set_environment(prefix: str):
     os.environ["LC_NUMERIC"] = "C"
     os.environ["GDAL_DRIVER_PATH"] = "disable"
 
+    # Find GDAL libs
     if (prefix / "share/gdal").exists():
         # Local GDAL (OTB Superbuild, .run, .exe)
         gdal_data = str(prefix / "share/gdal")
@@ -186,7 +196,7 @@ def __find_lib(prefix: str = None, otb_module=None):
         otb_module: try with otbApplication library path if found, else None
 
     Returns:
-        lib path
+        lib path, or None if not found
 
     """
     if prefix is not None:
@@ -216,7 +226,7 @@ def __find_python_api(lib_dir: Path):
         prefix: prefix
 
     Returns:
-        python API path if found, else None
+        OTB python API path, or None if not found
 
     """
     otb_api = lib_dir / "python"
@@ -235,7 +245,7 @@ def __find_apps_path(lib_dir: Path):
         lib_dir: library path
 
     Returns:
-        application path if found, else empty string
+        application path, or empty string if not found
 
     """
     if lib_dir.exists():
@@ -251,7 +261,7 @@ def __find_otb_root():
     """Search for OTB root directory in well known locations.
 
     Returns:
-        str path of the OTB directory
+        str path of the OTB directory, or None if not found
 
     """
     prefix = None
@@ -339,5 +349,5 @@ def __suggest_fix_import(error_message: str, prefix: str):
 
 
 # This part of pyotb is the first imported during __init__ and checks if OTB is found
-# If OTB is not found, a SystemExit is raised, to prevent execution of the core module
+# If OTB isn't found, a SystemExit is raised to prevent execution of the core module
 find_otb()

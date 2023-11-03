@@ -33,15 +33,17 @@ def otb_latest_release_tag():
     return releases[-1]
 
 
-def check_versions(sysname: str, python_minor: int, otb_major: int):
+def check_versions(sysname: str, python_minor: int, otb_major: int) -> tuple[bool, int]:
     """Verify if python version is compatible with major OTB version.
 
     Args:
         sysname: OTB's system name convention (Linux64, Darwin64, Win64)
         python_minor: minor version of python
         otb_major: major version of OTB to be installed
+
     Returns:
         (True, 0) or (False, expected_version) if case of version conflict
+
     """
     if sysname == "Win64":
         expected = 5 if otb_major in (6, 7) else 7
@@ -103,6 +105,10 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
     Returns:
         full path of the new installation
 
+    Raises:
+        SystemExit: if python version is not compatible with major OTB version
+        SystemError: if automatic env config failed
+
     """
     # Read env config
     if sys.version_info.major == 2:
@@ -120,6 +126,7 @@ def install_otb(version: str = "latest", path: str = "", edit_env: bool = True):
         raise SystemExit(
             f"Python 3.{expected} is required to import bindings on Windows."
         )
+
     # Fetch archive and run installer
     filename = f"OTB-{version}-{sysname}.{ext}"
     url = f"https://www.orfeo-toolbox.org/packages/archives/OTB/{filename}"

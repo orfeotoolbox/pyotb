@@ -247,7 +247,7 @@ def run_tf_function(func):
 
         """
         # Getting the string definition of the tf function (e.g. "def multiply(x1, x2):...")
-        # TODO: maybe not entirely foolproof, maybe we should use dill instead? but it would add a dependency
+        # Maybe not entirely foolproof, maybe we should use dill instead? but it would add a dependency
         func_def_str = inspect.getsource(func)
         func_name = func.__name__
 
@@ -342,7 +342,7 @@ def run_tf_function(func):
         for i, inp in enumerate(raster_inputs):
             model_serve.set_parameters({f"source{i + 1}.il": [inp]})
         model_serve.execute()
-        # TODO: handle the deletion of the temporary model ?
+        # Possible ENH: handle the deletion of the temporary model ?
 
         return model_serve
 
@@ -403,7 +403,7 @@ def define_processing_area(
         )
 
     # Handling different spatial footprints
-    # TODO: there seems to have a bug, ImageMetaData is not updated when running an app,
+    # TODO: find possible bug - ImageMetaData is not updated when running an app
     #  cf https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/2234. Should we use ImageOrigin instead?
     if not all(
         md["UpperLeftCorner"] == any_metadata["UpperLeftCorner"]
@@ -432,10 +432,10 @@ def define_processing_area(
             lry = metadatas[reference_window_input]["LowerRightCorner"][1]
             uly = metadatas[reference_window_input]["UpperLeftCorner"][1]
         elif window_rule == "specify":
-            # TODO : when the user explicitly specifies the bounding box -> add some arguments in the function
+            # When the user explicitly specifies the bounding box -> add some arguments in the function
             ...
         elif window_rule == "union":
-            # TODO : when the user wants the final bounding box to be the union of all bounding box
+            # When the user wants the final bounding box to be the union of all bounding box
             #  It should replace any 'outside' pixel by some NoData -> add `fillvalue` argument in the function
             ...
 
@@ -458,7 +458,7 @@ def define_processing_area(
                     "mode.extent.lry": lry,
                 }
                 new_input = App("ExtractROI", params, quiet=True)
-                # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
+                # OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
                 if str(inp) == str(reference_pixel_size_input):
@@ -495,8 +495,9 @@ def define_processing_area(
         elif pixel_size_rule == "same_as_input":
             reference_input = reference_pixel_size_input
         elif pixel_size_rule == "specify":
-            pass
-            # TODO : when the user explicitly specify the pixel size -> add argument inside the function
+            # When the user explicitly specify the pixel size -> add argument inside the function
+            ...
+
         pixel_size = metadatas[reference_input]["GeoTransform"][1]
 
         # Perform resampling on inputs that do not comply with the target pixel size
