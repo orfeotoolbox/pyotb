@@ -8,24 +8,27 @@ import sys
 import textwrap
 import uuid
 from collections import Counter
+from pathlib import Path
 
 from .core import App, Input, LogicalOperation, Operation, get_nbchannels
 from .helpers import logger
 
 
-def where(
-    cond: App | str, x: App | str | int | float, y: App | str | int | float
-) -> Operation:
+def where(cond: App | str, x: App | str | float, y: App | str | float) -> Operation:
     """Functionally similar to numpy.where. Where cond is True (!=0), returns x. Else returns y.
 
+    If cond is monoband whereas x or y are multiband, cond channels are expanded to match x & y ones.
+
     Args:
-        cond: condition, must be a raster (filepath, App, Operation...). If cond is monoband whereas x or y are
-              multiband, cond channels are expanded to match x & y ones.
+        cond: condition, must be a raster (filepath, App, Operation...).
         x: value if cond is True. Can be: float, int, App, filepath, Operation...
         y: value if cond is False. Can be: float, int, App, filepath, Operation...
 
     Returns:
         an output where pixels are x if cond is True, else y
+
+    Raises:
+        ValueError: if x and y have different number of bands
 
     """
     # Checking the number of bands of rasters. Several cases :
@@ -61,19 +64,13 @@ def where(
             " of channels of condition to match the number of channels of X/Y",
             x_or_y_nb_channels,
         )
-
     # Get the number of bands of the result
-    if x_or_y_nb_channels:  # if X or Y is a raster
-        out_nb_channels = x_or_y_nb_channels
-    else:  # if only cond is a raster
-        out_nb_channels = cond_nb_channels
+    out_nb_channels = x_or_y_nb_channels or cond_nb_channels
 
     return Operation("?", cond, x, y, nb_bands=out_nb_channels)
 
 
-def clip(
-    image: App | str, v_min: App | str | int | float, v_max: App | str | int | float
-):
+def clip(image: App | str, v_min: App | str | float, v_max: App | str | float):
     """Clip values of image in a range of values.
 
     Args:
@@ -85,19 +82,18 @@ def clip(
         raster whose values are clipped in the range
 
     """
-    if isinstance(image, str):
+    if isinstance(image, (str, Path)):
         image = Input(image)
-    res = where(image <= v_min, v_min, where(image >= v_max, v_max, image))
-    return res
+    return where(image <= v_min, v_min, where(image >= v_max, v_max, image))
 
 
 def all(*inputs):  # pylint: disable=redefined-builtin
     """Check if value is different than 0 everywhere along the band axis.
 
-    For only one image, this function checks that all bands of the image are True (i.e. !=0) and outputs
-    a singleband boolean raster
+    For only one image, this function checks that all bands of the image are True (i.e. !=0)
+     and outputs a singleband boolean raster
     For several images, this function checks that all images are True (i.e. !=0) and outputs
-    a boolean raster, with as many bands as the inputs
+     a boolean raster, with as many bands as the inputs
 
     Args:
         inputs: inputs can be 1) a single image or 2) several images, either passed as separate arguments
@@ -132,18 +128,18 @@ def all(*inputs):  # pylint: disable=redefined-builtin
                 res = res & inp[:, :, band]
             else:
                 res = res & (inp[:, :, band] != 0)
-    # Checking that all images are True
-    else:
-        if isinstance(inputs[0], LogicalOperation):
-            res = inputs[0]
-        else:
-            res = inputs[0] != 0
-        for inp in inputs[1:]:
-            if isinstance(inp, LogicalOperation):
-                res = res & inp
-            else:
-                res = res & (inp != 0)
+        return res
 
+    # Checking that all images are True
+    if isinstance(inputs[0], LogicalOperation):
+        res = inputs[0]
+    else:
+        res = inputs[0] != 0
+    for inp in inputs[1:]:
+        if isinstance(inp, LogicalOperation):
+            res = res & inp
+        else:
+            res = res & (inp != 0)
     return res
 
 
@@ -158,6 +154,7 @@ def any(*inputs):  # pylint: disable=redefined-builtin
     Args:
         inputs: inputs can be 1) a single image or 2) several images, either passed as separate arguments
                 or inside a list
+
     Returns:
         OR intersection
 
@@ -188,19 +185,18 @@ def any(*inputs):  # pylint: disable=redefined-builtin
                 res = res | inp[:, :, band]
             else:
                 res = res | (inp[:, :, band] != 0)
+        return res
 
     # Checking that at least one image is True
+    if isinstance(inputs[0], LogicalOperation):
+        res = inputs[0]
     else:
-        if isinstance(inputs[0], LogicalOperation):
-            res = inputs[0]
+        res = inputs[0] != 0
+    for inp in inputs[1:]:
+        if isinstance(inp, LogicalOperation):
+            res = res | inp
         else:
-            res = inputs[0] != 0
-        for inp in inputs[1:]:
-            if isinstance(inp, LogicalOperation):
-                res = res | inp
-            else:
-                res = res | (inp != 0)
-
+            res = res | (inp != 0)
     return res
 
 
@@ -224,17 +220,19 @@ def run_tf_function(func):
     Returns:
         wrapper: a function that returns a pyotb object
 
+    Raises:
+        SystemError: if OTBTF apps are missing
+
     """
     try:
         from .apps import (  # pylint: disable=import-outside-toplevel
             TensorflowModelServe,
         )
-    except ImportError:
-        logger.error(
+    except ImportError as err:
+        raise SystemError(
             "Could not run Tensorflow function: failed to import TensorflowModelServe."
             "Check that you have OTBTF configured (https://github.com/remicres/otbtf#how-to-install)"
-        )
-        raise
+        ) from err
 
     def get_tf_pycmd(output_dir, channels, scalar_inputs):
         """Create a string containing all python instructions necessary to create and save the Keras model.
@@ -301,13 +299,13 @@ def run_tf_function(func):
         raster_inputs = []
         for inp in inputs:
             try:
-                # this is for raster input
+                # This is for raster input
                 channel = get_nbchannels(inp)
                 channels.append(channel)
                 scalar_inputs.append(None)
                 raster_inputs.append(inp)
             except TypeError:
-                # this is for other inputs (float, int)
+                # This is for other inputs (float, int)
                 channels.append(None)
                 scalar_inputs.append(inp)
 
@@ -316,6 +314,7 @@ def run_tf_function(func):
         out_savedmodel = os.path.join(tmp_dir, f"tmp_otbtf_model_{uuid.uuid4()}")
         pycmd = get_tf_pycmd(out_savedmodel, channels, scalar_inputs)
         cmd_args = [sys.executable, "-c", pycmd]
+        # TODO: remove subprocess execution since this issues has been fixed with OTBTF 4.0
         try:
             subprocess.run(
                 cmd_args,
@@ -407,41 +406,25 @@ def define_processing_area(
     # TODO: there seems to have a bug, ImageMetaData is not updated when running an app,
     #  cf https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/issues/2234. Should we use ImageOrigin instead?
     if not all(
-        metadata["UpperLeftCorner"] == any_metadata["UpperLeftCorner"]
-        and metadata["LowerRightCorner"] == any_metadata["LowerRightCorner"]
-        for metadata in metadatas.values()
+        md["UpperLeftCorner"] == any_metadata["UpperLeftCorner"]
+        and md["LowerRightCorner"] == any_metadata["LowerRightCorner"]
+        for md in metadatas.values()
     ):
         # Retrieving the bounding box that will be common for all inputs
         if window_rule == "intersection":
             # The coordinates depend on the orientation of the axis of projection
             if any_metadata["GeoTransform"][1] >= 0:
-                ulx = max(
-                    metadata["UpperLeftCorner"][0] for metadata in metadatas.values()
-                )
-                lrx = min(
-                    metadata["LowerRightCorner"][0] for metadata in metadatas.values()
-                )
+                ulx = max(md["UpperLeftCorner"][0] for md in metadatas.values())
+                lrx = min(md["LowerRightCorner"][0] for md in metadatas.values())
             else:
-                ulx = min(
-                    metadata["UpperLeftCorner"][0] for metadata in metadatas.values()
-                )
-                lrx = max(
-                    metadata["LowerRightCorner"][0] for metadata in metadatas.values()
-                )
+                ulx = min(md["UpperLeftCorner"][0] for md in metadatas.values())
+                lrx = max(md["LowerRightCorner"][0] for md in metadatas.values())
             if any_metadata["GeoTransform"][-1] >= 0:
-                lry = min(
-                    metadata["LowerRightCorner"][1] for metadata in metadatas.values()
-                )
-                uly = max(
-                    metadata["UpperLeftCorner"][1] for metadata in metadatas.values()
-                )
+                lry = min(md["LowerRightCorner"][1] for md in metadatas.values())
+                uly = max(md["UpperLeftCorner"][1] for md in metadatas.values())
             else:
-                lry = max(
-                    metadata["LowerRightCorner"][1] for metadata in metadatas.values()
-                )
-                uly = min(
-                    metadata["UpperLeftCorner"][1] for metadata in metadatas.values()
-                )
+                lry = max(md["LowerRightCorner"][1] for md in metadatas.values())
+                uly = min(md["UpperLeftCorner"][1] for md in metadatas.values())
 
         elif window_rule == "same_as_input":
             ulx = metadatas[reference_window_input]["UpperLeftCorner"][0]
@@ -449,12 +432,12 @@ def define_processing_area(
             lry = metadatas[reference_window_input]["LowerRightCorner"][1]
             uly = metadatas[reference_window_input]["UpperLeftCorner"][1]
         elif window_rule == "specify":
-            pass
-            # TODO : it is when the user explicitly specifies the bounding box -> add some arguments in the function
+            # TODO : when the user explicitly specifies the bounding box -> add some arguments in the function
+            ...
         elif window_rule == "union":
-            pass
-            # TODO : it is when the user wants the final bounding box to be the union of all bounding box
+            # TODO : when the user wants the final bounding box to be the union of all bounding box
             #  It should replace any 'outside' pixel by some NoData -> add `fillvalue` argument in the function
+            ...
 
         # Applying this bounding box to all inputs
         bounds = (ulx, uly, lrx, lry)
@@ -478,16 +461,14 @@ def define_processing_area(
                 # TODO: OTB 7.4 fixes this bug, how to handle different versions of OTB?
                 new_inputs.append(new_input)
                 # Potentially update the reference inputs for later resampling
-                if str(inp) == str(
-                    reference_pixel_size_input
-                ):  # we use comparison of string because calling '=='
+                if str(inp) == str(reference_pixel_size_input):
+                    # We use comparison of string because calling '=='
                     # on pyotb objects implicitly calls BandMathX application, which is not desirable
                     reference_pixel_size_input = new_input
-            except RuntimeError as e:
-                logger.error(
-                    "Cannot define the processing area for input %s: %s", inp, e
-                )
-                raise
+            except RuntimeError as err:
+                raise ValueError(
+                    f"Cannot define the processing area for input {inp}"
+                ) from err
         inputs = new_inputs
         # Update metadatas
         metadatas = {input: input.app.GetImageMetaData("out") for input in inputs}
@@ -496,9 +477,9 @@ def define_processing_area(
     any_metadata = next(iter(metadatas.values()))
     # Handling different pixel sizes
     if not all(
-        metadata["GeoTransform"][1] == any_metadata["GeoTransform"][1]
-        and metadata["GeoTransform"][5] == any_metadata["GeoTransform"][5]
-        for metadata in metadatas.values()
+        md["GeoTransform"][1] == any_metadata["GeoTransform"][1]
+        and md["GeoTransform"][5] == any_metadata["GeoTransform"][5]
+        for md in metadatas.values()
     ):
         # Retrieving the pixel size that will be common for all inputs
         if pixel_size_rule == "minimal":
