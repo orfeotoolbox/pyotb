@@ -16,7 +16,7 @@ from .depreciation import deprecated_alias, depreciation_warning, deprecated_att
 
 
 class OTBObject(ABC):
-    """Abstraction of an image object."""
+    """Abstraction of an image object, for a whole app or one specific output."""
 
     @property
     @abstractmethod
@@ -269,7 +269,7 @@ class OTBObject(ABC):
             y: latitude or projected Y
 
         Returns:
-            pixel index: (row, col)
+            pixel index as (row, col)
 
         """
         spacing_x, _, origin_x, _, spacing_y, origin_y = self.transform
@@ -516,17 +516,17 @@ class App(OTBObject):
     """Wrapper around otb.Application to handle settings and execution.
 
     Base class that gathers common operations for any OTB application lifetime (settings, exec, export, etc.)
-    There are several ways to pass parameters to init the app. *args can be :
-        - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
-            (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-        - string, App or Output, useful when the user wants to specify the input "in"
-        - list, useful when the user wants to specify the input list 'il'
+    Any app parameter may be passed either using a dict of parameters or keyword argument.
+    The first argument can be :  
+    - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in")
+    - string, App or Output, useful when the user wants to specify the input "in"
+    - list, useful when the user wants to specify the input list 'il'
 
     Args:
         appname: name of the OTB application to initialize, e.g. 'BandMath'
         *args: used to pass an app input as argument and omitting the key
         frozen: freeze OTB app in order avoid blocking during __init___
-        quiet: whether to print logs of the OTB app
+        quiet: whether to print logs of the OTB app and the default progress bar
         name: custom name that will show up in logs, appname will be used if not provided
         **kwargs: used for passing application parameters (e.g. il=["image_1.tif", "image_1.tif"])
 
