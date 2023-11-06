@@ -294,35 +294,35 @@ class OTBObject(ABC):
             return NotImplemented  # this enables to fallback on numpy emulation thanks to __array_ufunc__
         return op_cls(name, x, y)
 
-    def __add__(self, other: OTBObject | str | int | float) -> Operation:
+    def __add__(self, other: OTBObject | str | float) -> Operation:
         """Addition."""
         return self.__create_operator(Operation, "+", self, other)
 
-    def __sub__(self, other: OTBObject | str | int | float) -> Operation:
+    def __sub__(self, other: OTBObject | str | float) -> Operation:
         """Subtraction."""
         return self.__create_operator(Operation, "-", self, other)
 
-    def __mul__(self, other: OTBObject | str | int | float) -> Operation:
+    def __mul__(self, other: OTBObject | str | float) -> Operation:
         """Multiplication."""
         return self.__create_operator(Operation, "*", self, other)
 
-    def __truediv__(self, other: OTBObject | str | int | float) -> Operation:
+    def __truediv__(self, other: OTBObject | str | float) -> Operation:
         """Division."""
         return self.__create_operator(Operation, "/", self, other)
 
-    def __radd__(self, other: OTBObject | str | int | float) -> Operation:
+    def __radd__(self, other: OTBObject | str | float) -> Operation:
         """Right addition."""
         return self.__create_operator(Operation, "+", other, self)
 
-    def __rsub__(self, other: OTBObject | str | int | float) -> Operation:
+    def __rsub__(self, other: OTBObject | str | float) -> Operation:
         """Right subtraction."""
         return self.__create_operator(Operation, "-", other, self)
 
-    def __rmul__(self, other: OTBObject | str | int | float) -> Operation:
+    def __rmul__(self, other: OTBObject | str | float) -> Operation:
         """Right multiplication."""
         return self.__create_operator(Operation, "*", other, self)
 
-    def __rtruediv__(self, other: OTBObject | str | int | float) -> Operation:
+    def __rtruediv__(self, other: OTBObject | str | float) -> Operation:
         """Right division."""
         return self.__create_operator(Operation, "/", other, self)
 
@@ -330,35 +330,35 @@ class OTBObject(ABC):
         """Absolute value."""
         return Operation("abs", self)
 
-    def __ge__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __ge__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Greater of equal than."""
         return self.__create_operator(LogicalOperation, ">=", self, other)
 
-    def __le__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __le__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Lower of equal than."""
         return self.__create_operator(LogicalOperation, "<=", self, other)
 
-    def __gt__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __gt__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Greater than."""
         return self.__create_operator(LogicalOperation, ">", self, other)
 
-    def __lt__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __lt__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Lower than."""
         return self.__create_operator(LogicalOperation, "<", self, other)
 
-    def __eq__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __eq__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Equality."""
         return self.__create_operator(LogicalOperation, "==", self, other)
 
-    def __ne__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __ne__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Inequality."""
         return self.__create_operator(LogicalOperation, "!=", self, other)
 
-    def __or__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __or__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Logical or."""
         return self.__create_operator(LogicalOperation, "||", self, other)
 
-    def __and__(self, other: OTBObject | str | int | float) -> LogicalOperation:
+    def __and__(self, other: OTBObject | str | float) -> LogicalOperation:
         """Logical and."""
         return self.__create_operator(LogicalOperation, "&&", self, other)
 
@@ -1085,7 +1085,7 @@ class App(OTBObject):
     # Special functions
     def __getitem__(
         self, key: str | tuple
-    ) -> Any | list[int | float] | int | float | Slicer:
+    ) -> Any | list[float] | float | Slicer:
         """This function is called when we use App()[...].
 
         We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer
@@ -1255,7 +1255,7 @@ class Operation(App):
             appname, il=self.unique_inputs, exp=self.exp, quiet=True, name=name
         )
 
-    def get_nb_bands(self, inputs: list[OTBObject | str | int | float]) -> int:
+    def get_nb_bands(self, inputs: list[OTBObject | str | float]) -> int:
         """Guess the number of bands of the output image, from the inputs.
 
         Args:
@@ -1284,7 +1284,7 @@ class Operation(App):
     def build_fake_expressions(
         self,
         operator: str,
-        inputs: list[OTBObject | str | int | float],
+        inputs: list[OTBObject | str | float],
         nb_bands: int = None,
     ):
         """Create a list of 'fake' expressions, one for each band.
@@ -1455,7 +1455,7 @@ class LogicalOperation(Operation):
     def build_fake_expressions(
         self,
         operator: str,
-        inputs: list[OTBObject | str | int | float],
+        inputs: list[OTBObject | str | float],
         nb_bands: int = None,
     ):
         """Create a list of 'fake' expressions, one for each band.
