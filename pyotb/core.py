@@ -517,17 +517,18 @@ class App(OTBObject):
     Any app parameter may be passed either using a dict of parameters or keyword argument.
 
     The first argument can be:
-        - string, App or Output, the main input parameter name is automatically set
-        - list, useful when the user wants to specify the input list 'il'
-        - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in", "map")
+        - filepath or OTBObject, the main input parameter name is automatically used
+        - list of inputs, useful when the user wants to specify the input list `il`
+        - dictionary of parameters, useful when a key is python-reserved (e.g. `in`, `map`)
+    Any key except reserved keywards may also be passed via kwargs, if you replace dots with "_" e.g `map_epsg_code=4326`
 
     Args:
         appname: name of the OTB application to initialize, e.g. 'BandMath'
-        *args: used to pass an app input as argument and omitting the key
+        *args: can be a filepath, OTB object or a dict or parameters, several dicts will be merged in **kwargs
         frozen: freeze OTB app in order avoid blocking during __init___
         quiet: whether to print logs of the OTB app and the default progress bar
         name: custom name that will show up in logs, appname will be used if not provided
-        **kwargs: used for passing application parameters (e.g. il=["image_1.tif", "image_1.tif"])
+        **kwargs: any OTB application parameter key is accepted except "in"
 
     """
 
