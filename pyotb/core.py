@@ -515,6 +515,7 @@ class App(OTBObject):
 
     Base class that gathers common operations for any OTB application lifetime (settings, exec, export, etc.)
     Any app parameter may be passed either using a dict of parameters or keyword argument.
+
     The first argument can be:
         - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in")
         - string, App or Output, useful when the user wants to specify the input "in"
@@ -820,6 +821,7 @@ class App(OTBObject):
             - filepath, useful when there is only one output, e.g. 'output.tif'
             - dictionary containing output filepath
             - None if output file was passed during App init
+
         In case of multiple outputs, pixel_type may also be a dictionary with parameter names as keys.
         Accepted pixel types : uint8, uint16, uint32, int16, int32, float, double, cint16, cint32, cfloat, cdouble
 
@@ -1103,9 +1105,8 @@ class App(OTBObject):
 class Slicer(App):
     """Slicer objects, automatically created when using slicing e.g. app[:, :, 2].
 
-    It contains:
-        - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
-        - in case the user only wants to extract one band, an expression such as "im1b#"
+    Can be used to select a subset of pixel and / or bands in the image.
+    This is a shortcut to an ExtractROI app that can be written to disk or used in pipelines.
 
     Args:
         obj: input
@@ -1423,8 +1424,8 @@ class LogicalOperation(Operation):
     """A specialization of Operation class for boolean logical operations.
 
     Supported operators are >, <, >=, <=, ==, !=, `&` and `|`.
-    The only difference is that not only the BandMath expression is saved (e.g. "im1b1 > 0 ? 1 : 0"),
-     but also the logical expression (e.g. "im1b1 > 0")
+    The only difference is that not only the BandMath expression is saved
+     (e.g. "im1b1 > 0 ? 1 : 0"), but also the logical expression (e.g. "im1b1 > 0")
 
     Args:
         operator: string operator (one of >, <, >=, <=, ==, !=, &, |)
@@ -1449,8 +1450,8 @@ class LogicalOperation(Operation):
     ):
         """Create a list of 'fake' expressions, one for each band.
 
-        e.g for the operation input1 > input2, we create a fake expression that is like
-        "str(input1) > str(input2) ? 1 : 0" and a logical fake expression that is like "str(input1) > str(input2)"
+        For the operation input1 > input2, we create a fake expression like `str(input1) > str(input2) ? 1 : 0`
+         and a logical fake expression like `str(input1) > str(input2)`
 
         Args:
             operator: str (one of >, <, >=, <=, ==, !=, &, |)
@@ -1630,9 +1631,7 @@ def get_nbchannels(inp: str | Path | OTBObject) -> int:
         try:
             info = App("ReadImageInfo", inp, quiet=True)
             return info["numberbands"]
-        except (
-            RuntimeError
-        ) as info_err:  # this happens when we pass a str that is not a filepath
+        except RuntimeError as info_err:  # e.g. file is missing
             raise TypeError(
                 f"Could not get the number of channels file '{inp}' ({info_err})"
             ) from info_err
