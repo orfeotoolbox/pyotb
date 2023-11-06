@@ -513,7 +513,24 @@ class OTBObject(ABC):
 
 
 class App(OTBObject):
-    """Base class that gathers common operations for any OTB application."""
+    """Wrapper around otb.Application to handle settings and execution.
+
+    Base class that gathers common operations for any OTB application lifetime (settings, exec, export, etc.)
+    There are several ways to pass parameters to init the app. *args can be :
+        - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
+            (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
+        - string, App or Output, useful when the user wants to specify the input "in"
+        - list, useful when the user wants to specify the input list 'il'
+
+    Args:
+        appname: name of the OTB application to initialize, e.g. 'BandMath'
+        *args: used to pass an app input as argument and omitting the key
+        frozen: freeze OTB app in order avoid blocking during __init___
+        quiet: whether to print logs of the OTB app
+        name: custom name that will show up in logs, appname will be used if not provided
+        **kwargs: used for passing application parameters (e.g. il=["image_1.tif", "image_1.tif"])
+
+    """
 
     INPUT_IMAGE_TYPES = [
         otb.ParameterType_InputImage,
@@ -550,23 +567,7 @@ class App(OTBObject):
         name: str = "",
         **kwargs,
     ):
-        """Common constructor for OTB applications. Handles in-memory connection between apps.
-
-        There are several ways to pass parameters to init the app. *args can be :
-            - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
-                (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-            - string, App or Output, useful when the user wants to specify the input "in"
-            - list, useful when the user wants to specify the input list 'il'
-
-        Args:
-            appname: name of the OTB application to initialize, e.g. 'BandMath'
-            *args: used to pass an app input as argument and omitting the key
-            frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
-            quiet: whether to print logs of the OTB app
-            name: custom name that will show up in logs, appname will be used if not provided
-            **kwargs: used for passing application parameters (e.g. il=["image_1.tif", "image_1.tif"])
-
-        """
+        """Common constructor for OTB applications, automatically handles in-memory connections."""
         # Attributes and data structures used by properties
         create = (
             otb.Registry.CreateApplicationWithoutLogger
