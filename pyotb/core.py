@@ -467,10 +467,8 @@ class OTBObject(ABC):
         """Override the default __getitem__ behaviour.
 
         This function enables 2 things :
-        - slicing, i.e. selecting ROI/bands. For example, selecting first 3 bands: object[:, :, :3]
-                                                          selecting bands 1, 2 & 5 : object[:, :, [0, 1, 4]]
-                                                          selecting 1000x1000 subset : object[:1000, :1000]
-        - access pixel value(s) at a specified row, col index
+            - slicing, i.e. selecting ROI/bands
+            - access pixel value(s) at a specified row, col index
 
         Args:
             key: attribute key
@@ -517,10 +515,10 @@ class App(OTBObject):
 
     Base class that gathers common operations for any OTB application lifetime (settings, exec, export, etc.)
     Any app parameter may be passed either using a dict of parameters or keyword argument.
-    The first argument can be :
-    - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in")
-    - string, App or Output, useful when the user wants to specify the input "in"
-    - list, useful when the user wants to specify the input list 'il'
+    The first argument can be:
+        - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in")
+        - string, App or Output, useful when the user wants to specify the input "in"
+        - list, useful when the user wants to specify the input list 'il'
 
     Args:
         appname: name of the OTB application to initialize, e.g. 'BandMath'
@@ -1105,9 +1103,9 @@ class App(OTBObject):
 class Slicer(App):
     """Slicer objects, automatically created when using slicing e.g. app[:, :, 2].
 
-    It contains :
-    - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
-    - in case the user only wants to extract one band, an expression such as "im1b#"
+    It contains:
+        - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
+        - in case the user only wants to extract one band, an expression such as "im1b#"
 
     Args:
         obj: input
