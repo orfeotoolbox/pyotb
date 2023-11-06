@@ -1758,6 +1758,7 @@ def summarize(
         return [summarize(o) for o in obj]
     if isinstance(obj, Output):
         return summarize(obj.parent_pyotb_app)
+    # => This is the deepest recursion level
     if not isinstance(obj, App):
         return obj
 
@@ -1769,8 +1770,8 @@ def summarize(
         return param.split("?")[0]
 
     # Call / top level of recursion : obj is an App
-    # We need to return parameters values, summarized if param is an App
     parameters = {}
+    # We need to return parameters values, summarized if param is an App
     for key, param in obj.parameters.items():
         if strip_inpath and obj.is_input(key) or strip_outpath and obj.is_output(key):
             parameters[key] = strip_path(param)
