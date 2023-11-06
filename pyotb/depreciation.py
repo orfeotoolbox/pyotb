@@ -1,7 +1,6 @@
 """Helps with deprecated classes and methods.
 
-Taken from https://stackoverflow.com/questions/49802412/how-to-implement-
-deprecation-in-python-with-argument-alias
+Taken from https://stackoverflow.com/questions/49802412/how-to-implement-deprecation-in-python-with-argument-alias
 """
 from typing import Callable, Dict, Any
 import functools
@@ -17,7 +16,7 @@ def depreciation_warning(message: str):
     """Shows a warning message.
 
     Args:
-        message: message
+        message: message to log
 
     """
     warnings.warn(
@@ -63,11 +62,14 @@ def rename_kwargs(func_name: str, kwargs: Dict[str, Any], aliases: Dict[str, str
         kwargs: keyword args
         aliases: aliases
 
+    Raises:
+        ValueError: if both old and new arguments are provided
+
     """
     for alias, new in aliases.items():
         if alias in kwargs:
             if new in kwargs:
-                raise TypeError(
+                raise ValueError(
                     f"{func_name} received both {alias} and {new} as arguments!"
                     f" {alias} is deprecated, use {new} instead."
                 )
