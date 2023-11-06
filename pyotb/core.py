@@ -534,11 +534,12 @@ class App(OTBObject):
         otb.ParameterType_InputImageList,
         otb.ParameterType_InputFilenameList,
     ]
-    INPUT_LIST_TYPES = [
+    INPUT_LIST_TYPES = INPUT_IMAGES_LIST_TYPES + [
         otb.ParameterType_StringList,
         otb.ParameterType_ListView,
         otb.ParameterType_InputVectorDataList,
-    ] + INPUT_IMAGES_LIST_TYPES
+        otb.ParameterType_Band,
+    ]
 
     def __init__(
         self,
@@ -1025,13 +1026,17 @@ class App(OTBObject):
                     self.app.ConnectImage(key, inp.app, inp.output_image_key)
                 elif isinstance(inp, otb.Application):
                     self.app.ConnectImage(key, obj, get_out_images_param_keys(inp)[0])
+                # Here inp is either str or Path, already checked by __check_*_param
                 else:
-                    # Append `input` to the list, do not overwrite any previously set element of the image list
+                    # Append it to the list, do not overwrite any previously set element of the image list
                     self.app.AddParameterStringList(key, inp)
         # List of any other types (str, int...)
-        else:
-            # TODO: use self.is_key_list, but this is not working for ExtractROI param "cl" which is ParameterType_UNKNOWN
+        elif self.is_key_list(key):
             self.app.SetParameterValue(key, obj)
+        else:
+            raise TypeError(
+                f"{self.name}: wrong parameter type ({type(obj)}) for '{key}'"
+            )
 
     def __sync_parameters(self):
         """Save app parameters in _auto_parameters or data dict.
