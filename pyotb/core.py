@@ -520,7 +520,7 @@ class App(OTBObject):
         - filepath or OTBObject, the main input parameter name is automatically used
         - list of inputs, useful when the user wants to specify the input list `il`
         - dictionary of parameters, useful when a key is python-reserved (e.g. `in`, `map`)
-    Any key except reserved keywards may also be passed via kwargs, if you replace dots with "_" e.g `map_epsg_code=4326`
+    Any key except "in" or "map" can also be passed via kwargs, replace "." with "_" e.g `map_epsg_code=4326`
 
     Args:
         appname: name of the OTB application to initialize, e.g. 'BandMath'
@@ -528,7 +528,7 @@ class App(OTBObject):
         frozen: freeze OTB app in order avoid blocking during __init___
         quiet: whether to print logs of the OTB app and the default progress bar
         name: custom name that will show up in logs, appname will be used if not provided
-        **kwargs: any OTB application parameter key is accepted except "in"
+        **kwargs: any OTB application parameter key is accepted except "in" or "map"
 
     """
 
