@@ -517,7 +517,7 @@ class App(OTBObject):
 
     Base class that gathers common operations for any OTB application lifetime (settings, exec, export, etc.)
     Any app parameter may be passed either using a dict of parameters or keyword argument.
-    The first argument can be :  
+    The first argument can be :
     - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in")
     - string, App or Output, useful when the user wants to specify the input "in"
     - list, useful when the user wants to specify the input list 'il'
@@ -1103,7 +1103,22 @@ class App(OTBObject):
 
 
 class Slicer(App):
-    """Slicer objects i.e. when we call something like raster[:, :, 2] from Python."""
+    """Slicer objects, automatically created when using slicing e.g. app[:, :, 2].
+
+    It contains :
+    - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
+    - in case the user only wants to extract one band, an expression such as "im1b#"
+
+    Args:
+        obj: input
+        rows: slice along Y / Latitude axis
+        cols: slice along X / Longitude axis
+        channels: bands to extract
+
+    Raises:
+        TypeError: if channels param isn't slice, list or int
+
+    """
 
     def __init__(
         self,
@@ -1112,22 +1127,7 @@ class Slicer(App):
         cols: slice,
         channels: slice | list[int] | int,
     ):
-        """Create a slicer object, that can be used directly for writing or inside a BandMath.
-
-        It contains :
-        - an ExtractROI app that handles extracting bands and ROI and can be written to disk or used in pipelines
-        - in case the user only wants to extract one band, an expression such as "im1b#"
-
-        Args:
-            obj: input
-            rows: slice along Y / Latitude axis
-            cols: slice along X / Longitude axis
-            channels: bands to extract
-
-        Raises:
-            TypeError: if channels param isn't slice, list or int
-
-        """
+        """Create a slicer object, that can be used directly for writing or inside a BandMath."""
         super().__init__(
             "ExtractROI",
             obj,
@@ -1189,6 +1189,16 @@ class Slicer(App):
 class Operation(App):
     """Class for arithmetic/math operations done in Python.
 
+    Given some inputs and an operator, this object enables to python operator to a BandMath operation.
+    Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
+    It can have 3 inputs for the ternary operator `cond ? x : y`.
+
+    Args:
+        operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
+        *inputs: operands of the expression to build
+        nb_bands: optionally specify the output nb of bands - used only internally by pyotb.where
+        name: override the default Operation name
+
     Example:
         Consider the python expression (input1 + 2 * input2)  >  0.
         This class enables to create a BandMathX app, with expression such as (im2 + 2 * im1) > 0 ? 1 : 0
@@ -1208,18 +1218,7 @@ class Operation(App):
     """
 
     def __init__(self, operator: str, *inputs, nb_bands: int = None, name: str = None):
-        """Given some inputs and an operator, this object enables to python operator to a BandMath operation.
-
-        Operations generally involve 2 inputs (+, -...). It can have only 1 input for `abs` operator.
-        It can have 3 inputs for the ternary operator `cond ? x : y`.
-
-        Args:
-            operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
-            *inputs: operands of the expression to build
-            nb_bands: optionally specify the output nb of bands - used only internally by pyotb.where
-            name: override the default Operation name
-
-        """
+        """Operation constructor, one part of the logic is handled by App.__create_operator"""
         self.operator = operator
         # We first create a 'fake' expression. E.g for the operation `input1 + input2`
         # we create a fake expression like "str(input1) + str(input2)"
@@ -1426,21 +1425,18 @@ class LogicalOperation(Operation):
     """A specialization of Operation class for boolean logical operations.
 
     Supported operators are >, <, >=, <=, ==, !=, `&` and `|`.
-
     The only difference is that not only the BandMath expression is saved (e.g. "im1b1 > 0 ? 1 : 0"),
      but also the logical expression (e.g. "im1b1 > 0")
+
+    Args:
+        operator: string operator (one of >, <, >=, <=, ==, !=, &, |)
+        *inputs: inputs
+        nb_bands: optionally specify the output nb of bands - used only by pyotb.where
 
     """
 
     def __init__(self, operator: str, *inputs, nb_bands: int = None):
-        """Constructor for a LogicalOperation object.
-
-        Args:
-            operator: string operator (one of >, <, >=, <=, ==, !=, &, |)
-            *inputs: inputs
-            nb_bands: optionally specify the output nb of bands - used only by pyotb.where
-
-        """
+        """Constructor for a LogicalOperation object."""
         self.logical_fake_exp_bands = []
         super().__init__(operator, *inputs, nb_bands=nb_bands, name="LogicalOperation")
         self.logical_exp_bands, self.logical_exp = self.get_real_exp(
@@ -1487,15 +1483,15 @@ class LogicalOperation(Operation):
 
 
 class Input(App):
-    """Class for transforming a filepath to pyOTB object."""
+    """Class for transforming a filepath to pyOTB object.
+
+    Args:
+        filepath: Anything supported by GDAL (local file on the filesystem, remote resource, etc.)
+
+    """
 
     def __init__(self, filepath: str):
-        """Default constructor.
-
-        Args:
-            filepath: Anything supported by GDAL (local file on the filesystem, remote resource, etc.)
-
-        """
+        """Initialize an ExtractROI OTB app from a filepath, set dtype and store filepath."""
         super().__init__("ExtractROI", {"in": filepath}, quiet=True, frozen=True)
         self._name = f"Input from {filepath}"
         if not filepath.startswith(("/vsi", "http://", "https://", "ftp://")):
@@ -1510,7 +1506,15 @@ class Input(App):
 
 
 class Output(OTBObject):
-    """Object that behave like a pointer to a specific application in-memory output or file."""
+    """Object that behave like a pointer to a specific application in-memory output or file.
+
+    Args:
+        pyotb_app: The pyotb App to store reference from
+        param_key: Output parameter key of the target app
+        filepath: path of the output file (if not memory)
+        mkdir: create missing parent directories
+
+    """
 
     _filepath: str | Path = None
 
@@ -1522,15 +1526,7 @@ class Output(OTBObject):
         filepath: str = None,
         mkdir: bool = True,
     ):
-        """Constructor for an Output object.
-
-        Args:
-            pyotb_app: The pyotb App to store reference from
-            param_key: Output parameter key of the target app
-            filepath: path of the output file (if not memory)
-            mkdir: create missing parent directories
-
-        """
+        """Constructor for an Output object, initialized during App.__init__."""
         self.parent_pyotb_app = pyotb_app  # keep trace of parent app
         self.param_key = param_key
         self.filepath = filepath
