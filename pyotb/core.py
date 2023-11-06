@@ -581,6 +581,7 @@ class App(OTBObject):
         self._time_start, self._time_end = 0.0, 0.0
         self.data, self.outputs = {}, {}
         self.quiet, self.frozen = quiet, frozen
+
         # Param keys and types
         self.parameters_keys = tuple(self.app.GetParametersKeys())
         self._all_param_types = {
@@ -596,15 +597,18 @@ class App(OTBObject):
             for key in self.parameters_keys
             if self.app.GetParameterType(key) == otb.ParameterType_Choice
         }
+
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
         # Create Output image objects
-        for key in filter(
-            lambda k: self._out_param_types[k] == otb.ParameterType_OutputImage,
-            self._out_param_types,
+        for key in (
+            key
+            for key, param in self._out_param_types.items()
+            if param == otb.ParameterType_OutputImage
         ):
             self.outputs[key] = Output(self, key, self._settings.get(key))
+
         if not self.frozen:
             self.execute()
             if any(key in self._settings for key in self._out_param_types):
