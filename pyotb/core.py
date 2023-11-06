@@ -1217,7 +1217,7 @@ class Operation(App):
     """
 
     def __init__(self, operator: str, *inputs, nb_bands: int = None, name: str = None):
-        """Operation constructor, one part of the logic is handled by App.__create_operator"""
+        """Operation constructor, one part of the logic is handled by App.__create_operator."""
         self.operator = operator
         # We first create a 'fake' expression. E.g for the operation `input1 + input2`
         # we create a fake expression like "str(input1) + str(input2)"
