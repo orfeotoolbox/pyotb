@@ -136,14 +136,14 @@ class OTBObject(ABC):
         return App("ComputeImagesStatistics", self, quiet=True).data
 
     def get_values_at_coords(
-        self, row: int, col: int, bands: int = None
+        self, row: int, col: int, bands: int | list[int] = None
     ) -> list[float] | float:
         """Get pixel value(s) at a given YX coordinates.
 
         Args:
             row: index along Y / latitude axis
             col: index along X / longitude axis
-            bands: band number, list or slice to fetch values from
+            bands: band number(s) to fetch values from
 
         Returns:
             single numerical value or a list of values for each band
@@ -209,8 +209,7 @@ class OTBObject(ABC):
 
         Args:
             key: parameter key to export, if None then the default one will be used
-            preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
-                            the App first output. Default is True
+            preserve_dtype: convert the array to the same pixel type as the App first output
 
         Returns:
             the exported numpy array
@@ -231,12 +230,13 @@ class OTBObject(ABC):
     ) -> np.ndarray:
         """Export a pyotb object to numpy array.
 
+        A copy is avoided by default, but may be required if preserve_dtype is False
+         and the source app reference is lost.
+
         Args:
             key: the output parameter name to export as numpy array
-            preserve_dtype: when set to True, the numpy array is converted to the same pixel type as
-                            the App first output. Default is True
-            copy: whether to copy the output array, default is False
-                  required to True if preserve_dtype is False and the source app reference is lost
+            preserve_dtype:  convert the array to the same pixel type as the App first output
+            copy: whether to copy the output array instead of returning a reference
 
         Returns:
             a numpy array that may already have been cached in self.exports_dic
@@ -378,12 +378,12 @@ class OTBObject(ABC):
         """This is called whenever a numpy function is called on a pyotb object.
 
         Operation is performed in numpy, then imported back to pyotb with the same georeference as input.
+        At least one obj is unputs has to be an OTBObject.
 
         Args:
             ufunc: numpy function
             method: an internal numpy argument
-            inputs: inputs, at least one being pyotb object. If there are several pyotb objects, they must all have
-                    the same georeference and pixel size.
+            inputs: inputs, with equal shape in case of several images / OTBObject
             **kwargs: kwargs of the numpy function
 
         Returns:
@@ -552,18 +552,19 @@ class App(OTBObject):
     ):
         """Common constructor for OTB applications. Handles in-memory connection between apps.
 
+        There are several ways to pass parameters to init the app. *args can be :
+            - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
+                (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
+            - string, App or Output, useful when the user wants to specify the input "in"
+            - list, useful when the user wants to specify the input list 'il'
+
         Args:
             appname: name of the OTB application to initialize, e.g. 'BandMath'
-            *args: used for passing application parameters. Can be :
-                           - dictionary containing key-arguments enumeration. Useful when a key is python-reserved
-                             (e.g. "in") or contains reserved characters such as a point (e.g."mode.extent.unit")
-                           - string, App or Output, useful when the user wants to specify the input "in"
-                           - list, useful when the user wants to specify the input list 'il'
+            *args: used to pass an app input as argument and ommiting the key
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             quiet: whether to print logs of the OTB app
             name: custom name that will show up in logs, appname will be used if not provided
-            **kwargs: used for passing application parameters.
-                      e.g. il=['input1.tif', App_object2, App_object3.out], out='output.tif'
+            **kwargs: used for passing application parameters (e.g. il=["image_1.tif", "image_1.tif"])
 
         """
         # Attributes and data structures used by properties
@@ -700,10 +701,8 @@ class App(OTBObject):
         instead of overwriting them. Handles any parameters, i.e. in-memory & filepaths
 
         Args:
-            *args: Can be : - dictionary containing key-arguments enumeration. Useful when a keyword is reserved (e.g. "in")
-                            - string or OTBObject, useful when the user implicitly wants to set the param "in"
-                            - list, useful when the user implicitly wants to set the param "il"
-            **kwargs: keyword arguments e.g. il=['input1.tif', oApp_object2, App_object3.out], out='output.tif'
+            *args: any input OTBObject, filepath or images list, or a dict of parameters
+            **kwargs: app parameters, with "_" instead of dots e.g. io_in="image.tif"
 
         Raises:
             KeyError: when the parameter name wasn't recognized
@@ -818,20 +817,19 @@ class App(OTBObject):
     ) -> bool:
         """Set output pixel type and write the output raster files.
 
+        The first argument is expected to be:
+            - filepath, useful when there is only one output, e.g. 'output.tif'
+            - dictionary containing output filepath
+            - None if output file was passed during App init
+        In case of multiple outputs, pixel_type may also be a dictionary with parameter names as keys.
+        Accepted pixel types : uint8, uint16, uint32, int16, int32, float, double, cint16, cint32, cfloat, cdouble
+
         Args:
-            path: Can be : - filepath, useful when there is only one output, e.g. 'output.tif'
-                           - dictionary containing key-arguments enumeration. Useful when a key contains
-                             non-standard characters such as a point, e.g. {'io.out':'output.tif'}
-                           - None if output file was passed during App init
-            pixel_type: Can be : - dictionary {out_param_key: pixeltype} when specifying for several outputs
-                                 - str (e.g. 'uint16') or otbApplication.ImagePixelType_... When there are several
-                                   outputs, all outputs are written with this unique type.
-                                   Valid pixel types are uint8, uint16, uint32, int16, int32, float, double,
-                                   cint16, cint32, cfloat, cdouble. (Default value = None)
+            path: output filepath or dict of filepath with param keys
+            pixel_type: pixel type string representation
             preserve_dtype: propagate main input pixel type to outputs, in case pixel_type is None
-            ext_fname: Optional, an extended filename as understood by OTB (e.g. "&gdal:co:TILED=YES")
-                                Will be used for all outputs (Default value = None)
-            **kwargs: keyword arguments e.g. out='output.tif'
+            ext_fname: an OTB extended filename, will be applied to every output (but won't overwrite existing keys in output filepath)
+            **kwargs: keyword arguments e.g. out='output.tif' or io_out='output.tif'
 
         Returns:
             True if all files are found on disk
@@ -1125,7 +1123,7 @@ class Slicer(App):
             obj: input
             rows: slice along Y / Latitude axis
             cols: slice along X / Longitude axis
-            channels: bands to extract. can be slicing, list or int
+            channels: bands to extract
 
         Raises:
             TypeError: if channels param isn't slice, list or int
@@ -1218,7 +1216,7 @@ class Operation(App):
 
         Args:
             operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
-            *inputs: operands, can be OTBObject, filepath, int or float
+            *inputs: operands of the expression to build
             nb_bands: optionally specify the output nb of bands - used only internally by pyotb.where
             name: override the default Operation name
 
@@ -1292,7 +1290,7 @@ class Operation(App):
         E.g for the operation input1 + input2, we create a fake expression that is like "str(input1) + str(input2)"
 
         Args:
-            operator: (str) one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
+            operator: one of +, -, *, /, >, <, >=, <=, ==, !=, &, |, abs, ?
             inputs: inputs. Can be OTBObject, filepath, int or float
             nb_bands: to specify the output nb of bands. Optional. Used only internally by pyotb.where
 
@@ -1375,14 +1373,14 @@ class Operation(App):
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
+        Regarding the "keep_logical" param: 
+            - if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
+            - if False, for `input1 > input2`, returned fake exp is "str(input1) > str(input2) ? 1 : 0"]  Default False
 
         Args:
             x: input
             band: which band to consider (bands start at 1)
             keep_logical: whether to keep the logical expressions "as is" in case the input is a logical operation.
-                          ex: if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
-                          if False, for `input1 > input2`, returned fake exp is "str(input1) > str(input2) ? 1 : 0"]
-                          Default False
 
         Returns:
             fake_exp: the fake expression for this band and input
@@ -1498,7 +1496,7 @@ class Input(App):
         """Default constructor.
 
         Args:
-            filepath: Anything supported by GDAL (local file on the filesystem, remote resource e.g. /vsicurl/.., etc.)
+            filepath: Anything supported by GDAL (local file on the filesystem, remote resource, etc.)
 
         """
         super().__init__("ExtractROI", {"in": filepath}, quiet=True, frozen=True)
@@ -1625,7 +1623,7 @@ def get_nbchannels(inp: str | Path | OTBObject) -> int:
     """Get the nb of bands of input image.
 
     Args:
-        inp: can be filepath or OTBObject object
+        inp: input file or OTBObject
 
     Returns:
         number of bands in image
@@ -1651,14 +1649,16 @@ def get_nbchannels(inp: str | Path | OTBObject) -> int:
 
 
 def get_pixel_type(inp: str | Path | OTBObject) -> str:
-    """Get the encoding of input image pixels.
+    """Get the encoding of input image pixels as integer enum.
+
+    OTB enum e.g. `otbApplication.ImagePixelType_uint8'.
+    For an OTBObject with several outputs, only the pixel type of the first output is returned
 
     Args:
-        inp: can be filepath or pyotb object
+        inp: input file or OTBObject
 
     Returns:
-        pixel_type: OTB enum e.g. `otbApplication.ImagePixelType_uint8', which actually is an int.
-                    For an OTBObject with several outputs, only the pixel type of the first output is returned
+        OTB enum
 
     Raises:
         TypeError: if inp pixel type cannot be retrieved
@@ -1685,7 +1685,7 @@ def parse_pixel_type(pixel_type: str | int) -> int:
     """Convert one str pixel type to OTB integer enum if necessary.
 
     Args:
-        pixel_type: pixel type. can be int or str (either OTB or numpy convention)
+        pixel_type: pixel type to parse
 
     Returns:
         pixel_type OTB enum integer value
@@ -1739,21 +1739,19 @@ def summarize(
 
     At the deepest recursion level, this function just return any parameter value,
      path stripped if needed, or app summarized in case of a pipeline.
+    If strip_path is enabled, paths are truncated after the first "?" character.
+    Can be useful to remove URLs tokens from inputs (e.g. SAS or S3 credentials),
+     or extended filenames from outputs.
 
     Args:
         obj: input object / parameter value to summarize
-        strip_inpath: strip all input paths: If enabled, paths related to
-            inputs are truncated after the first "?" character. Can be useful
-            to remove URLs tokens (e.g. SAS or S3 credentials).
-        strip_outpath: strip all output paths: If enabled, paths related
-            to outputs are truncated after the first "?" character. Can be
-            useful to remove extended filenames.
+        strip_inpath: strip all input paths
+        strip_outpath: strip all output paths
 
     Returns:
         nested dictionary containing name and parameters of an app and its parents
 
     """
-    # This is the deepest recursion level
     if isinstance(obj, list):
         return [summarize(o) for o in obj]
     if isinstance(obj, Output):
