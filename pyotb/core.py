@@ -1081,9 +1081,7 @@ class App(OTBObject):
                 self.data[key] = value
 
     # Special functions
-    def __getitem__(
-        self, key: str | tuple
-    ) -> Any | list[float] | float | Slicer:
+    def __getitem__(self, key: str | tuple) -> Any | list[float] | float | Slicer:
         """This function is called when we use App()[...].
 
         We allow to return attr if key is a parameter, or call OTBObject __getitem__ for pixel values or Slicer
@@ -1270,9 +1268,7 @@ class Operation(App):
             return 1
         # Check that all inputs have the same band count
         nb_bands_list = [
-            get_nbchannels(inp)
-            for inp in inputs
-            if not isinstance(inp, (float, int))
+            get_nbchannels(inp) for inp in inputs if not isinstance(inp, (float, int))
         ]
         all_same = all(x == nb_bands_list[0] for x in nb_bands_list)
         if len(nb_bands_list) > 1 and not all_same:
@@ -1373,7 +1369,7 @@ class Operation(App):
         """This an internal function, only to be used by `build_fake_expressions`.
 
         Enable to create a fake expression just for one input and one band.
-        Regarding the "keep_logical" param: 
+        Regarding the "keep_logical" param:
             - if True, for `input1 > input2`, returned fake expression is "str(input1) > str(input2)"
             - if False, for `input1 > input2`, returned fake exp is "str(input1) > str(input2) ? 1 : 0"]  Default False
 
@@ -1689,7 +1685,7 @@ def parse_pixel_type(pixel_type: str | int) -> int:
 
     Returns:
         pixel_type OTB enum integer value
-    
+
     Raises:
         KeyError: if pixel_type name is unknown
         TypeError: if type(pixel_type) isn't int or str
