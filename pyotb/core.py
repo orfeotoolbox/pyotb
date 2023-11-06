@@ -560,7 +560,7 @@ class App(OTBObject):
 
         Args:
             appname: name of the OTB application to initialize, e.g. 'BandMath'
-            *args: used to pass an app input as argument and ommiting the key
+            *args: used to pass an app input as argument and omitting the key
             frozen: freeze OTB app in order to use execute() later and avoid blocking process during __init___
             quiet: whether to print logs of the OTB app
             name: custom name that will show up in logs, appname will be used if not provided
