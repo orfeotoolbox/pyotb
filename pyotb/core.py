@@ -517,9 +517,9 @@ class App(OTBObject):
     Any app parameter may be passed either using a dict of parameters or keyword argument.
 
     The first argument can be:
-        - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in")
-        - string, App or Output, useful when the user wants to specify the input "in"
+        - string, App or Output, the main input parameter name is automatically set
         - list, useful when the user wants to specify the input list 'il'
+        - dictionary containing key-arguments enumeration. Useful when a key is python-reserved (e.g. "in", "map")
 
     Args:
         appname: name of the OTB application to initialize, e.g. 'BandMath'
@@ -695,8 +695,10 @@ class App(OTBObject):
         return self._time_end - self._time_start
 
     def set_parameters(self, *args, **kwargs):
-        """Set some parameters of the app.
+        """Set parameters, using the right OTB API function depending on the key and type.
 
+        Parameters with dots may be passed as keyword arguments using "_", e.g. map_epsg_code=4326.
+        Additional checks are done for input and output (in-memory objects, remote filepaths, etc.).
         When useful, e.g. for images list, this function appends the parameters
         instead of overwriting them. Handles any parameters, i.e. in-memory & filepaths
 
@@ -1482,7 +1484,7 @@ class LogicalOperation(Operation):
 
 
 class Input(App):
-    """Class for transforming a filepath to pyOTB object.
+    """Class for transforming a filepath to pyotb object.
 
     Args:
         filepath: Anything supported by GDAL (local file on the filesystem, remote resource, etc.)
