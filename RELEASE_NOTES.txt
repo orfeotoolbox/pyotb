@@ -11,7 +11,7 @@
 - Easy access to pixel coordinates
 - Add function to transform x,y coordinates into row, col
 - Native support of vsicurl inputs
-- Fixes in `summarize()`
+- Fixes and enhancements in `summarize()`
 - Fixes in `shape`
 - Add typing to function defs to enhance documentation
 
