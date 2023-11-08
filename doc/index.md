@@ -22,6 +22,7 @@ to make OTB more Python friendly.
 ## Advanced use
 
 - [Comparison between pyotb and OTB native library](comparison_otb.md)
+- [Summarize applications](summarize.md)
 - [OTB versions](otb_versions.md)
 - [Managing loggers](managing_loggers.md)
 - [Troubleshooting & limitations](troubleshooting.md)

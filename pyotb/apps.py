@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Search for OTB (set env if necessary), subclass core.App for each available application."""
 from __future__ import annotations
 
@@ -13,11 +12,11 @@ from .helpers import logger
 def get_available_applications() -> tuple[str]:
     """Find available OTB applications.
 
-    Args:
-        as_subprocess: indicate if function should list available applications using subprocess call
-
     Returns:
         tuple of available applications
+
+    Raises:
+        SystemExit: if no application is found
 
     """
     app_list = otb.Registry.GetAvailableApplications()
@@ -30,7 +29,7 @@ def get_available_applications() -> tuple[str]:
 
 
 class OTBTFApp(App):
-    """Helper for OTBTF."""
+    """Helper for OTBTF to ensure the nb_sources variable is set."""
 
     @staticmethod
     def set_nb_sources(*args, n_sources: int = None):
@@ -60,10 +59,8 @@ class OTBTFApp(App):
 
         Args:
             name: name of the OTBTF app
-            *args: arguments (dict). NB: we don't need kwargs because it cannot contain source#.il
             n_sources: number of sources. Default is None (resolves the number of sources based on the
                        content of the dict passed in args, where some 'source' str is found)
-            **kwargs: kwargs
 
         """
         self.set_nb_sources(*args, n_sources=n_sources)
@@ -72,16 +69,12 @@ class OTBTFApp(App):
 
 AVAILABLE_APPLICATIONS = get_available_applications()
 
-# This is to enable aliases of Apps, i.e. using apps like `pyotb.AppName(...)` instead of `pyotb.App("AppName", ...)`
-_CODE_TEMPLATE = (
-    """
+# This is to enable aliases of Apps, i.e. `pyotb.AppName(...)` instead of `pyotb.App("AppName", ...)`
+_CODE_TEMPLATE = """
 class {name}(App):
-    """
-    """
     def __init__(self, *args, **kwargs):
         super().__init__('{name}', *args, **kwargs)
 """
-)
 
 for _app in AVAILABLE_APPLICATIONS:
     # Customize the behavior for some OTBTF applications. `OTB_TF_NSOURCES` is now handled by pyotb
