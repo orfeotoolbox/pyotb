@@ -1,4 +1,6 @@
-## Export to Numpy
+## Numpy
+
+### Export to numpy arrays
 
 pyotb objects can be exported to numpy array.
 
@@ -16,7 +18,7 @@ arr = np.asarray(calibrated)
 arr = calibrated.to_numpy()
 ```
 
-## Interaction with Numpy
+### Interact with numpy functions
 
 pyotb objects can be transparently used in numpy functions.
 
@@ -47,9 +49,9 @@ noisy_image.write('image_plus_noise.tif')
     - The georeference can not be modified. Thus, numpy operations can not 
     change the image or pixel size
 
-## Export to rasterio
+## Rasterio
 
-pyotb objects can also be exported in a format that is usable by rasterio.
+pyotb objects can also be exported in a format usable by rasterio.
 
 For example:
 
@@ -88,7 +90,7 @@ as the user gets the `profile` dictionary.
 If the georeference or pixel size is modified, the user can update the 
 `profile` accordingly.
 
-## Interaction with Tensorflow
+## Tensorflow
 
 We saw that numpy operations had some limitations. To bypass those 
 limitations, it is possible to use some Tensorflow operations on pyotb objects.
