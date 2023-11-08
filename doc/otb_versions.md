@@ -40,8 +40,10 @@ Here is the path precedence for this automatic env configuration :
     OR (for windows)                        :    C:/Program Files
 ```
 
-N.B. :  in case `otbApplication` is found in `PYTHONPATH` (and if `OTB_ROOT` 
-was not set), the OTB which the python API is linked to will be used.  
+!!! Note
+
+    When `otbApplication` is found in `PYTHONPATH` (and `OTB_ROOT` not set), 
+    the OTB installation where the python API is linked, will be used.  
 
 ## Fresh OTB installation
 
