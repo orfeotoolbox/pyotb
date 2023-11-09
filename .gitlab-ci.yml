@@ -119,8 +119,8 @@ docs:
   stage: Documentation
   rules:
     - changes:
-        - *.txt
-        - *.md
+        - "*.txt"
+        - "*.md"
         - mkdocs.yml
         - doc/*
         - pyotb/*.py
