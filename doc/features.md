@@ -93,3 +93,93 @@ attribute:
 ```python
 inp.transform  # (6.0, 0.0, 760056.0, 0.0, -6.0, 6946092.0)
 ```
+
+### Metadata
+
+Images metadata can be retrieved with the `metadata` attribute:
+
+```python
+print(inp.metadata)
+```
+
+Gives: 
+
+```
+{
+  'DataType': 1.0, 
+  'DriverLongName': 'GeoTIFF', 
+  'DriverShortName': 'GTiff', 
+  'GeoTransform': (760056.0, 6.0, 0.0, 6946092.0, 0.0, -6.0),
+  'LowerLeftCorner': (760056.0, 6944268.0), 
+  'LowerRightCorner': (761562.0, 6944268.0), 
+  'AREA_OR_POINT': 'Area', 
+  'TIFFTAG_SOFTWARE': 'CSinG - 13 SEPTEMBRE 2012', 
+  'ProjectionRef': 'PROJCS["RGF93 v1 / Lambert-93",\n...',
+  'ResolutionFactor': 0, 
+  'SubDatasetIndex': 0, 
+  'UpperLeftCorner': (760056.0, 6946092.0), 
+  'UpperRightCorner': (761562.0, 6946092.0), 
+  'TileHintX': 251.0, 
+  'TileHintY': 8.0
+}
+```
+
+## Information
+
+The information fetched by the `ReadImageInfo` OTB application is available 
+through `get_info()`:
+
+```python
+print(inp.get_info())
+```
+
+Gives:
+
+```json lines
+{
+  'indexx': 0, 
+  'indexy': 0, 
+  'sizex': 251, 
+  'sizey': 304, 
+  'spacingx': 6.0, 
+  'spacingy': -6.0, 
+  'originx': 760059.0, 
+  'originy': 6946089.0, 
+  'estimatedgroundspacingx': 5.978403091430664, 
+  'estimatedgroundspacingy': 5.996793270111084, 
+  'numberbands': 4, 
+  'datatype': 'unsigned_char', 
+  'ullat': 0.0, 
+  'ullon': 0.0, 
+  'urlat': 0.0, 
+  'urlon': 0.0, 
+  'lrlat': 0.0, 
+  'lrlon': 0.0, 
+  'lllat': 0.0, 
+  'lllon': 0.0, 
+  'rgb.r': 0, 
+  'rgb.g': 1, 
+  'rgb.b': 2, 
+  'projectionref': 'PROJCS["RGF93 v1 ..."EPSG","2154"]]',
+  'gcp.count': 0
+}
+```
+
+## Statistics
+
+Image statistics can be computed on-the-fly using `get_statistics()`:
+
+```python
+print(inp.get_statistics())
+```
+
+Gives:
+
+```json lines
+{
+  'out.mean': [79.5505, 109.225, 115.456, 249.349], 
+  'out.min': [33, 64, 91, 47], 
+  'out.max': [255, 255, 230, 255], 
+  'out.std': [51.0754, 35.3152, 23.4514, 20.3827]
+}
+```
