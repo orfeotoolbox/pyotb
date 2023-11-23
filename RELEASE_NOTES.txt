@@ -1,4 +1,26 @@
 ---------------------------------------------------------------------
+2.00 (Nov 23, 2023) - Changes since version 1.5.4
+
+- Major refactoring (see troubleshooting/migration)
+- Pythonic extended filenames (can use dict, etc)
+- Easy access to image metadata
+- CI improvements (tests, coverage, doc, etc)
+- Documentation improvement
+- Code format
+- Allow OTB dotted parameters in kwargs
+- Easy access to pixel coordinates
+- Add function to transform x,y coordinates into row, col
+- Native support of vsicurl inputs
+- Fixes and enhancements in `summarize()`
+- Fixes in `shape`
+- Add typing to function defs to enhance documentation
+
+---------------------------------------------------------------------
+1.5.4 (Oct 01, 2022) - Changes since version 1.5.3
+
+- Fix slicer wrong end of slicing
+
+---------------------------------------------------------------------
 1.5.3 (Sep 29, 2022) - Changes since version 1.5.2
 
 - Add RELEASE_NOTES.txt

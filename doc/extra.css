@@ -1,0 +1,11 @@
+.rst-content div[class^=highlight] {
+    border: 0px;
+}
+
+.rst-content div[class^=highlight] pre {
+    padding: 0px;
+}
+
+.rst-content pre code {
+    background: #eeffcc;
+}

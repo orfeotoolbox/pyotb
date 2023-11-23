@@ -1,0 +1,121 @@
+{
+  "SIMPLE": {
+    "name": "ManageNoData",
+    "parameters": {
+      "usenan": false,
+      "mode": "buildmask",
+      "mode.buildmask.inv": 1.0,
+      "mode.buildmask.outv": 0.0,
+      "in": {
+        "name": "BandMath",
+        "parameters": {
+          "il": [
+            {
+              "name": "OrthoRectification",
+              "parameters": {
+                "map": "utm",
+                "map.utm.zone": 31,
+                "map.utm.northhem": true,
+                "outputs.mode": "auto",
+                "outputs.ulx": 560000.8382510637,
+                "outputs.uly": 5495732.692591702,
+                "outputs.sizex": 251,
+                "outputs.sizey": 304,
+                "outputs.spacingx": 5.997312290795521,
+                "outputs.spacingy": -5.997312290795521,
+                "outputs.lrx": 561506.1636360534,
+                "outputs.lry": 5493909.5096553,
+                "outputs.isotropic": true,
+                "interpolator": "bco",
+                "interpolator.bco.radius": 2,
+                "opt.rpc": 10,
+                "opt.gridspacing": 4.0,
+                "io.in": "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+              }
+            }
+          ],
+          "exp": "im1b1"
+        }
+      }
+    }
+  },
+  "DIAMOND": {
+    "name": "BandMathX",
+    "parameters": {
+      "il": [
+        {
+          "name": "OrthoRectification",
+          "parameters": {
+            "map": "utm",
+            "map.utm.zone": 31,
+            "map.utm.northhem": true,
+            "outputs.mode": "auto",
+            "outputs.ulx": 560000.8382510637,
+            "outputs.uly": 5495732.692591702,
+            "outputs.sizex": 251,
+            "outputs.sizey": 304,
+            "outputs.spacingx": 5.997312290795521,
+            "outputs.spacingy": -5.997312290795521,
+            "outputs.lrx": 561506.1636360534,
+            "outputs.lry": 5493909.5096553,
+            "outputs.isotropic": true,
+            "interpolator": "bco",
+            "interpolator.bco.radius": 2,
+            "opt.rpc": 10,
+            "opt.gridspacing": 4.0,
+            "io.in": {
+              "name": "BandMath",
+              "parameters": {
+                "il": [
+                  "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+                ],
+                "exp": "im1b1"
+              }
+            }
+          }
+        },
+        {
+          "name": "ManageNoData",
+          "parameters": {
+            "usenan": false,
+            "mode": "buildmask",
+            "mode.buildmask.inv": 1.0,
+            "mode.buildmask.outv": 0.0,
+            "in": {
+              "name": "OrthoRectification",
+              "parameters": {
+                "map": "utm",
+                "map.utm.zone": 31,
+                "map.utm.northhem": true,
+                "outputs.mode": "auto",
+                "outputs.ulx": 560000.8382510637,
+                "outputs.uly": 5495732.692591702,
+                "outputs.sizex": 251,
+                "outputs.sizey": 304,
+                "outputs.spacingx": 5.997312290795521,
+                "outputs.spacingy": -5.997312290795521,
+                "outputs.lrx": 561506.1636360534,
+                "outputs.lry": 5493909.5096553,
+                "outputs.isotropic": true,
+                "interpolator": "bco",
+                "interpolator.bco.radius": 2,
+                "opt.rpc": 10,
+                "opt.gridspacing": 4.0,
+                "io.in": {
+                  "name": "BandMath",
+                  "parameters": {
+                    "il": [
+                      "/vsicurl/https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif"
+                    ],
+                    "exp": "im1b1"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      "exp": "im1+im2"
+    }
+  }
+}
