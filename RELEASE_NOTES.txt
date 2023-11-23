@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------
-2.00 (Oct XX, 2023) - Changes since version 1.5.4
+2.00 (Nov 23, 2023) - Changes since version 1.5.4
 
 - Major refactoring (see troubleshooting/migration)
 - Pythonic extended filenames (can use dict, etc)
