@@ -764,7 +764,7 @@ class App(OTBObject):
             dtype: data type to use
 
         """
-        if not dtype:
+        if dtype is None:
             param = self._settings.get(self.input_image_key)
             if not param:
                 logger.warning(
