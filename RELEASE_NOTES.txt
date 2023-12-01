@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------
+develop - Changes since version 2.0.0
+
+- Fix a bug when writing outputs in uint8
+
+
+---------------------------------------------------------------------
 2.00 (Nov 23, 2023) - Changes since version 1.5.4
 
 - Major refactoring (see troubleshooting/migration)
