@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 
+import pyotb
 from tests_data import *
 
 
@@ -144,11 +145,17 @@ def test_xy_to_rowcol():
 
 
 def test_write():
-    assert INPUT.write("/dev/shm/test_write.tif", ext_fname="nodata=0")
+    # Write string filepath
+    assert INPUT.write("/dev/shm/test_write.tif")
     INPUT["out"].filepath.unlink()
-    assert INPUT.write(Path("/dev/shm/test_write.tif"), ext_fname="nodata=0")
+    # With Path filepath
+    assert INPUT.write(Path("/dev/shm/test_write.tif"))
     INPUT["out"].filepath.unlink()
-    # Frozen
+    # Write to uint8
+    assert INPUT.write(Path("/dev/shm/test_write.tif"), pixel_type="uint8")
+    assert INPUT["out"].dtype == "uint8"
+    INPUT["out"].filepath.unlink()
+    # Write frozen app
     frozen_app = pyotb.BandMath(INPUT, exp="im1b1", frozen=True)
     assert frozen_app.write("/dev/shm/test_frozen_app_write.tif")
     frozen_app["out"].filepath.unlink()
