@@ -13,33 +13,36 @@ OTB_ROOT = os.environ.get("OTB_ROOT")
 DOCS_URL = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
 
 # Logging
-# User can also get logger with `logging.getLogger("pyOTB")`
+# User can also get logger with `logging.getLogger("pyotb")`
 # then use pyotb.set_logger_level() to adjust logger verbosity
-logger = logging.getLogger("pyotb")
-logger_handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter(
-    fmt="%(asctime)s (%(levelname)-4s) [pyotb] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-)
-logger_handler.setFormatter(formatter)
+
 # Search for PYOTB_LOGGER_LEVEL, else use OTB_LOGGER_LEVEL as pyotb level, or fallback to INFO
 LOG_LEVEL = (
     os.environ.get("PYOTB_LOGGER_LEVEL") or os.environ.get("OTB_LOGGER_LEVEL") or "INFO"
 )
-logger.setLevel(getattr(logging, LOG_LEVEL))
-# Here it would be possible to use a different level for a specific handler
-# A more verbose one can go to text file while print only errors to stdout
-logger_handler.setLevel(getattr(logging, LOG_LEVEL))
-logger.addHandler(logger_handler)
 
+logger = logging.getLogger("pyotb")
 
-def set_logger_level(level: str):
-    """Allow user to change the current logging level.
-
-    Args:
-        level: logging level string ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
-    """
-    logger.setLevel(getattr(logging, level))
-    logger_handler.setLevel(getattr(logging, level))
+logging_cfg = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s (%(levelname)-4s) [pyotb] %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "level": LOG_LEVEL,
+            "formatter": "default",
+            "stream": "ext://sys.stdout",
+        }
+    },
+    "loggers": {"pyotb": {"level": LOG_LEVEL, "handlers": ["stdout"]}},
+}
+logging.config.dictConfig(logging_cfg)
 
 
 def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
