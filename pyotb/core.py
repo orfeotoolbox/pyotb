@@ -1019,9 +1019,15 @@ class App(OTBObject):
             self.app.ConnectImage(key, obj.app, obj.output_image_key)
         elif isinstance(obj, otb.Application):
             self.app.ConnectImage(key, obj, get_out_images_param_keys(obj)[0])
+        # SetParameterValue in OTB<7.4 doesn't work for ram parameter (see OTB issue 2200)
         elif key == "ram":
-            # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf OTB issue 2200
             self.app.SetParameterInt("ram", int(obj))
+        # SetParameterValue doesn't work with ParameterType_Field (see pyotb GitHub issue #1)
+        elif self.app.GetParameterType(key) == otb.ParameterType_Field:
+            if isinstance(obj, (list, tuple)):
+                self.app.SetParameterStringList(key, obj)
+            else:
+                self.app.SetParameterString(key, obj)
         # Any other parameters (str, int...)
         elif not isinstance(obj, (list, tuple)):
             self.app.SetParameterValue(key, obj)
