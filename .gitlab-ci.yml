@@ -1,7 +1,5 @@
 default:
-  image: $CI_REGISTRY/orfeotoolbox/otb-build-env/otb-ubuntu-native-develop-headless:20.04
-  tags:
-    - light
+  image: mdl4eo/otbtf:4.3.0-cpu
   interruptible: true
 
 variables:
@@ -38,14 +36,14 @@ stages:
 pydocstyle:
   extends: .static_analysis
   before_script:
-    - pip install pydocstyle tomli
+    - python3 -m pip install pydocstyle tomli
   script:
     - pydocstyle $PWD/pyotb
 
 pylint:
   extends: .static_analysis
   before_script:
-    - pip install pylint
+    - python3 -m pip install pylint
   script:
     - pylint $PWD/pyotb --disable=fixme
 
@@ -56,7 +54,7 @@ codespell:
         - "**/*.py"
         - "**/*.md"
   before_script:
-    - pip install codespell
+    - python3 -m pip install codespell
   script:
     - codespell {pyotb,tests,doc,README.md}
 
@@ -67,7 +65,7 @@ test_install:
     - tags
   allow_failure: false
   script:
-    - pip install .
+    - python3 -m pip install .
 
 .tests:
   stage: Tests
@@ -77,12 +75,10 @@ test_install:
         - "**/*.py"
         - .gitlab-ci.yml
   variables:
-    OTB_ROOT: /opt/otb
-    LD_LIBRARY_PATH: /opt/otb/lib
     SPOT_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif
     PLEIADES_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Baseline/OTB/Images/prTvOrthoRectification_pleiades-1_noDEM.tif
   before_script:
-    - pip install pytest pytest-cov
+    - python3 -m pip install pytest pytest-cov
 
 module_core:
   extends: .tests
@@ -119,7 +115,6 @@ docs:
   stage: Documentation
   rules:
     - changes:
-        - "*.txt"
         - "*.md"
         - mkdocs.yml
         - doc/*
@@ -145,7 +140,7 @@ pypi:
     - tags
   before_script:
     - apt update && apt install -y python3.8-venv
-    - pip install build twine
+    - python3 -m pip install build twine
   script:
     - python3 -m build
     - python3 -m twine upload --non-interactive -u __token__ -p $pypi_token dist/*

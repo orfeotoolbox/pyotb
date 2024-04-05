@@ -43,7 +43,7 @@ dev = [
 [project.urls]
 documentation = "https://pyotb.readthedocs.io"
 homepage = "https://github.com/orfeotoolbox/pyotb"
-repository = "https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb"
+repository = "https://forgemia.inra.fr/orfeo-toolbox/pyotb"
 
 [tool.setuptools]
 packages = ["pyotb"]

@@ -665,9 +665,8 @@ class App(OTBObject):
     def get_first_key(self, param_types: list[int]) -> str:
         """Get the first param key for specific file types, try each list in args."""
         for param_type in param_types:
-            # Return the first key, from the alphabetically sorted keys of the
-            # application, which has the parameter type matching param_type.
-            for key, value in sorted(self._all_param_types.items()):
+            # Return the first key where type matches param_type.
+            for key, value in self._all_param_types.items():
                 if value == param_type:
                     return key
         raise TypeError(
@@ -764,7 +763,7 @@ class App(OTBObject):
             dtype: data type to use
 
         """
-        if not dtype:
+        if dtype is None:
             param = self._settings.get(self.input_image_key)
             if not param:
                 logger.warning(
@@ -1019,9 +1018,15 @@ class App(OTBObject):
             self.app.ConnectImage(key, obj.app, obj.output_image_key)
         elif isinstance(obj, otb.Application):
             self.app.ConnectImage(key, obj, get_out_images_param_keys(obj)[0])
+        # SetParameterValue in OTB<7.4 doesn't work for ram parameter (see OTB issue 2200)
         elif key == "ram":
-            # SetParameterValue in OTB<7.4 doesn't work for ram parameter cf OTB issue 2200
             self.app.SetParameterInt("ram", int(obj))
+        # SetParameterValue doesn't work with ParameterType_Field (see pyotb GitHub issue #1)
+        elif self.app.GetParameterType(key) == otb.ParameterType_Field:
+            if isinstance(obj, (list, tuple)):
+                self.app.SetParameterStringList(key, obj)
+            else:
+                self.app.SetParameterString(key, obj)
         # Any other parameters (str, int...)
         elif not isinstance(obj, (list, tuple)):
             self.app.SetParameterValue(key, obj)
