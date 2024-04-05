@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------
+2.0.2 (Apr 5, 2024) - Changes since version 2.0.1
+
+- Change docker image for testing to OTBTF
+- Fix a bug with parameters of type "field" for vector files
+- Fix wrong output parameter key in ImageClassifier and ImageClassifierFromDeepFeatures
+
+
+---------------------------------------------------------------------
 2.0.1 (Dec 18, 2023) - Changes since version 2.0.0
 
 - Fix a bug when writing outputs in uint8
