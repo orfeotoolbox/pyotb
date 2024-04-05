@@ -665,9 +665,8 @@ class App(OTBObject):
     def get_first_key(self, param_types: list[int]) -> str:
         """Get the first param key for specific file types, try each list in args."""
         for param_type in param_types:
-            # Return the first key, from the alphabetically sorted keys of the
-            # application, which has the parameter type matching param_type.
-            for key, value in sorted(self._all_param_types.items()):
+            # Return the first key where type matches param_type.
+            for key, value in self._all_param_types.items():
                 if value == param_type:
                     return key
         raise TypeError(
