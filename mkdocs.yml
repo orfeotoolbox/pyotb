@@ -53,7 +53,7 @@ extra:
     tabs: true
   social:
     - icon: fontawesome/brands/gitlab
-      link: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
+      link: https://forgemia.inra.fr/orfeo-toolbox/pyotb
 extra_css:
   - https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/8.1.2-rc1/Documentation/Cookbook/_static/css/otb_theme.css
   - extra.css
@@ -76,6 +76,6 @@ markdown_extensions:
 
 # Rest of the navigation.
 site_name: "pyotb: Orfeo ToolBox for Python"
-repo_url: https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
+repo_url: https://forgemia.inra.fr/orfeo-toolbox/pyotb
 repo_name: pyotb
 docs_dir: doc/

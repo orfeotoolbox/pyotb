@@ -37,7 +37,7 @@ on github or gitlab!
 Contributions are welcome !
 Open a PR/MR, or file an issue if you spot a bug or have any suggestion:
 
-- [Github](https://github.com/orfeotoolbox/pyotb) 
-- [Orfeo ToolBox GitLab instance](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb).
+- [Github](https://github.com/orfeotoolbox/pyotb)
+- [Orfeo ToolBox GitLab instance](https://forgemia.inra.fr/orfeo-toolbox/pyotb).
 
 Thank you!
