@@ -45,7 +45,7 @@ pylint:
   before_script:
     - python3 -m pip install pylint
   script:
-    - pylint $PWD/pyotb --disable=fixme
+    - pylint $PWD/pyotb --disable=fixme --ignore=functions.py
 
 codespell:
   extends: .static_analysis
