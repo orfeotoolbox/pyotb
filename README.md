@@ -1,8 +1,8 @@
 # pyotb: Orfeo ToolBox for Python
 
-[![latest release](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/badges/release.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/releases)
-[![pipeline status](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/badges/develop/pipeline.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/commits/develop)
-[![coverage report](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/badges/develop/coverage.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/commits/develop)
+[![latest release](https://forgemia.inra.fr/orfeo-toolbox/pyotb/-/badges/release.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/releases)
+[![pipeline status](https://forgemia.inra.fr/orfeo-toolbox/pyotb/badges/develop/pipeline.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/commits/develop)
+[![coverage report](https://forgemia.inra.fr/orfeo-toolbox/pyotb/badges/develop/coverage.svg)](https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb/-/commits/develop)
 [![read the docs status](https://readthedocs.org/projects/pyotb/badge/?version=master)](https://pyotb.readthedocs.io/en/master/)
 
 **pyotb** wraps the [Orfeo Toolbox](https://www.orfeo-toolbox.org/) in a pythonic, developer friendly 
