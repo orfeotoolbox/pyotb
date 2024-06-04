@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """This module provides convenient python wrapping of otbApplications."""
-__version__ = "2.0.3.dev1"
+__version__ = "2.0.3.dev2"
 
 from .install import install_otb
 from .helpers import logger
