@@ -1,4 +1,5 @@
 default:
+  tags: [stable]
   image: mdl4eo/otbtf:4.3.0-cpu
   interruptible: true
 
