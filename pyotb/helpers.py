@@ -1,5 +1,7 @@
 """This module ensure we properly initialize pyotb, or raise SystemExit in case of broken install."""
+
 import logging
+import logging.config
 import os
 import sys
 import sysconfig
