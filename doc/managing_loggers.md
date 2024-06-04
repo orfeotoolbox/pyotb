@@ -23,6 +23,24 @@ Bonus : in some cases, you may want to silence the GDAL driver logger
 One useful trick is to redirect these logs to a file. This can be done using 
 the variable `CPL_LOG`.
 
+## Log to file
+It is possible to change the behaviour of the default pyotb logger as follow
+
+```py
+import logging
+import pyotb
+# Optional : remove default stdout handler (but OTB will still print its own log)
+pyotb.logger.handlers.pop()
+# Add file handler
+handler = logging.FileHandler("/my/log/file.log")
+handler.setLevel("DEBUG")
+pyotb.logger.addHandler(handler)
+```
+
+For more advanced configuration and to manage conflicts between several loggers, 
+see the [logging module docs](https://docs.python.org/3/howto/logging-cookbook.html) 
+and use the `dictConfig()` function to configure your own logger.  
+
 ## Named applications in logs
 
 It is possible to change an app name in order to track it easily in the logs :  
