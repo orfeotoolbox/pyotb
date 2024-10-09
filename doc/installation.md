@@ -17,7 +17,7 @@ pip install pyotb --upgrade
 For development, use the following:
 
 ```bash
-git clone https://gitlab.orfeo-toolbox.org/nicolasnn/pyotb
+git clone https://forgemia.inra.fr/orfeo-toolbox/pyotb
 cd pyotb
 pip install -e ".[dev]"
 ```

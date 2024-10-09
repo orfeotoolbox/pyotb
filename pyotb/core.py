@@ -579,7 +579,7 @@ class App(OTBObject):
         self._exports_dic = {}
         self._settings, self._auto_parameters = {}, {}
         self._time_start, self._time_end = 0.0, 0.0
-        self.data, self.outputs = {}, {}
+        self.data = {}
         self.quiet, self.frozen = quiet, frozen
 
         # Param keys and types
@@ -597,17 +597,15 @@ class App(OTBObject):
             for key in self.parameters_keys
             if self.app.GetParameterType(key) == otb.ParameterType_Choice
         }
+        self._out_image_keys = tuple(
+            key
+            for key, param in self._out_param_types.items()
+            if param == otb.ParameterType_OutputImage
+        )
 
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
             self.set_parameters(*args, **kwargs)
-        # Create Output image objects
-        for key in (
-            key
-            for key, param in self._out_param_types.items()
-            if param == otb.ParameterType_OutputImage
-        ):
-            self.outputs[key] = Output(self, key, self._settings.get(key))
 
         if not self.frozen:
             self.execute()
@@ -643,8 +641,8 @@ class App(OTBObject):
         return self._all_param_types[key] in param_types
 
     def __is_multi_output(self):
-        """Check if app has multiple outputs to ensure re-execution during write()."""
-        return len(self.outputs) > 1
+        """Check if app has multiple image outputs to ensure re-execution in write()."""
+        return len(self._out_image_keys) > 1
 
     def is_input(self, key: str) -> bool:
         """Returns True if the parameter key is an input."""
@@ -745,10 +743,8 @@ class App(OTBObject):
                     f"{self.name}: error before execution,"
                     f" while setting '{key}' to '{obj}': {e})"
                 ) from e
-            # Save / update setting value and update the Output object initialized in __init__ without a filepath
+            # Save / update setting value
             self._settings[key] = obj
-            if key in self.outputs:
-                self.outputs[key].filepath = obj
             if key in self._auto_parameters:
                 del self._auto_parameters[key]
 
@@ -1104,8 +1100,8 @@ class App(OTBObject):
         if isinstance(key, str):
             if key in self.data:
                 return self.data[key]
-            if key in self.outputs:
-                return self.outputs[key]
+            if key in self._out_image_keys:
+                return Output(self, key, self._settings.get(key))
             if key in self.parameters:
                 return self.parameters[key]
             raise KeyError(f"{self.name}: unknown or undefined parameter '{key}'")
@@ -1538,7 +1534,7 @@ class Output(OTBObject):
         mkdir: bool = True,
     ):
         """Constructor for an Output object, initialized during App.__init__."""
-        self.parent_pyotb_app = pyotb_app  # keep trace of parent app
+        self.parent_pyotb_app = pyotb_app  # keep a reference to parent app
         self.param_key = param_key
         self.filepath = filepath
         if mkdir and filepath is not None:

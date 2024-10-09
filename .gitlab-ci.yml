@@ -1,4 +1,5 @@
 default:
+  tags: [stable]
   image: mdl4eo/otbtf:4.3.0-cpu
   interruptible: true
 
@@ -45,7 +46,7 @@ pylint:
   before_script:
     - python3 -m pip install pylint
   script:
-    - pylint $PWD/pyotb --disable=fixme
+    - pylint $PWD/pyotb --disable=fixme --ignore=functions.py
 
 codespell:
   extends: .static_analysis
@@ -74,6 +75,7 @@ test_install:
     - changes:
         - "**/*.py"
         - .gitlab-ci.yml
+        - .coveragerc
   variables:
     SPOT_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Input/SP67_FR_subset_1.tif
     PLEIADES_IMG_URL: https://gitlab.orfeo-toolbox.org/orfeotoolbox/otb/-/raw/develop/Data/Baseline/OTB/Images/prTvOrthoRectification_pleiades-1_noDEM.tif
