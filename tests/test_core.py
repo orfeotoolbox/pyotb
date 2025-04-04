@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 import pyotb
-from tests_data import *
+from .tests_data import *
 
 
 def test_app_parameters():
