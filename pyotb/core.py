@@ -597,11 +597,7 @@ class App(OTBObject):
             for key in self.parameters_keys
             if self.app.GetParameterType(key) == otb.ParameterType_Choice
         }
-        self._out_image_keys = tuple(
-            key
-            for key, param in self._out_param_types.items()
-            if param == otb.ParameterType_OutputImage
-        )
+        self._out_image_keys = get_out_images_param_keys(self._app)
 
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
@@ -1719,13 +1715,13 @@ def parse_pixel_type(pixel_type: str | int) -> int:
     )
 
 
-def get_out_images_param_keys(otb_app: otb.Application) -> list[str]:
+def get_out_images_param_keys(otb_app: otb.Application) -> tuple[str]:
     """Return every output parameter keys of a bare OTB app."""
-    return [
+    return tuple(
         key
         for key in otb_app.GetParametersKeys()
         if otb_app.GetParameterType(key) == otb.ParameterType_OutputImage
-    ]
+    )
 
 
 def summarize(
