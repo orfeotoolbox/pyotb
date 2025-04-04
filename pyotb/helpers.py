@@ -145,7 +145,7 @@ def set_environment(prefix: str):
     if not lib_dir:
         raise SystemError("Can't find OTB external libraries")
     # Manually load libraries since we cannot set LD_LIBRARY_PATH in a running process
-    lib_ext = ".dll" if sys.platform == "win32" else ".so"
+    lib_ext = "dll" if sys.platform == "win32" else "so"
     for lib in lib_dir.glob(f"*.{lib_ext}"):
         ctypes.CDLL(str(lib))
 
