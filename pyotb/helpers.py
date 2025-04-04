@@ -4,6 +4,7 @@ import logging
 import logging.config
 import os
 import sys
+import ctypes
 import sysconfig
 from pathlib import Path
 from shutil import which
@@ -139,17 +140,14 @@ def set_environment(prefix: str):
     prefix = Path(prefix)
     if not prefix.exists():
         raise FileNotFoundError(str(prefix))
-    built_from_source = False
-    if not (prefix / "README").exists():
-        built_from_source = True
     # External libraries
     lib_dir = __find_lib(prefix)
     if not lib_dir:
         raise SystemError("Can't find OTB external libraries")
-    # LD library path : this does not seems to work
-    if sys.platform == "linux" and built_from_source:
-        new_ld_path = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
-        os.environ["LD_LIBRARY_PATH"] = new_ld_path
+    # Manually load libraries since we cannot set LD_LIBRARY_PATH in a running process
+    lib_ext = ".dll" if sys.platform == "win32" else ".so"
+    for lib in lib_dir.glob(f"*.{lib_ext}"):
+        ctypes.CDLL(str(lib))
 
     # Add python bindings directory first in PYTHONPATH
     otb_api = __find_python_api(lib_dir)
