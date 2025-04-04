@@ -8,8 +8,6 @@ import sysconfig
 from pathlib import Path
 from shutil import which
 
-from .install import install_otb, interactive_config
-
 # Allow user to switch between OTB directories without setting every env variable
 OTB_ROOT = os.environ.get("OTB_ROOT")
 DOCS_URL = "https://www.orfeo-toolbox.org/CookBook/Installation.html"
@@ -106,8 +104,6 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
     prefix = __find_otb_root()
     # Try auto install if shell is interactive
     if not prefix and hasattr(sys, "ps1"):
-        if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
-            return find_otb(install_otb(*interactive_config()))
         raise SystemError("OTB libraries not found on disk. ")
     if not prefix:
         raise SystemExit(
