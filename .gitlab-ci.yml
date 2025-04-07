@@ -37,7 +37,7 @@ stages:
 pylint:
   extends: .static_analysis
   script:
-    - pylint $PWD/pyotb --disable=fixme --ignore=functions.py
+    - pylint $PWD/pyotb --disable=fixme
 
 codespell:
   extends: .static_analysis
