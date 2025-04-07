@@ -1,4 +1,5 @@
 """This module is the core of pyotb."""
+
 from __future__ import annotations
 
 import re
