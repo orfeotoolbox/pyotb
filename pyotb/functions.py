@@ -1,4 +1,5 @@
 """This module provides a set of functions for pyotb."""
+
 from __future__ import annotations
 
 import inspect
@@ -225,9 +226,7 @@ def run_tf_function(func):
 
     """
     try:
-        from .apps import (  # pylint: disable=import-outside-toplevel
-            TensorflowModelServe,
-        )
+        from .apps import TensorflowModelServe  # pylint: disable=import-outside-toplevel
     except ImportError as err:
         raise SystemError(
             "Could not run Tensorflow function: failed to import TensorflowModelServe."
@@ -433,11 +432,13 @@ def define_processing_area(
             uly = metadatas[reference_window_input]["UpperLeftCorner"][1]
         elif window_rule == "specify":
             # When the user explicitly specifies the bounding box -> add some arguments in the function
-            ...
+            raise NotImplementedError(window_rule)
         elif window_rule == "union":
             # When the user wants the final bounding box to be the union of all bounding box
             #  It should replace any 'outside' pixel by some NoData -> add `fillvalue` argument in the function
-            ...
+            raise NotImplementedError(window_rule)
+        else:
+            raise ValueError(f'Unknown window_rule "{window_rule}"')
 
         # Applying this bounding box to all inputs
         bounds = (ulx, uly, lrx, lry)
@@ -495,7 +496,9 @@ def define_processing_area(
             reference_input = reference_pixel_size_input
         elif pixel_size_rule == "specify":
             # When the user explicitly specify the pixel size -> add argument inside the function
-            ...
+            raise NotImplementedError(pixel_size_rule)
+        else:
+            raise ValueError(f'Unknown pixel_size_rule "{pixel_size_rule}"')
 
         pixel_size = metadatas[reference_input]["GeoTransform"][1]
 
