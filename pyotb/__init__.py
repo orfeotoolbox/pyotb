@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """This module provides convenient python wrapping of otbApplications."""
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 from .helpers import logger
 from .core import (
