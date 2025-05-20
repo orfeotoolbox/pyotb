@@ -1,6 +1,4 @@
 [run]
 omit = 
-    pyotb/depreciation.py
     pyotb/functions.py
     pyotb/helpers.py
-    pyotb/install.py
