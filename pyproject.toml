@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools >= 61.0", "wheel"]
+requires = ["setuptools >= 65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,10 +12,11 @@ authors = [
 ]
 requires-python = ">=3.7"
 keywords = ["gis", "remote sensing", "otb", "orfeotoolbox", "orfeo toolbox"]
-dependencies = ["numpy>=1.16"]
-readme = "README.md"
-license = { text = "Apache-2.0" }
+dependencies = ["numpy>=1.16,<2"]
 dynamic = ["version"]
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "AUTHORS.md"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.7",
@@ -23,9 +24,9 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: GIS",
     "Topic :: Scientific/Engineering :: Image Processing",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
 
