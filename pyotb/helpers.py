@@ -4,11 +4,10 @@ import logging
 import logging.config
 import os
 import sys
+import ctypes
 import sysconfig
 from pathlib import Path
 from shutil import which
-
-from .install import install_otb, interactive_config
 
 # Allow user to switch between OTB directories without setting every env variable
 OTB_ROOT = os.environ.get("OTB_ROOT")
@@ -106,8 +105,6 @@ def find_otb(prefix: str = OTB_ROOT, scan: bool = True):
     prefix = __find_otb_root()
     # Try auto install if shell is interactive
     if not prefix and hasattr(sys, "ps1"):
-        if input("OTB is missing. Do you want to install it ? (y/n): ") == "y":
-            return find_otb(install_otb(*interactive_config()))
         raise SystemError("OTB libraries not found on disk. ")
     if not prefix:
         raise SystemExit(
@@ -143,17 +140,14 @@ def set_environment(prefix: str):
     prefix = Path(prefix)
     if not prefix.exists():
         raise FileNotFoundError(str(prefix))
-    built_from_source = False
-    if not (prefix / "README").exists():
-        built_from_source = True
     # External libraries
     lib_dir = __find_lib(prefix)
     if not lib_dir:
         raise SystemError("Can't find OTB external libraries")
-    # LD library path : this does not seems to work
-    if sys.platform == "linux" and built_from_source:
-        new_ld_path = f"{lib_dir}:{os.environ.get('LD_LIBRARY_PATH') or ''}"
-        os.environ["LD_LIBRARY_PATH"] = new_ld_path
+    # Manually load libraries since we cannot set LD_LIBRARY_PATH in a running process
+    lib_ext = "dll" if sys.platform == "win32" else "so"
+    for lib in lib_dir.glob(f"*.{lib_ext}"):
+        ctypes.CDLL(str(lib))
 
     # Add python bindings directory first in PYTHONPATH
     otb_api = __find_python_api(lib_dir)
@@ -306,6 +300,7 @@ def __suggest_fix_import(error_message: str, prefix: str):
     """Help user to fix the OTB installation with appropriate log messages."""
     logger.critical("An error occurred while importing OTB Python API")
     logger.critical("OTB error message was '%s'", error_message)
+    # TODO: update for OTB 9
     if sys.platform == "win32":
         if error_message.startswith("DLL load failed"):
             if sys.version_info.minor != 7:

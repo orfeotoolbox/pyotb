@@ -1,4 +1,5 @@
 """Search for OTB (set env if necessary), subclass core.App for each available application."""
+
 from __future__ import annotations
 
 import os

@@ -1,4 +1,5 @@
 """This module is the core of pyotb."""
+
 from __future__ import annotations
 
 import re
@@ -12,7 +13,6 @@ import numpy as np
 import otbApplication as otb  # pylint: disable=import-error
 
 from .helpers import logger
-from .depreciation import deprecated_alias, depreciation_warning, deprecated_attr
 
 
 class OTBObject(ABC):
@@ -32,11 +32,6 @@ class OTBObject(ABC):
     @abstractmethod
     def output_image_key(self) -> str:
         """Return the name of a parameter key associated to the main output image of the object."""
-
-    @property
-    @deprecated_attr(replacement="output_image_key")
-    def output_param(self) -> str:
-        """Return the name of a parameter key associated to the main output image of the object (deprecated)."""
 
     @property
     @abstractmethod
@@ -426,43 +421,6 @@ class OTBObject(ABC):
         """
         return id(self)
 
-    def __getattr__(self, item: str):
-        """Provides depreciation of old methods to access the OTB application values.
-
-        This function will be removed completely in future releases.
-
-        Args:
-            item: attribute name
-
-        """
-        note = (
-            "Since pyotb 2.0.0, OTBObject instances have stopped to forward "
-            "attributes to their own internal otbApplication instance. "
-            "`App.app` can be used to call otbApplications methods."
-        )
-        hint = None
-
-        if item in dir(self.app):
-            hint = f"Maybe try `pyotb_app.app.{item}` instead of `pyotb_app.{item}`? "
-            if item.startswith("GetParameter"):
-                hint += (
-                    "Note: `pyotb_app.app.GetParameterValue('paramname')` can be "
-                    "shorten with `pyotb_app['paramname']` to access parameters "
-                    "values."
-                )
-        elif item in self.parameters_keys:
-            # Because in pyotb 1.5.4, app outputs were added as instance attributes
-            hint = (
-                "Note: `pyotb_app.paramname` is no longer supported. Starting "
-                "from pyotb 2.0.0, `pyotb_app['paramname']` can be used to "
-                "access parameters values. "
-            )
-        if hint:
-            depreciation_warning(f"{note} {hint}")
-        raise AttributeError(
-            f"'{type(self).__name__}' object has no attribute '{item}'"
-        )
-
     def __getitem__(self, key) -> Any | list[float] | float | Slicer:
         """Override the default __getitem__ behaviour.
 
@@ -597,11 +555,7 @@ class App(OTBObject):
             for key in self.parameters_keys
             if self.app.GetParameterType(key) == otb.ParameterType_Choice
         }
-        self._out_image_keys = tuple(
-            key
-            for key, param in self._out_param_types.items()
-            if param == otb.ParameterType_OutputImage
-        )
+        self._out_image_keys = get_out_images_param_keys(self._app)
 
         # Init, execute and write (auto flush only when output param was provided)
         if args or kwargs:
@@ -808,7 +762,6 @@ class App(OTBObject):
         self.app.WriteOutput()
         self._time_end = perf_counter()
 
-    @deprecated_alias(filename_extension="ext_fname")
     def write(
         self,
         path: str | Path | dict[str, str] = None,
@@ -1525,7 +1478,6 @@ class Output(OTBObject):
 
     _filepath: str | Path = None
 
-    @deprecated_alias(app="pyotb_app", output_parameter_key="param_key")
     def __init__(
         self,
         pyotb_app: App,
@@ -1549,11 +1501,6 @@ class Output(OTBObject):
     def app(self) -> otb.Application:
         """Reference to the parent pyotb otb.Application instance."""
         return self.parent_pyotb_app.app
-
-    @property
-    @deprecated_attr(replacement="parent_pyotb_app")
-    def pyotb_app(self) -> App:
-        """Reference to the parent pyotb App (deprecated)."""
 
     @property
     def exports_dic(self) -> dict[str, dict]:
@@ -1719,13 +1666,13 @@ def parse_pixel_type(pixel_type: str | int) -> int:
     )
 
 
-def get_out_images_param_keys(otb_app: otb.Application) -> list[str]:
+def get_out_images_param_keys(otb_app: otb.Application) -> tuple[str]:
     """Return every output parameter keys of a bare OTB app."""
-    return [
+    return tuple(
         key
         for key in otb_app.GetParametersKeys()
         if otb_app.GetParameterType(key) == otb.ParameterType_OutputImage
-    ]
+    )
 
 
 def summarize(

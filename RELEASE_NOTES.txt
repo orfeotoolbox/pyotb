@@ -1,4 +1,12 @@
 ---------------------------------------------------------------------
+2.2.0 (May 20, 2025) - Changes since version 2.1.0
+
+- Use OTBTF 5.0 dev image for testing
+- Fix auto env setting with OTB 9
+- Drop deprecated funcs and attrs inherited from pyotb 1.5
+- Drop module install.py since OTB now offers an script for easy install
+
+---------------------------------------------------------------------
 2.1.0 (Oct 9, 2024) - Changes since version 2.0.2
 
 - Fix memory leak due to circular references to Output objects in list App.outputs

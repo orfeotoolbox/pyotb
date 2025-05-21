@@ -2,7 +2,7 @@ import os
 import itertools
 import pytest
 import pyotb
-from tests_data import INPUT, SPOT_IMG_URL
+from .tests_data import INPUT, SPOT_IMG_URL
 
 
 # List of buildings blocks, we can add other pyotb objects here
